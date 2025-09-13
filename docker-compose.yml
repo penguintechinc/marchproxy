@@ -1,0 +1,142 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: marchproxy_postgres
+    environment:
+      POSTGRES_DB: marchproxy
+      POSTGRES_USER: marchproxy
+      POSTGRES_PASSWORD: marchproxy_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/dev/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marchproxy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  manager:
+    build:
+      context: .
+      dockerfile: docker/manager/Dockerfile
+    container_name: marchproxy_manager
+    environment:
+      # Database configuration
+      DB_URI: postgresql://marchproxy:marchproxy_dev_password@postgres:5432/marchproxy
+      
+      # py4web configuration
+      PY4WEB_APPS_FOLDER: /app
+      PY4WEB_PASSWORD: marchproxy_admin_dev
+      PY4WEB_DASHBOARD_MODE: full
+      
+      # Application configuration
+      PYTHONPATH: /app
+      FLASK_ENV: development
+      
+      # License server configuration (Enterprise)
+      LICENSE_SERVER_URL: https://license.penguintech.io
+      LICENSE_PRODUCT_NAME: marchproxy
+      
+      # TLS/Security configuration
+      TLS_CERT_PATH: /app/certs
+      JWT_SECRET: marchproxy_jwt_secret_dev_change_in_production
+      
+      # Logging configuration
+      LOG_LEVEL: DEBUG
+      SYSLOG_ENDPOINT: 127.0.0.1:514
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./manager:/app
+      - ./docker/dev/certs:/app/certs:ro
+      - manager_logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  proxy:
+    build:
+      context: .
+      dockerfile: docker/proxy/Dockerfile
+    container_name: marchproxy_proxy
+    environment:
+      # Manager connection configuration
+      MANAGER_URL: http://manager:8000
+      CLUSTER_API_KEY: dev_cluster_api_key_change_in_production
+      
+      # Proxy configuration
+      PROXY_LISTEN_PORT: 8080
+      PROXY_ADMIN_PORT: 8081
+      
+      # License configuration
+      LICENSE_SERVER_URL: https://license.penguintech.io
+      
+      # Logging configuration
+      LOG_LEVEL: DEBUG
+      SYSLOG_ENDPOINT: 127.0.0.1:514
+      
+      # Performance configuration
+      GO_MAX_PROCS: 4
+      GOMAXPROCS: 4
+    ports:
+      - "8080:8080"  # Main proxy port
+      - "8081:8081"  # Admin/health/metrics port
+    volumes:
+      - ./proxy:/app
+      - proxy_logs:/app/logs
+    depends_on:
+      - manager
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+    privileged: true  # Required for eBPF programs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Development tools and utilities
+  adminer:
+    image: adminer
+    container_name: marchproxy_adminer
+    ports:
+      - "8082:8080"
+    depends_on:
+      - postgres
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+
+  # Syslog server for development
+  syslog:
+    image: balabit/syslog-ng:latest
+    container_name: marchproxy_syslog
+    ports:
+      - "514:514/udp"
+      - "601:601"
+    volumes:
+      - ./docker/dev/syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf:ro
+      - syslog_logs:/var/log
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  manager_logs:
+  proxy_logs:
+  syslog_logs:
+
+networks:
+  default:
+    name: marchproxy_network

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>[[=title or "MarchProxy Management"]]</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .sidebar {
+            min-height: calc(100vh - 56px);
+            background-color: #f8f9fa;
+        }
+        .main-content {
+            min-height: calc(100vh - 56px);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="[[=URL('index')]]">
+                <i class="bi bi-shield-check"></i> MarchProxy
+            </a>
+            
+            [[if user:]]
+            <div class="navbar-nav ms-auto">
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-circle"></i> [[=user.get('username', 'User')]]
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="[[=URL('auth/setup-2fa')]]">
+                            <i class="bi bi-shield-lock"></i> Setup 2FA
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="[[=URL('auth/logout')]]">
+                            <i class="bi bi-box-arrow-right"></i> Logout
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+            [[else:]]
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="[[=URL('auth/login')]]">
+                    <i class="bi bi-box-arrow-in-right"></i> Login
+                </a>
+            </div>
+            [[pass]]
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            [[if user:]]
+            <!-- Sidebar -->
+            <nav class="col-md-2 d-md-block sidebar collapse">
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="[[=URL('dashboard')]]">
+                                <i class="bi bi-speedometer2"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="[[=URL('clusters')]]">
+                                <i class="bi bi-diagram-3"></i> Clusters
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="[[=URL('services')]]">
+                                <i class="bi bi-server"></i> Services
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="[[=URL('mappings')]]">
+                                <i class="bi bi-diagram-2"></i> Mappings
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="[[=URL('certificates')]]">
+                                <i class="bi bi-file-earmark-lock"></i> Certificates
+                            </a>
+                        </li>
+                        [[if user and user.get('is_admin'):]]
+                        <li class="nav-item">
+                            <a class="nav-link" href="[[=URL('users')]]">
+                                <i class="bi bi-people"></i> Users
+                            </a>
+                        </li>
+                        [[pass]]
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main content -->
+            <main class="col-md-10 ms-sm-auto main-content">
+                <div class="pt-3">
+            [[else:]]
+            <!-- Full width for non-authenticated users -->
+            <main class="col-12 main-content">
+                <div class="pt-3">
+            [[pass]]
+            
+                    <!-- Flash messages -->
+                    [[if flash:]]
+                    <div class="alert alert-info alert-dismissible fade show" role="alert">
+                        [[=flash]]
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    [[pass]]
+
+                    <!-- Page content -->
+                    [[include]]
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

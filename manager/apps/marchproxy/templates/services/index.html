@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Services - MarchProxy</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <script defer src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"></script>
+</head>
+<body>
+    <nav class="navbar is-dark" role="navigation">
+        <div class="navbar-brand">
+            <a class="navbar-item" href="[[=URL('dashboard')]]">
+                <strong>MarchProxy</strong>
+            </a>
+        </div>
+        
+        <div class="navbar-menu">
+            <div class="navbar-start">
+                <a class="navbar-item" href="[[=URL('dashboard')]]">Dashboard</a>
+                <a class="navbar-item" href="[[=URL('clusters')]]">Clusters</a>
+                <a class="navbar-item is-active" href="[[=URL('services')]]">Services</a>
+                [[if user.is_admin:]]
+                <a class="navbar-item" href="[[=URL('users')]]">Users</a>
+                [[pass]]
+            </div>
+            
+            <div class="navbar-end">
+                <div class="navbar-item has-dropdown is-hoverable">
+                    <a class="navbar-link">
+                        [[=user.username]]
+                    </a>
+                    <div class="navbar-dropdown">
+                        <a class="navbar-item" href="[[=URL('auth/setup-2fa')]]">2FA Setup</a>
+                        <hr class="navbar-divider">
+                        <a class="navbar-item" href="[[=URL('auth/logout')]]">Logout</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <section class="section">
+        <div class="container">
+            <div class="level">
+                <div class="level-left">
+                    <div class="level-item">
+                        <h1 class="title">Services</h1>
+                    </div>
+                </div>
+                <div class="level-right">
+                    <div class="level-item">
+                        <a class="button is-primary" href="[[=URL('services/create')]]">
+                            <span class="icon"><i class="fas fa-plus"></i></span>
+                            <span>Add Service</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            [[if services:]]
+            <div class="card">
+                <div class="card-content">
+                    <table class="table is-fullwidth">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>IP/FQDN</th>
+                                <th>Collection</th>
+                                <th>Auth Type</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            [[for service in services:]]
+                            <tr>
+                                <td>[[=service.name]]</td>
+                                <td>[[=service.ip_fqdn]]</td>
+                                <td>[[=service.collection or '']]</td>
+                                <td>
+                                    <span class="tag [[if service.auth_type == 'jwt':]]is-success[[elif service.auth_type == 'base64':]]is-info[[else:]]is-light[[pass]]">
+                                        [[=service.auth_type.upper()]]
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="tag [[if service.is_active:]]is-success[[else:]]is-danger[[pass]]">
+                                        [[if service.is_active:]]Active[[else:]]Inactive[[pass]]
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="buttons has-addons">
+                                        <a class="button is-small" href="[[=URL('services/edit', service.id)]]">
+                                            <span class="icon is-small"><i class="fas fa-edit"></i></span>
+                                        </a>
+                                        [[if service.auth_type in ['jwt', 'base64']:]]
+                                        <a class="button is-small is-warning" href="[[=URL('services/rotate-auth', service.id)]]">
+                                            <span class="icon is-small"><i class="fas fa-key"></i></span>
+                                        </a>
+                                        [[pass]]
+                                        [[if user.is_admin:]]
+                                        <a class="button is-small is-danger" href="[[=URL('services/delete', service.id)]]">
+                                            <span class="icon is-small"><i class="fas fa-trash"></i></span>
+                                        </a>
+                                        [[pass]]
+                                    </div>
+                                </td>
+                            </tr>
+                            [[pass]]
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            [[else:]]
+            <div class="notification is-info">
+                <p><strong>No services configured.</strong></p>
+                <p>Create your first service to start configuring proxy mappings.</p>
+                <br>
+                <a class="button is-primary" href="[[=URL('services/create')]]">
+                    <span class="icon"><i class="fas fa-plus"></i></span>
+                    <span>Add Service</span>
+                </a>
+            </div>
+            [[pass]]
+        </div>
+    </section>
+</body>
+</html>

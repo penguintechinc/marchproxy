@@ -1,32 +1,127 @@
-# If you prefer the allow list template instead of the deny list, see community template:
-# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
-#
-# Binaries for programs and plugins
-*.exe
-*.exe~
-*.dll
+# MarchProxy .gitignore
+
+# Project planning files (git ignored)
+.REQUIREMENTS
+.PLAN
+.TODO
+
+# Version file is NOT ignored - should be tracked
+# .version - This file should be committed to track version
+
+# Compiled binaries
+/manager/apps/marchproxy/__pycache__/
+/manager/apps/__pycache__/
+/proxy/marchproxy
+/proxy/marchproxy-dev
+/proxy/tmp/
+*.o
 *.so
 *.dylib
+*.exe
 
-# Test binary, built with `go test -c`
-*.test
+# Development files
+.DS_Store
+.vscode/settings.json
+.vscode/launch.json
+*.swp
+*.swo
+*~
 
-# Code coverage profiles and other test artifacts
-*.out
-coverage.*
-*.coverprofile
-profile.cov
+# Logs
+*.log
+/manager/logs/
+/proxy/logs/
 
-# Dependency directories (remove the comment below to include it)
-# vendor/
+# Database files
+*.db
+*.sqlite
+*.sqlite3
 
-# Go workspace file
-go.work
-go.work.sum
-
-# env file
+# Environment files
 .env
+.env.local
+.env.production
+.env.development
 
-# Editor/IDE
-# .idea/
-# .vscode/
+# Certificates and keys
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+/docker/dev/certs/
+/manager/certs/
+/proxy/certs/
+
+# Configuration files with secrets
+config.yaml
+config.json
+password.txt
+
+# Docker volumes and data
+postgres_data/
+manager_logs/
+proxy_logs/
+syslog_logs/
+
+# Go specific
+/proxy/vendor/
+/proxy/go.sum
+
+# Python specific
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+venv/
+env/
+
+# eBPF compiled programs
+/ebpf/programs/*.o
+/ebpf/programs/*.ll
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+!.vscode/extensions.json
+
+# OS generated files
+Thumbs.db
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# License keys (security)
+license.key
+*.lic
+
+# Development certificates
+dev-cert.*
+localhost.*
+
+# Backup files
+*.backup
+*.bak
+*.orig
+
+# Testing artifacts
+coverage.out
+test-results/
+.nyc_output/

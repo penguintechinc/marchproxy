@@ -1,0 +1,75 @@
+[[extend 'layout.html']]
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 text-center">
+            <h1 class="display-4 mb-4">
+                <i class="bi bi-shield-check text-primary"></i>
+                MarchProxy Management
+            </h1>
+            <p class="lead mb-5">
+                High-performance proxy server with eBPF acceleration, enterprise clustering, 
+                and advanced authentication systems.
+            </p>
+            
+            <div class="row mb-5">
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="bi bi-lightning-charge display-4 text-success mb-3"></i>
+                            <h5 class="card-title">High Performance</h5>
+                            <p class="card-text">eBPF acceleration for ultra-low latency proxy operations</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="bi bi-diagram-3 display-4 text-info mb-3"></i>
+                            <h5 class="card-title">Multi-Cluster</h5>
+                            <p class="card-text">Enterprise clustering with centralized management</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="bi bi-shield-lock display-4 text-warning mb-3"></i>
+                            <h5 class="card-title">Secure</h5>
+                            <p class="card-text">JWT/Token authentication, 2FA, and SAML/OAuth2 support</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <a href="[[=URL('auth/login')]]" class="btn btn-primary btn-lg me-3">
+                    <i class="bi bi-box-arrow-in-right"></i> Login to Management
+                </a>
+                <a href="https://github.com/penguintech/marchproxy" target="_blank" class="btn btn-outline-secondary btn-lg">
+                    <i class="bi bi-github"></i> View on GitHub
+                </a>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">System Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-start">
+                        <div class="col-md-6">
+                            <strong>Version:</strong> [[=VERSION or "v0.1.0"]]<br>
+                            <strong>Edition:</strong> Community<br>
+                            <strong>Database:</strong> <span class="badge bg-success">Connected</span>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Proxy Limit:</strong> 3 proxies<br>
+                            <strong>Active Clusters:</strong> 1<br>
+                            <strong>License:</strong> <span class="badge bg-info">Community</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - MarchProxy</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <script defer src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"></script>
+</head>
+<body>
+    <nav class="navbar is-dark" role="navigation">
+        <div class="navbar-brand">
+            <a class="navbar-item" href="[[=URL('dashboard')]]">
+                <strong>MarchProxy</strong>
+            </a>
+        </div>
+        
+        <div class="navbar-menu">
+            <div class="navbar-start">
+                <a class="navbar-item" href="[[=URL('dashboard')]]">Dashboard</a>
+                <a class="navbar-item" href="[[=URL('clusters')]]">Clusters</a>
+                <a class="navbar-item" href="[[=URL('services')]]">Services</a>
+                [[if user.is_admin:]]
+                <a class="navbar-item" href="[[=URL('users')]]">Users</a>
+                [[pass]]
+            </div>
+            
+            <div class="navbar-end">
+                <div class="navbar-item has-dropdown is-hoverable">
+                    <a class="navbar-link">
+                        [[=user.username]]
+                    </a>
+                    <div class="navbar-dropdown">
+                        <a class="navbar-item" href="[[=URL('auth/setup-2fa')]]">2FA Setup</a>
+                        <hr class="navbar-divider">
+                        <a class="navbar-item" href="[[=URL('auth/logout')]]">Logout</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <section class="section">
+        <div class="container">
+            <h1 class="title">Dashboard</h1>
+            
+            <!-- License Status -->
+            <div class="columns">
+                <div class="column">
+                    <div class="card">
+                        <div class="card-header">
+                            <p class="card-header-title">License Information</p>
+                        </div>
+                        <div class="card-content">
+                            <div class="content">
+                                <p><strong>Edition:</strong> 
+                                    <span class="tag [[if license_info['edition'] == 'Enterprise':]]is-success[[else:]]is-info[[pass]]">
+                                        [[=license_info['edition']]]
+                                    </span>
+                                </p>
+                                
+                                <p><strong>Status:</strong> 
+                                    <span class="tag [[if license_info['valid']:]]is-success[[else:]]is-danger[[pass]]">
+                                        [[if license_info['valid']:]]Valid[[else:]]Invalid[[pass]]
+                                    </span>
+                                </p>
+                                
+                                [[if license_info.get('expires_at'):]]
+                                <p><strong>Expires:</strong> [[=license_info['expires_at']]]</p>
+                                [[pass]]
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Cluster Overview -->
+            <div class="columns">
+                <div class="column">
+                    <div class="card">
+                        <div class="card-header">
+                            <p class="card-header-title">Cluster Overview</p>
+                        </div>
+                        <div class="card-content">
+                            <div class="content">
+                                [[if clusters:]]
+                                <table class="table is-fullwidth">
+                                    <thead>
+                                        <tr>
+                                            <th>Cluster Name</th>
+                                            <th>Active Proxies</th>
+                                            <th>Max Proxies</th>
+                                            <th>Utilization</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        [[for cluster in clusters:]]
+                                        <tr>
+                                            <td>[[=cluster.name]]</td>
+                                            <td>[[=proxy_stats.get(cluster.id, {}).get('active', 0)]]</td>
+                                            <td>[[=cluster.max_proxies]]</td>
+                                            <td>
+                                                <progress class="progress is-small 
+                                                    [[if proxy_stats.get(cluster.id, {}).get('utilization', 0) > 80:]]is-danger
+                                                    [[elif proxy_stats.get(cluster.id, {}).get('utilization', 0) > 60:]]is-warning
+                                                    [[else:]]is-success[[pass]]" 
+                                                    value="[[=proxy_stats.get(cluster.id, {}).get('utilization', 0)]]" max="100">
+                                                    [[=proxy_stats.get(cluster.id, {}).get('utilization', 0)]]%
+                                                </progress>
+                                            </td>
+                                            <td>
+                                                <span class="tag [[if cluster.is_active:]]is-success[[else:]]is-danger[[pass]]">
+                                                    [[if cluster.is_active:]]Active[[else:]]Inactive[[pass]]
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        [[pass]]
+                                    </tbody>
+                                </table>
+                                [[else:]]
+                                <div class="notification is-warning">
+                                    <p>No clusters configured. Create your first cluster to get started.</p>
+                                </div>
+                                [[pass]]
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="columns">
+                <div class="column">
+                    <div class="card">
+                        <div class="card-header">
+                            <p class="card-header-title">Quick Actions</p>
+                        </div>
+                        <div class="card-content">
+                            <div class="buttons">
+                                [[if user.is_admin:]]
+                                <a class="button is-primary" href="[[=URL('clusters/create')]]">
+                                    <span class="icon"><i class="fas fa-plus"></i></span>
+                                    <span>Create Cluster</span>
+                                </a>
+                                [[pass]]
+                                
+                                <a class="button is-info" href="[[=URL('services/create')]]">
+                                    <span class="icon"><i class="fas fa-server"></i></span>
+                                    <span>Add Service</span>
+                                </a>
+                                
+                                <a class="button is-success" href="[[=URL('mappings/create')]]">
+                                    <span class="icon"><i class="fas fa-route"></i></span>
+                                    <span>Create Mapping</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</body>
+</html>
