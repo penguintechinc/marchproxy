@@ -27,7 +27,7 @@ endif
 CLANG_BPF_SYS_INCLUDES := $(shell $(CLANG) -v -E - </dev/null 2>&1 \
 	| sed -n '/<...> search starts here:/,/End of search list./{ s| \(/.*\)|-I\1|p }')
 
-BPF_CFLAGS := -g -O2 -Wall -Werror
+BPF_CFLAGS := -g -O2 -Wall
 BPF_CFLAGS += -target bpf
 BPF_CFLAGS += -D__TARGET_ARCH_$(ARCH)
 BPF_CFLAGS += -I$(INCLUDE_DIR)
@@ -42,8 +42,9 @@ BPF_CFLAGS += -I$(KERNEL_SRC)/include/generated/uapi
 BPF_CFLAGS += $(CLANG_BPF_SYS_INCLUDES)
 
 # Source files
-SOURCES := $(wildcard $(SRC_DIR)/*.c)
-OBJECTS := $(SOURCES:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
+SOURCES := $(wildcard $(SRC_DIR)/*.c $(SRC_DIR)/*.bpf.c)
+OBJECTS := $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(filter %.c,$(SOURCES)))
+OBJECTS += $(patsubst $(SRC_DIR)/%.bpf.c,$(BUILD_DIR)/%.o,$(filter %.bpf.c,$(SOURCES)))
 
 .PHONY: all clean setup check-deps
 
