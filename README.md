@@ -4,25 +4,71 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/marchproxy/marchproxy)](https://goreportcard.com/report/github.com/marchproxy/marchproxy)
 [![Docker Pulls](https://img.shields.io/docker/pulls/marchproxy/manager)](https://hub.docker.com/r/marchproxy/manager)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-Ready-brightgreen)](https://kubernetes.io/)
+[![Performance](https://img.shields.io/badge/Performance-100Gbps%2B-red)](https://github.com/marchproxy/marchproxy/blob/main/docs/performance.md)
 
-**A high-performance, enterprise-grade proxy suite for managing egress traffic in data center environments.**
+**A high-performance, enterprise-grade proxy suite for managing egress traffic in data center environments with advanced eBPF acceleration and hardware optimization.**
 
-MarchProxy provides comprehensive egress traffic management with advanced features including eBPF acceleration, multi-cluster support, and enterprise authentication integrations. Available in Community (open source) and Enterprise (licensed) editions.
+MarchProxy is a next-generation proxy solution designed for enterprise data centers that need to control and monitor egress traffic to the internet. Built with a unique multi-tier performance architecture combining eBPF kernel programming, hardware acceleration (XDP, AF_XDP, DPDK, SR-IOV), and enterprise-grade management capabilities.
+
+## Why MarchProxy?
+
+- **Unmatched Performance**: Multi-tier acceleration from standard networking → eBPF → XDP/AF_XDP → DPDK supporting 100+ Gbps throughput
+- **Enterprise Security**: Built-in WAF, DDoS protection, XDP-based rate limiting, and comprehensive authentication (SAML, OAuth2, SCIM)
+- **Service-Centric**: Designed for service-to-service communication with granular access control and cluster isolation
+- **Production Ready**: Comprehensive monitoring, centralized logging, automatic failover, and zero-downtime configuration updates
+- **Open Source + Enterprise**: Community edition with core features, Enterprise edition with advanced acceleration and unlimited scaling
 
 ## 🚀 Quick Start
 
 ### Docker Compose (Recommended for Testing)
+
+Get MarchProxy running in under 5 minutes with our comprehensive Docker Compose setup:
 
 ```bash
 # Clone the repository
 git clone https://github.com/marchproxy/marchproxy.git
 cd marchproxy
 
-# Start with Docker Compose
+# Start the complete stack (Manager + Proxy + Observability)
 docker-compose up -d
+
+# Verify all services are running
+docker-compose ps
 
 # Access the management interface
 open http://localhost:8000
+
+# Default credentials:
+# Username: admin
+# Password: changeme
+# 2FA: Use any TOTP app to scan the QR code
+```
+
+**What you get out of the box:**
+- ✅ Manager web interface with modern dashboard
+- ✅ High-performance Go proxy with eBPF acceleration
+- ✅ PostgreSQL database with sample data
+- ✅ Prometheus metrics collection
+- ✅ Grafana dashboards for monitoring
+- ✅ ELK stack for centralized logging
+- ✅ Jaeger for distributed tracing
+- ✅ AlertManager for intelligent alerting
+
+**Quick Configuration Test:**
+```bash
+# Create a simple service mapping
+curl -X POST http://localhost:8000/api/services \
+  -H "Authorization: Bearer $(cat .cluster-api-key)" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "test-service",
+    "ip_fqdn": "httpbin.org",
+    "collection": "test",
+    "auth_type": "none"
+  }'
+
+# Test proxy connectivity
+curl -x http://localhost:8080 http://httpbin.org/ip
 ```
 
 ### Kubernetes with Helm
@@ -96,28 +142,65 @@ kubectl apply -f examples/simple-marchproxy.yaml
 
 ## 🏗️ Architecture
 
-MarchProxy consists of two main components:
+MarchProxy features a distributed architecture optimized for high-performance egress traffic management:
 
-### Manager (Python/py4web)
+```
+┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
+│   Data Center   │       │   Enterprise    │       │    Internet     │
+│    Services     │       │   Management    │       │   Destinations  │
+└─────────┬───────┘       └─────────┬───────┘       └─────────┬───────┘
+          │                         │                         │
+          │                         │                         │
+┌─────────▼─────────────────────────▼─────────────────────────▼─────────┐
+│                        MarchProxy Cluster                            │
+│  ┌─────────────────┐                    ┌─────────────────────────┐  │
+│  │     Manager     │◄──────────────────►│       Proxy Nodes       │  │
+│  │ (py4web/pydal)  │   Configuration    │    (Go/eBPF/XDP)        │  │
+│  │                 │      & Control     │                         │  │
+│  │ • Web Dashboard │                    │ ┌─────┐ ┌─────┐ ┌─────┐ │  │
+│  │ • API Server    │                    │ │ XDP │ │ XDP │ │ XDP │ │  │
+│  │ • User Mgmt     │                    │ │ P1  │ │ P2  │ │ P3  │ │  │
+│  │ • License Mgmt  │                    │ └─────┘ └─────┘ └─────┘ │  │
+│  │ • TLS CA        │                    │                         │  │
+│  └─────────────────┘                    └─────────────────────────┘  │
+│           │                                         │                │
+│           ▼                                         ▼                │
+│  ┌─────────────────┐                    ┌─────────────────────────┐  │
+│  │   PostgreSQL    │                    │    Observability        │  │
+│  │   Database      │                    │                         │  │
+│  │                 │                    │ • Prometheus/Grafana    │  │
+│  │ • Clusters      │                    │ • ELK Stack             │  │
+│  │ • Services      │                    │ • Jaeger Tracing        │  │
+│  │ • Mappings      │                    │ • AlertManager          │  │
+│  │ • Users         │                    │ • Health Checks         │  │
+│  │ • Certificates  │                    │                         │  │
+│  └─────────────────┘                    └─────────────────────────┘  │
+└───────────────────────────────────────────────────────────────────────┘
+```
+
+### Component Architecture
+
+#### Manager (Python/py4web)
 - **Configuration Management**: Centralized service and mapping configuration
-- **Authentication & Authorization**: User management and access control
-- **Cluster Management**: Multi-cluster support with API key management
-- **License Validation**: Enterprise license checking and feature enforcement
-- **Web Interface**: Comprehensive management dashboard
-- **API Server**: RESTful API for proxy registration and configuration
+- **Multi-Cluster Support**: Enterprise cluster isolation with separate API keys
+- **Authentication Hub**: SAML, OAuth2, SCIM integration for enterprise SSO
+- **License Validation**: Real-time license checking with license.penguintech.io
+- **TLS Certificate Authority**: Self-signed CA generation and wildcard certificates
+- **Web Interface**: Modern multi-page dashboard with real-time monitoring
 
-### Proxy (Go/eBPF)
-- **High-Performance Networking**: Multi-protocol proxy with advanced features
-- **eBPF Integration**: Kernel-level packet processing and filtering
-- **Configuration Sync**: Automatic configuration updates from manager
-- **Health Monitoring**: Comprehensive health checks and metrics
-- **Security Enforcement**: Authentication, rate limiting, and WAF protection
+#### Proxy Nodes (Go/eBPF)
+- **Multi-Tier Processing**: Hardware → XDP → eBPF → Go application logic
+- **Protocol Support**: TCP, UDP, ICMP, HTTP/HTTPS, WebSocket, QUIC/HTTP3
+- **Enterprise Rate Limiting**: XDP-based packet-per-second rate limiting
+- **Advanced Security**: WAF, DDoS protection, circuit breakers
+- **Zero-Copy Networking**: AF_XDP for ultra-low latency packet processing
+- **Configuration Sync**: Hot-reload configuration without connection drops
 
 ### Performance Tiers
-1. **Standard Networking**: Traditional kernel socket processing
-2. **eBPF Acceleration**: Programmable kernel-level packet filtering
-3. **XDP/AF_XDP**: Driver-level processing and zero-copy I/O
-4. **DPDK**: Kernel bypass for ultra-high performance (10+ Gbps)
+1. **Standard Networking**: Traditional kernel socket processing (~1 Gbps)
+2. **eBPF Acceleration**: Programmable kernel-level packet filtering (~10 Gbps)
+3. **XDP/AF_XDP**: Driver-level processing and zero-copy I/O (~40 Gbps)
+4. **DPDK/SR-IOV**: Kernel bypass + hardware isolation (~100+ Gbps)
 
 ## 💼 Edition Comparison
 
@@ -125,13 +208,22 @@ MarchProxy consists of two main components:
 |---------|-----------|------------|
 | **Proxy Instances** | Up to 3 | Unlimited* |
 | **Clusters** | Single default | Multiple with isolation |
-| **Authentication** | Basic, 2FA | + SAML, SCIM, OAuth2 |
-| **Performance** | Standard + eBPF | + Hardware acceleration |
-| **Monitoring** | Basic metrics | + Advanced analytics |
-| **Support** | Community | 24/7 enterprise support |
+| **Performance Tier** | Standard + eBPF | + XDP/AF_XDP + DPDK |
+| **Rate Limiting** | Basic application-level | + XDP-based HW acceleration |
+| **Authentication** | Basic, 2FA, JWT | + SAML, SCIM, OAuth2 |
+| **TLS Management** | Manual certificates | + Wildcard CA generation |
+| **Network Acceleration** | eBPF fast-path | + SR-IOV, NUMA optimization |
+| **Web Application Firewall** | Basic protection | + Advanced threat detection |
+| **Monitoring & Analytics** | Prometheus metrics | + Advanced dashboards, alerting |
+| **Centralized Logging** | Local logging | + Per-cluster syslog, ELK stack |
+| **Load Balancing** | Round-robin | + Weighted, least-conn, geo-aware |
+| **Content Processing** | Basic compression | + Brotli, Zstandard, smart caching |
+| **Circuit Breaker** | Basic | + Advanced patterns, auto-recovery |
+| **Distributed Tracing** | Basic | + OpenTelemetry integration |
+| **Support** | Community forums | 24/7 enterprise support |
 | **License** | AGPL v3 | Commercial license available |
 
-*Based on license entitlements
+*Based on license entitlements from license.penguintech.io
 
 ## 🚀 Installation
 

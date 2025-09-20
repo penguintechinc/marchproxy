@@ -1,0 +1,2332 @@
+openapi: 3.0.3
+info:
+  title: MarchProxy Manager API
+  description: |
+    MarchProxy Manager REST API for managing egress traffic proxy infrastructure.
+
+    This API provides comprehensive management capabilities for:
+    - User authentication and authorization
+    - Service and mapping configuration
+    - Multi-cluster management (Enterprise)
+    - TLS certificate management
+    - License validation and monitoring
+
+    ## Authentication
+
+    The API supports multiple authentication methods:
+    - **API Key**: Include in Authorization header as `Bearer your-api-key`
+    - **Cluster API Key**: Include in X-Cluster-API-Key header for proxy operations
+    - **JWT**: Include in Authorization header for web interface sessions
+
+    ## Rate Limiting
+
+    API endpoints are rate limited:
+    - Authentication: 5 requests/minute per IP
+    - General API: 1000 requests/hour per API key
+    - Configuration: 100 requests/minute per cluster
+  version: 0.1.1
+  contact:
+    name: MarchProxy Support
+    url: https://github.com/marchproxy/marchproxy
+    email: support@marchproxy.io
+  license:
+    name: AGPL v3
+    url: https://www.gnu.org/licenses/agpl-3.0
+
+servers:
+  - url: http://localhost:8000/api
+    description: Development server
+  - url: https://manager.company.com/api
+    description: Production server
+
+security:
+  - BearerAuth: []
+  - ClusterApiKey: []
+
+paths:
+  # Authentication endpoints
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Authenticate user with username, password, and optional 2FA code
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/LoginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      description: Generate new access token using refresh token
+      operationId: refreshToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/TokenResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: User logout
+      description: Invalidate current session and tokens
+      operationId: logout
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /auth/api-keys:
+    get:
+      tags:
+        - Authentication
+      summary: List API keys
+      description: Get list of API keys for current user
+      operationId: listApiKeys
+      responses:
+        '200':
+          description: API keys retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          api_keys:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/ApiKey'
+    post:
+      tags:
+        - Authentication
+      summary: Create API key
+      description: Generate new API key for programmatic access
+      operationId: createApiKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateApiKeyRequest'
+      responses:
+        '201':
+          description: API key created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ApiKey'
+
+  /auth/api-keys/{keyId}:
+    delete:
+      tags:
+        - Authentication
+      summary: Delete API key
+      description: Revoke and delete API key
+      operationId: deleteApiKey
+      parameters:
+        - name: keyId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: API key deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # User management endpoints
+  /users:
+    get:
+      tags:
+        - Users
+      summary: List users
+      description: Get paginated list of users (admin only)
+      operationId: listUsers
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: cluster_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Users retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/UserListResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags:
+        - Users
+      summary: Create user
+      description: Create new user account (admin only)
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /users/{userId}:
+    get:
+      tags:
+        - Users
+      summary: Get user
+      description: Get user details by ID
+      operationId: getUser
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: User retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Users
+      summary: Update user
+      description: Update user details (admin or self)
+      operationId: updateUser
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Users
+      summary: Delete user
+      description: Delete user account (admin only)
+      operationId: deleteUser
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: User deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Service management endpoints
+  /services:
+    get:
+      tags:
+        - Services
+      summary: List services
+      description: Get list of backend services
+      operationId: listServices
+      parameters:
+        - name: cluster_id
+          in: query
+          schema:
+            type: integer
+        - name: collection
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Services retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ServiceListResponse'
+
+    post:
+      tags:
+        - Services
+      summary: Create service
+      description: Create new backend service
+      operationId: createService
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateServiceRequest'
+      responses:
+        '201':
+          description: Service created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Service'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /services/{serviceId}:
+    get:
+      tags:
+        - Services
+      summary: Get service
+      description: Get service details by ID
+      operationId: getService
+      parameters:
+        - name: serviceId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Service retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Service'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Services
+      summary: Update service
+      description: Update service configuration
+      operationId: updateService
+      parameters:
+        - name: serviceId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateServiceRequest'
+      responses:
+        '200':
+          description: Service updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Service'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Services
+      summary: Delete service
+      description: Delete service and associated mappings
+      operationId: deleteService
+      parameters:
+        - name: serviceId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Service deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /services/{serviceId}/rotate-jwt:
+    post:
+      tags:
+        - Services
+      summary: Rotate JWT secret
+      description: Generate new JWT secret for service
+      operationId: rotateServiceJWT
+      parameters:
+        - name: serviceId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: JWT secret rotated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/JWTRotationResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Mapping management endpoints
+  /mappings:
+    get:
+      tags:
+        - Mappings
+      summary: List mappings
+      description: Get list of traffic routing mappings
+      operationId: listMappings
+      parameters:
+        - name: cluster_id
+          in: query
+          schema:
+            type: integer
+        - name: source_service
+          in: query
+          schema:
+            type: string
+        - name: dest_service
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Mappings retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/MappingListResponse'
+
+    post:
+      tags:
+        - Mappings
+      summary: Create mapping
+      description: Create new traffic routing mapping
+      operationId: createMapping
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMappingRequest'
+      responses:
+        '201':
+          description: Mapping created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Mapping'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /mappings/{mappingId}:
+    get:
+      tags:
+        - Mappings
+      summary: Get mapping
+      description: Get mapping details by ID
+      operationId: getMapping
+      parameters:
+        - name: mappingId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Mapping retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Mapping'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Mappings
+      summary: Update mapping
+      description: Update mapping configuration
+      operationId: updateMapping
+      parameters:
+        - name: mappingId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMappingRequest'
+      responses:
+        '200':
+          description: Mapping updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Mapping'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Mappings
+      summary: Delete mapping
+      description: Delete traffic routing mapping
+      operationId: deleteMapping
+      parameters:
+        - name: mappingId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Mapping deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Cluster management endpoints (Enterprise)
+  /clusters:
+    get:
+      tags:
+        - Clusters
+      summary: List clusters
+      description: Get list of clusters (Enterprise feature)
+      operationId: listClusters
+      responses:
+        '200':
+          description: Clusters retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ClusterListResponse'
+        '402':
+          $ref: '#/components/responses/PaymentRequired'
+
+    post:
+      tags:
+        - Clusters
+      summary: Create cluster
+      description: Create new cluster (Enterprise feature)
+      operationId: createCluster
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateClusterRequest'
+      responses:
+        '201':
+          description: Cluster created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Cluster'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '402':
+          $ref: '#/components/responses/PaymentRequired'
+
+  /clusters/{clusterId}:
+    get:
+      tags:
+        - Clusters
+      summary: Get cluster
+      description: Get cluster details by ID
+      operationId: getCluster
+      parameters:
+        - name: clusterId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Cluster retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Cluster'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Clusters
+      summary: Update cluster
+      description: Update cluster configuration
+      operationId: updateCluster
+      parameters:
+        - name: clusterId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateClusterRequest'
+      responses:
+        '200':
+          description: Cluster updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Cluster'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Clusters
+      summary: Delete cluster
+      description: Deactivate cluster and associated resources
+      operationId: deleteCluster
+      parameters:
+        - name: clusterId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Cluster deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /clusters/{clusterId}/rotate-key:
+    post:
+      tags:
+        - Clusters
+      summary: Rotate cluster API key
+      description: Generate new API key for cluster
+      operationId: rotateClusterApiKey
+      parameters:
+        - name: clusterId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Cluster API key rotated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ClusterKeyRotationResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /clusters/{clusterId}/logging:
+    put:
+      tags:
+        - Clusters
+      summary: Update cluster logging
+      description: Update cluster logging configuration
+      operationId: updateClusterLogging
+      parameters:
+        - name: clusterId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateClusterLoggingRequest'
+      responses:
+        '200':
+          description: Cluster logging updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Cluster'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Certificate management endpoints
+  /certificates:
+    get:
+      tags:
+        - Certificates
+      summary: List certificates
+      description: Get list of TLS certificates
+      operationId: listCertificates
+      responses:
+        '200':
+          description: Certificates retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/CertificateListResponse'
+
+    post:
+      tags:
+        - Certificates
+      summary: Upload certificate
+      description: Upload TLS certificate and private key
+      operationId: uploadCertificate
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UploadCertificateRequest'
+      responses:
+        '201':
+          description: Certificate uploaded successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Certificate'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /certificates/generate-wildcard:
+    post:
+      tags:
+        - Certificates
+      summary: Generate wildcard certificate
+      description: Generate wildcard certificate for domain (Enterprise feature)
+      operationId: generateWildcardCertificate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateWildcardCertificateRequest'
+      responses:
+        '201':
+          description: Wildcard certificate generated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Certificate'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '402':
+          $ref: '#/components/responses/PaymentRequired'
+
+  /certificates/{certificateId}:
+    delete:
+      tags:
+        - Certificates
+      summary: Delete certificate
+      description: Delete TLS certificate
+      operationId: deleteCertificate
+      parameters:
+        - name: certificateId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Certificate deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Proxy management endpoints
+  /proxy/register:
+    post:
+      tags:
+        - Proxy
+      summary: Register proxy
+      description: Register new proxy instance with cluster
+      operationId: registerProxy
+      security:
+        - ClusterApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterProxyRequest'
+      responses:
+        '201':
+          description: Proxy registered successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RegisterProxyResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /config/{clusterId}:
+    get:
+      tags:
+        - Proxy
+      summary: Get configuration
+      description: Get proxy configuration for cluster
+      operationId: getProxyConfiguration
+      security:
+        - ClusterApiKey: []
+      parameters:
+        - name: clusterId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Configuration retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ProxyConfiguration'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /proxy/heartbeat:
+    post:
+      tags:
+        - Proxy
+      summary: Proxy heartbeat
+      description: Send proxy status and metrics
+      operationId: proxyHeartbeat
+      security:
+        - ClusterApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProxyHeartbeatRequest'
+      responses:
+        '200':
+          description: Heartbeat processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /proxies:
+    get:
+      tags:
+        - Proxy
+      summary: List proxies
+      description: Get list of registered proxy instances
+      operationId: listProxies
+      parameters:
+        - name: cluster_id
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [healthy, unhealthy, offline]
+      responses:
+        '200':
+          description: Proxies retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ProxyListResponse'
+
+  # License management endpoints
+  /license-status:
+    get:
+      tags:
+        - License
+      summary: Get license status
+      description: Get current license status and limits
+      operationId: getLicenseStatus
+      responses:
+        '200':
+          description: License status retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/LicenseStatus'
+
+  /license/validate:
+    post:
+      tags:
+        - License
+      summary: Validate license
+      description: Validate license key with license server
+      operationId: validateLicense
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateLicenseRequest'
+      responses:
+        '200':
+          description: License validated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/LicenseValidationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # Monitoring endpoints
+  /healthz:
+    get:
+      tags:
+        - Monitoring
+      summary: Health check
+      description: Get service health status
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponse'
+        '503':
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponse'
+
+  /metrics:
+    get:
+      tags:
+        - Monitoring
+      summary: Get metrics
+      description: Get Prometheus-formatted metrics
+      operationId: getMetrics
+      security: []
+      responses:
+        '200':
+          description: Metrics retrieved successfully
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: |
+                  # HELP marchproxy_users_total Total number of users
+                  # TYPE marchproxy_users_total gauge
+                  marchproxy_users_total 45
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token or API key
+    ClusterApiKey:
+      type: apiKey
+      in: header
+      name: X-Cluster-API-Key
+      description: Cluster-specific API key for proxy operations
+
+  schemas:
+    # Common schemas
+    ApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Indicates if the request was successful
+        message:
+          type: string
+          description: Human-readable message
+        timestamp:
+          type: string
+          format: date-time
+          description: Response timestamp
+        request_id:
+          type: string
+          description: Unique request identifier
+      required:
+        - success
+        - timestamp
+
+    ApiError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum: [false]
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              description: Error code
+            message:
+              type: string
+              description: Error message
+            details:
+              type: object
+              description: Additional error details
+          required:
+            - code
+            - message
+        timestamp:
+          type: string
+          format: date-time
+        request_id:
+          type: string
+      required:
+        - success
+        - error
+        - timestamp
+
+    # Authentication schemas
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 255
+        password:
+          type: string
+          minLength: 1
+        totp_code:
+          type: string
+          pattern: '^[0-9]{6}$'
+          description: 6-digit TOTP code (optional if 2FA not enabled)
+      required:
+        - username
+        - password
+
+    LoginResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT access token
+        refresh_token:
+          type: string
+          description: JWT refresh token
+        expires_in:
+          type: integer
+          description: Token expiry in seconds
+        user:
+          $ref: '#/components/schemas/User'
+      required:
+        - access_token
+        - refresh_token
+        - expires_in
+        - user
+
+    RefreshTokenRequest:
+      type: object
+      properties:
+        refresh_token:
+          type: string
+      required:
+        - refresh_token
+
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        expires_in:
+          type: integer
+      required:
+        - access_token
+        - expires_in
+
+    CreateApiKeyRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        expires_at:
+          type: string
+          format: date-time
+          description: Optional expiry date
+        permissions:
+          type: array
+          items:
+            type: string
+            enum: [read, write, admin]
+          description: API key permissions
+      required:
+        - name
+
+    ApiKey:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        key:
+          type: string
+          description: Only returned when creating new key
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        permissions:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+        last_used:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - name
+        - permissions
+        - created_at
+
+    # User schemas
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        is_admin:
+          type: boolean
+        auth_provider:
+          type: string
+          enum: [local, saml, oauth2, ldap]
+        external_id:
+          type: string
+          nullable: true
+        clusters:
+          type: array
+          items:
+            type: integer
+          description: Array of cluster IDs user has access to
+        created_at:
+          type: string
+          format: date-time
+        last_login:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - username
+        - email
+        - is_admin
+        - auth_provider
+        - clusters
+        - created_at
+
+    CreateUserRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          pattern: '^[a-zA-Z0-9_-]{3,50}$'
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+          description: Required for local auth provider
+        is_admin:
+          type: boolean
+          default: false
+        clusters:
+          type: array
+          items:
+            type: integer
+          description: Array of cluster IDs to assign
+      required:
+        - username
+        - email
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        is_admin:
+          type: boolean
+        clusters:
+          type: array
+          items:
+            type: integer
+
+    UserListResponse:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - users
+        - total
+        - page
+        - limit
+
+    # Service schemas
+    Service:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        ip_fqdn:
+          type: string
+          description: IP address or FQDN of the backend service
+        collection:
+          type: string
+          description: Service collection/group name
+        cluster_id:
+          type: integer
+        auth_type:
+          type: string
+          enum: [none, api_key, jwt]
+        auth_config:
+          type: object
+          description: Authentication configuration (varies by auth_type)
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - ip_fqdn
+        - collection
+        - cluster_id
+        - auth_type
+        - created_at
+        - updated_at
+
+    CreateServiceRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          pattern: '^[a-zA-Z0-9_-]{1,100}$'
+        ip_fqdn:
+          type: string
+          description: IP address or FQDN
+        collection:
+          type: string
+          pattern: '^[a-zA-Z0-9_-]{1,50}$'
+        cluster_id:
+          type: integer
+          minimum: 1
+        auth_type:
+          type: string
+          enum: [none, api_key, jwt]
+          default: none
+        auth_config:
+          type: object
+          description: Optional authentication configuration
+      required:
+        - name
+        - ip_fqdn
+        - collection
+        - cluster_id
+
+    UpdateServiceRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          pattern: '^[a-zA-Z0-9_-]{1,100}$'
+        ip_fqdn:
+          type: string
+        collection:
+          type: string
+          pattern: '^[a-zA-Z0-9_-]{1,50}$'
+        auth_type:
+          type: string
+          enum: [none, api_key, jwt]
+        auth_config:
+          type: object
+
+    ServiceListResponse:
+      type: object
+      properties:
+        services:
+          type: array
+          items:
+            $ref: '#/components/schemas/Service'
+        total:
+          type: integer
+      required:
+        - services
+        - total
+
+    JWTRotationResponse:
+      type: object
+      properties:
+        new_secret:
+          type: string
+        old_secret_valid_until:
+          type: string
+          format: date-time
+      required:
+        - new_secret
+        - old_secret_valid_until
+
+    # Mapping schemas
+    Mapping:
+      type: object
+      properties:
+        id:
+          type: integer
+        source_services:
+          type: array
+          items:
+            type: string
+          description: Array of source service names
+        dest_services:
+          type: array
+          items:
+            type: string
+          description: Array of destination service names
+        cluster_id:
+          type: integer
+        protocols:
+          type: array
+          items:
+            type: string
+            enum: [tcp, udp, icmp, http, https, ws, wss]
+        ports:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+            maximum: 65535
+        auth_required:
+          type: boolean
+        comments:
+          type: string
+          maxLength: 500
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - source_services
+        - dest_services
+        - cluster_id
+        - protocols
+        - ports
+        - auth_required
+        - created_at
+        - updated_at
+
+    CreateMappingRequest:
+      type: object
+      properties:
+        source_services:
+          type: array
+          items:
+            type: string
+          minItems: 1
+        dest_services:
+          type: array
+          items:
+            type: string
+          minItems: 1
+        cluster_id:
+          type: integer
+          minimum: 1
+        protocols:
+          type: array
+          items:
+            type: string
+            enum: [tcp, udp, icmp, http, https, ws, wss]
+          minItems: 1
+        ports:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+            maximum: 65535
+          minItems: 1
+        auth_required:
+          type: boolean
+          default: false
+        comments:
+          type: string
+          maxLength: 500
+      required:
+        - source_services
+        - dest_services
+        - cluster_id
+        - protocols
+        - ports
+
+    UpdateMappingRequest:
+      type: object
+      properties:
+        source_services:
+          type: array
+          items:
+            type: string
+          minItems: 1
+        dest_services:
+          type: array
+          items:
+            type: string
+          minItems: 1
+        protocols:
+          type: array
+          items:
+            type: string
+            enum: [tcp, udp, icmp, http, https, ws, wss]
+          minItems: 1
+        ports:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+            maximum: 65535
+          minItems: 1
+        auth_required:
+          type: boolean
+        comments:
+          type: string
+          maxLength: 500
+
+    MappingListResponse:
+      type: object
+      properties:
+        mappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Mapping'
+        total:
+          type: integer
+      required:
+        - mappings
+        - total
+
+    # Cluster schemas (Enterprise)
+    Cluster:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        api_key:
+          type: string
+          description: Cluster API key (masked in responses)
+        syslog_endpoint:
+          type: string
+          description: Syslog server endpoint
+        log_auth:
+          type: boolean
+          description: Enable authentication logging
+        log_netflow:
+          type: boolean
+          description: Enable netflow logging
+        log_debug:
+          type: boolean
+          description: Enable debug logging
+        is_active:
+          type: boolean
+        proxy_count:
+          type: integer
+          description: Number of registered proxies
+        created_at:
+          type: string
+          format: date-time
+        created_by:
+          type: integer
+          description: User ID who created the cluster
+      required:
+        - id
+        - name
+        - description
+        - syslog_endpoint
+        - log_auth
+        - log_netflow
+        - log_debug
+        - is_active
+        - proxy_count
+        - created_at
+
+    CreateClusterRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          pattern: '^[a-zA-Z0-9_-]{1,50}$'
+        description:
+          type: string
+          maxLength: 255
+        syslog_endpoint:
+          type: string
+          description: Syslog server endpoint (host:port)
+        log_auth:
+          type: boolean
+          default: true
+        log_netflow:
+          type: boolean
+          default: false
+        log_debug:
+          type: boolean
+          default: false
+      required:
+        - name
+        - description
+        - syslog_endpoint
+
+    UpdateClusterRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          pattern: '^[a-zA-Z0-9_-]{1,50}$'
+        description:
+          type: string
+          maxLength: 255
+        syslog_endpoint:
+          type: string
+        log_auth:
+          type: boolean
+        log_netflow:
+          type: boolean
+        log_debug:
+          type: boolean
+
+    UpdateClusterLoggingRequest:
+      type: object
+      properties:
+        syslog_endpoint:
+          type: string
+        log_auth:
+          type: boolean
+        log_netflow:
+          type: boolean
+        log_debug:
+          type: boolean
+      required:
+        - syslog_endpoint
+        - log_auth
+        - log_netflow
+        - log_debug
+
+    ClusterListResponse:
+      type: object
+      properties:
+        clusters:
+          type: array
+          items:
+            $ref: '#/components/schemas/Cluster'
+        total:
+          type: integer
+      required:
+        - clusters
+        - total
+
+    ClusterKeyRotationResponse:
+      type: object
+      properties:
+        new_api_key:
+          type: string
+        old_key_valid_until:
+          type: string
+          format: date-time
+      required:
+        - new_api_key
+        - old_key_valid_until
+
+    # Certificate schemas
+    Certificate:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        common_name:
+          type: string
+          description: Certificate common name
+        source_type:
+          type: string
+          enum: [file, vault, infisical, auto]
+        auto_renew:
+          type: boolean
+        expires_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [active, expired, revoked]
+      required:
+        - id
+        - name
+        - common_name
+        - source_type
+        - auto_renew
+        - expires_at
+        - created_at
+        - status
+
+    UploadCertificateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        cert_file:
+          type: string
+          format: binary
+        key_file:
+          type: string
+          format: binary
+        ca_file:
+          type: string
+          format: binary
+          description: Optional CA certificate
+        auto_renew:
+          type: boolean
+          default: false
+      required:
+        - name
+        - cert_file
+        - key_file
+
+    GenerateWildcardCertificateRequest:
+      type: object
+      properties:
+        domain:
+          type: string
+          description: Domain for wildcard certificate (e.g., company.com)
+        validity_years:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 1
+      required:
+        - domain
+
+    CertificateListResponse:
+      type: object
+      properties:
+        certificates:
+          type: array
+          items:
+            $ref: '#/components/schemas/Certificate'
+        total:
+          type: integer
+      required:
+        - certificates
+        - total
+
+    # Proxy schemas
+    RegisterProxyRequest:
+      type: object
+      properties:
+        hostname:
+          type: string
+          maxLength: 255
+        capabilities:
+          type: array
+          items:
+            type: string
+            enum: [ebpf, xdp, dpdk, sriov]
+        version:
+          type: string
+          pattern: '^v\d+\.\d+\.\d+$'
+      required:
+        - hostname
+        - capabilities
+        - version
+
+    RegisterProxyResponse:
+      type: object
+      properties:
+        proxy_id:
+          type: string
+        cluster_id:
+          type: integer
+        config_endpoint:
+          type: string
+        heartbeat_interval:
+          type: integer
+          description: Heartbeat interval in seconds
+      required:
+        - proxy_id
+        - cluster_id
+        - config_endpoint
+        - heartbeat_interval
+
+    ProxyHeartbeatRequest:
+      type: object
+      properties:
+        proxy_id:
+          type: string
+        status:
+          type: string
+          enum: [healthy, unhealthy, degraded]
+        metrics:
+          type: object
+          properties:
+            active_connections:
+              type: integer
+            requests_per_second:
+              type: number
+            cpu_usage:
+              type: number
+              minimum: 0
+              maximum: 100
+            memory_usage:
+              type: number
+              minimum: 0
+              maximum: 100
+            ebpf_programs_loaded:
+              type: integer
+            xdp_programs_attached:
+              type: integer
+          required:
+            - active_connections
+            - requests_per_second
+            - cpu_usage
+            - memory_usage
+      required:
+        - proxy_id
+        - status
+        - metrics
+
+    ProxyConfiguration:
+      type: object
+      properties:
+        cluster:
+          $ref: '#/components/schemas/Cluster'
+        services:
+          type: array
+          items:
+            $ref: '#/components/schemas/Service'
+        mappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Mapping'
+        certificates:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              cert_data:
+                type: string
+                description: PEM-encoded certificate
+              key_data:
+                type: string
+                description: PEM-encoded private key
+      required:
+        - cluster
+        - services
+        - mappings
+        - certificates
+
+    ProxyInstance:
+      type: object
+      properties:
+        id:
+          type: string
+        hostname:
+          type: string
+        cluster_id:
+          type: integer
+        status:
+          type: string
+          enum: [healthy, unhealthy, offline, degraded]
+        version:
+          type: string
+        capabilities:
+          type: array
+          items:
+            type: string
+        last_seen:
+          type: string
+          format: date-time
+        metrics:
+          type: object
+          properties:
+            active_connections:
+              type: integer
+            requests_per_second:
+              type: number
+            cpu_usage:
+              type: number
+            memory_usage:
+              type: number
+      required:
+        - id
+        - hostname
+        - cluster_id
+        - status
+        - version
+        - capabilities
+        - last_seen
+
+    ProxyListResponse:
+      type: object
+      properties:
+        proxies:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProxyInstance'
+        total:
+          type: integer
+      required:
+        - proxies
+        - total
+
+    # License schemas
+    LicenseStatus:
+      type: object
+      properties:
+        license_key:
+          type: string
+          description: Masked license key
+        license_type:
+          type: string
+          enum: [community, enterprise]
+        valid:
+          type: boolean
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        features:
+          type: object
+          properties:
+            unlimited_proxies:
+              type: boolean
+            multi_cluster:
+              type: boolean
+            saml_authentication:
+              type: boolean
+            oauth2_authentication:
+              type: boolean
+            advanced_monitoring:
+              type: boolean
+        limits:
+          type: object
+          properties:
+            max_proxies:
+              type: integer
+              description: -1 for unlimited
+            max_clusters:
+              type: integer
+              description: -1 for unlimited
+            current_proxies:
+              type: integer
+            current_clusters:
+              type: integer
+      required:
+        - license_type
+        - valid
+        - features
+        - limits
+
+    ValidateLicenseRequest:
+      type: object
+      properties:
+        license_key:
+          type: string
+          pattern: '^PENG-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$'
+      required:
+        - license_key
+
+    LicenseValidationResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        features:
+          type: object
+          description: Available features if valid
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - valid
+
+    # Monitoring schemas
+    HealthCheckResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy, degraded]
+        timestamp:
+          type: string
+          format: date-time
+        checks:
+          type: object
+          properties:
+            database:
+              type: string
+              enum: [healthy, unhealthy]
+            license_server:
+              type: string
+              enum: [healthy, unhealthy, unreachable]
+            certificate_expiry:
+              type: string
+              enum: [healthy, warning, critical]
+        version:
+          type: string
+        uptime:
+          type: integer
+          description: Uptime in seconds
+      required:
+        - status
+        - timestamp
+        - checks
+        - version
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            success: false
+            error:
+              code: "VALIDATION_ERROR"
+              message: "Invalid input parameters"
+              details:
+                field: "ip_fqdn"
+                issue: "Invalid IP address or FQDN format"
+            timestamp: "2024-01-15T10:30:00Z"
+            request_id: "req_123456789"
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            success: false
+            error:
+              code: "AUTHENTICATION_REQUIRED"
+              message: "Authentication is required"
+            timestamp: "2024-01-15T10:30:00Z"
+            request_id: "req_123456789"
+
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            success: false
+            error:
+              code: "INSUFFICIENT_PERMISSIONS"
+              message: "User lacks required permissions"
+            timestamp: "2024-01-15T10:30:00Z"
+            request_id: "req_123456789"
+
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            success: false
+            error:
+              code: "RESOURCE_NOT_FOUND"
+              message: "Requested resource not found"
+            timestamp: "2024-01-15T10:30:00Z"
+            request_id: "req_123456789"
+
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            success: false
+            error:
+              code: "RESOURCE_CONFLICT"
+              message: "Resource already exists"
+            timestamp: "2024-01-15T10:30:00Z"
+            request_id: "req_123456789"
+
+    RateLimited:
+      description: Rate limit exceeded
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: Rate limit
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: Remaining requests
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+          description: Rate limit reset timestamp
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            success: false
+            error:
+              code: "RATE_LIMIT_EXCEEDED"
+              message: "Rate limit exceeded"
+            timestamp: "2024-01-15T10:30:00Z"
+            request_id: "req_123456789"
+
+    PaymentRequired:
+      description: Payment required (Enterprise feature)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            success: false
+            error:
+              code: "FEATURE_NOT_AVAILABLE"
+              message: "Feature requires Enterprise license"
+            timestamp: "2024-01-15T10:30:00Z"
+            request_id: "req_123456789"
+
+tags:
+  - name: Authentication
+    description: User authentication and API key management
+  - name: Users
+    description: User account management
+  - name: Services
+    description: Backend service configuration
+  - name: Mappings
+    description: Traffic routing mapping configuration
+  - name: Clusters
+    description: Multi-cluster management (Enterprise)
+  - name: Certificates
+    description: TLS certificate management
+  - name: Proxy
+    description: Proxy instance management and configuration
+  - name: License
+    description: License validation and status
+  - name: Monitoring
+    description: Health checks and metrics

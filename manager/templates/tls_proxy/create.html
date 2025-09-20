@@ -1,0 +1,404 @@
+{{extend 'layout.html'}}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="bi bi-plus-circle me-2"></i>Configure TLS Proxy</h2>
+                    <p class="text-muted mb-0">Set up Enterprise TLS interception with wildcard certificates</p>
+                </div>
+                <a href="{{=URL('tls_proxy')}}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Back to List
+                </a>
+            </div>
+
+            {{if not enterprise_enabled:}}
+            <div class="alert alert-warning" role="alert">
+                <h4 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Enterprise Feature Required</h4>
+                <p>TLS Proxy is an Enterprise feature that requires a valid license.</p>
+                <hr>
+                <p class="mb-0">
+                    <a href="{{=URL('license')}}" class="btn btn-warning">
+                        <i class="bi bi-key me-1"></i> Upgrade License
+                    </a>
+                </p>
+            </div>
+            {{else:}}
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-shield-lock-fill me-2"></i>TLS Proxy Configuration</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" id="tlsProxyForm" enctype="multipart/form-data">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="cluster_id" class="form-label">Target Cluster <span class="text-danger">*</span></label>
+                                            <select name="cluster_id" id="cluster_id" class="form-select" required>
+                                                <option value="">Select a cluster...</option>
+                                                {{for cluster in clusters:}}
+                                                <option value="{{=cluster.id}}" {{='selected' if cluster.id == form_data.get('cluster_id') else ''}}>
+                                                    {{=cluster.name}}
+                                                </option>
+                                                {{pass}}
+                                            </select>
+                                            <div class="form-text">Choose which cluster this TLS proxy applies to</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" name="enabled" id="enabled">
+                                                <label class="form-check-label" for="enabled">
+                                                    Enable TLS Proxy
+                                                </label>
+                                            </div>
+                                            <div class="form-text">TLS proxy is disabled by default for security</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <hr>
+
+                                <h6><i class="bi bi-certificate me-2"></i>Certificate Authority Configuration</h6>
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="ca_type" id="ca_auto" value="auto_generated" checked>
+                                        <label class="form-check-label" for="ca_auto">
+                                            <strong>Auto-Generate CA</strong> - Create a self-signed CA with modern crypto
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="ca_type" id="ca_upload" value="user_provided">
+                                        <label class="form-check-label" for="ca_upload">
+                                            <strong>Upload Existing CA</strong> - Use your own Certificate Authority
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Auto-Generated CA Settings -->
+                                <div id="autoCASettings">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="wildcard_domain" class="form-label">Wildcard Domain <span class="text-danger">*</span></label>
+                                                <input type="text" class="form-control" name="wildcard_domain" id="wildcard_domain"
+                                                       value="{{=form_data.get('wildcard_domain', 'example.com')}}"
+                                                       placeholder="example.com" required>
+                                                <div class="form-text">Certificate will be valid for *.{{wildcard_domain}}</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="organization" class="form-label">Organization</label>
+                                                <input type="text" class="form-control" name="organization" id="organization"
+                                                       value="{{=form_data.get('organization', 'MarchProxy CA')}}"
+                                                       placeholder="Your Organization">
+                                                <div class="form-text">Organization name in the certificate</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                <label for="key_type" class="form-label">Key Type</label>
+                                                <select name="key_type" id="key_type" class="form-select">
+                                                    <option value="ecc" selected>ECC (Recommended)</option>
+                                                    <option value="rsa">RSA</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                <label for="key_size" class="form-label">Key Size</label>
+                                                <select name="key_size" id="key_size" class="form-select">
+                                                    <option value="384" selected>P-384 (ECC)</option>
+                                                    <option value="256">P-256 (ECC)</option>
+                                                    <option value="2048">2048 (RSA)</option>
+                                                    <option value="4096">4096 (RSA)</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                <label for="hash_algorithm" class="form-label">Hash Algorithm</label>
+                                                <select name="hash_algorithm" id="hash_algorithm" class="form-select">
+                                                    <option value="sha512" selected>SHA-512</option>
+                                                    <option value="sha384">SHA-384</option>
+                                                    <option value="sha256">SHA-256</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Upload CA Settings -->
+                                <div id="uploadCASettings" style="display: none;">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="ca_certificate" class="form-label">CA Certificate <span class="text-danger">*</span></label>
+                                                <input type="file" class="form-control" name="ca_certificate" id="ca_certificate" accept=".pem,.crt,.cer">
+                                                <div class="form-text">Upload CA certificate in PEM format</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="ca_private_key" class="form-label">CA Private Key <span class="text-danger">*</span></label>
+                                                <input type="file" class="form-control" name="ca_private_key" id="ca_private_key" accept=".pem,.key">
+                                                <div class="form-text">Upload CA private key in PEM format</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="uploaded_wildcard_domain" class="form-label">Wildcard Domain for Certificate</label>
+                                        <input type="text" class="form-control" name="uploaded_wildcard_domain" id="uploaded_wildcard_domain"
+                                               placeholder="example.com">
+                                        <div class="form-text">Domain for which to generate wildcard certificate</div>
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-warning" role="alert">
+                                    <h6 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Important Security Notice</h6>
+                                    <ul class="mb-0">
+                                        <li>TLS proxy intercepts HTTPS traffic, which requires client trust of the CA</li>
+                                        <li>Ensure all source entities trust the CA certificate or they will receive TLS errors</li>
+                                        <li>This feature is disabled by default and should only be enabled when necessary</li>
+                                        <li>Certificate will have a 10-year lifetime using modern cryptographic standards</li>
+                                    </ul>
+                                </div>
+
+                                <div class="d-flex justify-content-between">
+                                    <button type="button" class="btn btn-outline-info" onclick="validateForm()">
+                                        <i class="bi bi-check-circle me-1"></i> Validate Configuration
+                                    </button>
+                                    <div>
+                                        <a href="{{=URL('tls_proxy')}}" class="btn btn-secondary me-2">Cancel</a>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="bi bi-check-lg me-1"></i> Configure TLS Proxy
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <!-- Configuration Preview -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="bi bi-eye me-2"></i>Configuration Preview</h6>
+                        </div>
+                        <div class="card-body">
+                            <div id="configPreview">
+                                <p class="text-muted">Configure settings to see preview</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Security Guidelines -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="bi bi-shield-check me-2"></i>Security Guidelines</h6>
+                        </div>
+                        <div class="card-body">
+                            <ul class="small mb-0">
+                                <li><strong>Test First:</strong> Start with TLS proxy disabled and test CA trust</li>
+                                <li><strong>Certificate Distribution:</strong> Ensure all clients trust the CA before enabling</li>
+                                <li><strong>Monitor Traffic:</strong> Watch for TLS handshake failures after enabling</li>
+                                <li><strong>Protocol Detection:</strong> Uses fingerprinting, not port-based detection</li>
+                                <li><strong>Modern Crypto:</strong> ECC P-384 + SHA-512 recommended for security</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Deployment Impact -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="bi bi-exclamation-diamond me-2"></i>Deployment Impact</h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="small">
+                                <strong>Immediate Effect:</strong> Configuration is pushed to all proxies in the cluster immediately.
+                                Clients may experience TLS errors if they don't trust the CA.
+                            </p>
+                            <p class="small mb-0">
+                                <strong>Rollback Plan:</strong> Keep existing certificates and be prepared to disable TLS proxy if issues occur.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{pass}}
+        </div>
+    </div>
+</div>
+
+<script>
+function updateKeySize() {
+    const keyType = document.getElementById('key_type').value;
+    const keySizeSelect = document.getElementById('key_size');
+
+    keySizeSelect.innerHTML = '';
+
+    if (keyType === 'ecc') {
+        keySizeSelect.innerHTML = `
+            <option value="384" selected>P-384 (ECC)</option>
+            <option value="256">P-256 (ECC)</option>
+        `;
+    } else {
+        keySizeSelect.innerHTML = `
+            <option value="2048" selected>2048 (RSA)</option>
+            <option value="4096">4096 (RSA)</option>
+        `;
+    }
+    updatePreview();
+}
+
+function toggleCASettings() {
+    const caType = document.querySelector('input[name="ca_type"]:checked').value;
+    const autoSettings = document.getElementById('autoCASettings');
+    const uploadSettings = document.getElementById('uploadCASettings');
+
+    if (caType === 'auto_generated') {
+        autoSettings.style.display = 'block';
+        uploadSettings.style.display = 'none';
+        // Make auto-generated fields required
+        document.getElementById('wildcard_domain').required = true;
+        document.getElementById('ca_certificate').required = false;
+        document.getElementById('ca_private_key').required = false;
+    } else {
+        autoSettings.style.display = 'none';
+        uploadSettings.style.display = 'block';
+        // Make upload fields required
+        document.getElementById('wildcard_domain').required = false;
+        document.getElementById('ca_certificate').required = true;
+        document.getElementById('ca_private_key').required = true;
+    }
+    updatePreview();
+}
+
+function updatePreview() {
+    const cluster = document.getElementById('cluster_id');
+    const enabled = document.getElementById('enabled').checked;
+    const caType = document.querySelector('input[name="ca_type"]:checked')?.value;
+    const domain = document.getElementById('wildcard_domain').value;
+    const keyType = document.getElementById('key_type').value;
+    const keySize = document.getElementById('key_size').value;
+    const hashAlg = document.getElementById('hash_algorithm').value;
+
+    const preview = document.getElementById('configPreview');
+
+    if (!cluster.value) {
+        preview.innerHTML = '<p class="text-muted">Select a cluster to see preview</p>';
+        return;
+    }
+
+    const clusterName = cluster.options[cluster.selectedIndex].text;
+
+    preview.innerHTML = `
+        <div class="mb-2">
+            <strong>Cluster:</strong> <span class="badge bg-primary">${clusterName}</span>
+        </div>
+        <div class="mb-2">
+            <strong>Status:</strong>
+            <span class="badge bg-${enabled ? 'success' : 'secondary'}">
+                ${enabled ? 'Enabled' : 'Disabled'}
+            </span>
+        </div>
+        <div class="mb-2">
+            <strong>CA Type:</strong>
+            <span class="badge bg-${caType === 'auto_generated' ? 'success' : 'info'}">
+                ${caType === 'auto_generated' ? 'Auto-Generated' : 'User Provided'}
+            </span>
+        </div>
+        ${caType === 'auto_generated' ? `
+        <div class="mb-2">
+            <strong>Wildcard:</strong> <code>*.${domain || 'example.com'}</code>
+        </div>
+        <div class="mb-2">
+            <strong>Crypto:</strong> <code>${keyType.toUpperCase()} ${keySize} + ${hashAlg.toUpperCase()}</code>
+        </div>
+        <div class="mb-2">
+            <strong>Lifetime:</strong> <code>10 years</code>
+        </div>
+        ` : `
+        <div class="mb-2">
+            <strong>Certificate:</strong> <span class="text-muted">User uploaded</span>
+        </div>
+        `}
+    `;
+}
+
+function validateForm() {
+    const cluster = document.getElementById('cluster_id').value;
+    const caType = document.querySelector('input[name="ca_type"]:checked')?.value;
+    const domain = document.getElementById('wildcard_domain').value;
+
+    let messages = [];
+
+    if (!cluster) {
+        messages.push('⚠️ Please select a cluster');
+    }
+
+    if (caType === 'auto_generated' && !domain) {
+        messages.push('⚠️ Please specify a wildcard domain');
+    }
+
+    if (caType === 'auto_generated' && domain && !domain.match(/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) {
+        messages.push('⚠️ Invalid domain format. Use format like "example.com"');
+    }
+
+    if (caType === 'user_provided') {
+        const caCert = document.getElementById('ca_certificate').files.length;
+        const caKey = document.getElementById('ca_private_key').files.length;
+
+        if (!caCert || !caKey) {
+            messages.push('⚠️ Please upload both CA certificate and private key');
+        }
+    }
+
+    if (messages.length === 0) {
+        messages.push('✅ Configuration looks good! Ready to deploy.');
+    }
+
+    alert(messages.join('\n\n'));
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('key_type').addEventListener('change', updateKeySize);
+    document.querySelectorAll('input[name="ca_type"]').forEach(radio => {
+        radio.addEventListener('change', toggleCASettings);
+    });
+
+    const inputs = ['cluster_id', 'enabled', 'wildcard_domain', 'key_type', 'key_size', 'hash_algorithm'];
+    inputs.forEach(id => {
+        document.getElementById(id)?.addEventListener('change', updatePreview);
+        document.getElementById(id)?.addEventListener('input', updatePreview);
+    });
+
+    // Initialize display
+    toggleCASettings();
+    updatePreview();
+});
+</script>
+
+<style>
+.form-check-input:checked {
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+}
+.card-header h6 {
+    color: #495057;
+}
+.badge {
+    font-size: 0.75em;
+}
+</style>
