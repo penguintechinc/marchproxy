@@ -95,6 +95,12 @@
                             <li><a class="dropdown-item" href="[[=URL('license')]]">
                                 <i class="bi bi-key me-1"></i>License
                             </a></li>
+                            <li><a class="dropdown-item" href="[[=URL('rate_limiting')]]">
+                                <i class="bi bi-speedometer me-1"></i>Rate Limiting
+                            </a></li>
+                            <li><a class="dropdown-item" href="[[=URL('tls_proxy')]]">
+                                <i class="bi bi-shield-lock-fill me-1"></i>TLS Proxy
+                            </a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="[[=URL('settings')]]">
                                 <i class="bi bi-sliders me-1"></i>Settings
@@ -211,6 +217,18 @@
                             <a href="[[=URL('license')]]" class="nav-link [[='active' if request.controller == 'license' else '']]">
                                 <i class="bi bi-key me-2"></i>
                                 License
+                            </a>
+                        </li>
+                        <li>
+                            <a href="[[=URL('rate_limiting')]]" class="nav-link [[='active' if request.controller == 'rate_limiting' else '']]">
+                                <i class="bi bi-speedometer me-2"></i>
+                                Rate Limiting
+                            </a>
+                        </li>
+                        <li>
+                            <a href="[[=URL('tls_proxy')]]" class="nav-link [[='active' if request.controller == 'tls_proxy' else '']]">
+                                <i class="bi bi-shield-lock-fill me-2"></i>
+                                TLS Proxy
                             </a>
                         </li>
                         [[pass]]

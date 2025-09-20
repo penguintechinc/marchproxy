@@ -43,7 +43,7 @@ jobs:
       if: matrix.component == 'manager'
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version: '3.12'
 
     - name: Set up Go (for proxy)
       if: matrix.component == 'proxy'
@@ -129,7 +129,7 @@ jobs:
       if: matrix.component == 'manager'
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version: '3.12'
 
     - name: Set up Go (for proxy)
       if: matrix.component == 'proxy'
@@ -187,7 +187,7 @@ jobs:
       if: matrix.component == 'manager'
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version: '3.12'
 
     - name: Set up Go (for proxy)
       if: matrix.component == 'proxy'

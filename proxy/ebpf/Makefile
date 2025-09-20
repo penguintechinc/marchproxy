@@ -72,9 +72,8 @@ clean:
 	rm -rf $(BUILD_DIR)
 
 install: all
-	@echo "Installing eBPF programs to ../proxy/ebpf/"
-	@mkdir -p ../proxy/ebpf
-	cp $(BUILD_DIR)/*.o ../proxy/ebpf/
+	@echo "eBPF programs built in $(BUILD_DIR)/"
+	@echo "Programs are already in the correct location under proxy/ebpf/"
 
 # Development targets
 dev-info:

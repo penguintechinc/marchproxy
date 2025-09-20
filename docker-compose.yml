@@ -46,9 +46,9 @@ services:
   # MarchProxy Manager (Python/py4web)
   manager:
     build:
-      context: .
+      context: ./manager
       dockerfile: Dockerfile
-      target: manager
+      target: production
     container_name: marchproxy-manager
     environment:
       # Application settings
@@ -146,9 +146,9 @@ services:
   # MarchProxy Proxy (Go)
   proxy:
     build:
-      context: .
+      context: ./proxy
       dockerfile: Dockerfile
-      target: proxy
+      target: production
     container_name: marchproxy-proxy
     environment:
       # Manager connection

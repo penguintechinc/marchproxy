@@ -1,0 +1,330 @@
+name: Proxy CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'proxy/**'
+      - '.github/workflows/proxy-ci.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'proxy/**'
+      - '.github/workflows/proxy-ci.yml'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: marchproxy/proxy
+
+jobs:
+  lint-and-test:
+    name: Lint and Test Proxy
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./proxy
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+        cache-dependency-path: 'proxy/go.sum'
+
+    - name: Install dependencies
+      run: |
+        go mod download
+        go mod verify
+
+    - name: Install golangci-lint
+      uses: golangci/golangci-lint-action@v4
+      with:
+        version: latest
+        working-directory: ./proxy
+
+    - name: Run go vet
+      run: go vet ./...
+
+    - name: Run go fmt check
+      run: |
+        if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+          echo "The following files are not formatted correctly:"
+          gofmt -s -l .
+          exit 1
+        fi
+
+    - name: Run unit tests
+      run: |
+        go test -v -race -coverprofile=coverage.out ./...
+
+    - name: Run benchmarks
+      run: |
+        go test -bench=. -benchmem ./... || true
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./proxy/coverage.out
+        flags: proxy
+        name: proxy-coverage
+
+  security-scan:
+    name: Security Scan Proxy
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./proxy
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+
+    - name: Install security tools
+      run: |
+        go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+        go install golang.org/x/vuln/cmd/govulncheck@latest
+
+    - name: Run gosec security scanner
+      run: |
+        gosec -fmt json -out gosec-report.json ./... || true
+        cat gosec-report.json
+
+    - name: Run govulncheck
+      run: |
+        govulncheck ./... || true
+
+    - name: Run go mod audit
+      run: |
+        go list -json -deps ./... | jq -r '.Module | select(.Path != null) | .Path' | sort -u > modules.txt
+        echo "Dependency modules:"
+        cat modules.txt
+
+  build-and-test:
+    name: Build and Integration Test Proxy
+    runs-on: ubuntu-latest
+    needs: [lint-and-test, security-scan]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build proxy image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./proxy
+        file: ./proxy/Dockerfile
+        target: production
+        push: false
+        tags: ${{ env.IMAGE_NAME }}:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Test proxy container
+      run: |
+        # Start test services
+        docker network create test-network
+
+        # Start Redis for caching tests
+        docker run -d --name test-redis \
+          --network test-network \
+          -e REDIS_PASSWORD=test123 \
+          redis:7-alpine redis-server --requirepass test123
+
+        # Wait for Redis
+        sleep 5
+
+        # Run proxy with test configuration
+        docker run -d --name test-proxy \
+          --network test-network \
+          -e MANAGER_URL=http://mock-manager:8000 \
+          -e REDIS_URL=redis://:test123@test-redis:6379/1 \
+          -e LOG_LEVEL=debug \
+          -p 8080:8080 \
+          -p 8081:8081 \
+          ${{ env.IMAGE_NAME }}:test
+
+        # Wait for proxy to start
+        sleep 10
+
+        # Test health endpoint
+        curl -f http://localhost:8080/health || exit 1
+
+        # Test metrics endpoint
+        curl -f http://localhost:8081/metrics || exit 1
+
+        # Cleanup
+        docker stop test-proxy test-redis
+        docker rm test-proxy test-redis
+        docker network rm test-network
+
+  ebpf-test:
+    name: eBPF Compatibility Test
+    runs-on: ubuntu-latest
+    needs: [build-and-test]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Install eBPF tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libbpf-dev clang llvm
+
+    - name: Build with eBPF support
+      uses: docker/build-push-action@v5
+      with:
+        context: ./proxy
+        file: ./proxy/Dockerfile
+        target: development
+        push: false
+        tags: ${{ env.IMAGE_NAME }}:ebpf-test
+
+    - name: Test eBPF program loading
+      run: |
+        # Test eBPF program compilation and loading in privileged container
+        docker run --rm --privileged \
+          -v /sys/kernel/debug:/sys/kernel/debug:ro \
+          ${{ env.IMAGE_NAME }}:ebpf-test \
+          go test -v ./ebpf/... || echo "eBPF tests may require kernel features not available in CI"
+
+  build-production:
+    name: Build Production Proxy Image
+    runs-on: ubuntu-latest
+    needs: [build-and-test, ebpf-test]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push proxy image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./proxy
+        file: ./proxy/Dockerfile
+        target: production
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Build and push debug image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./proxy
+        file: ./proxy/Dockerfile
+        target: debug
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:debug
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  performance-test:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    needs: [build-production]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+
+    - name: Install performance testing tools
+      run: |
+        go install github.com/rakyll/hey@latest
+
+    - name: Run performance benchmarks
+      working-directory: ./proxy
+      run: |
+        # Run Go benchmarks
+        go test -bench=. -benchmem -benchtime=10s ./... > benchmark-results.txt
+        cat benchmark-results.txt
+
+        # Start proxy for load testing
+        go build -o proxy-test ./cmd/proxy &
+        PROXY_PID=$!
+        sleep 5
+
+        # Run load tests
+        hey -n 10000 -c 100 http://localhost:8080/health > load-test-results.txt || true
+        cat load-test-results.txt
+
+        # Cleanup
+        kill $PROXY_PID || true
+
+  deploy-staging:
+    name: Deploy Proxy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-production]
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to staging
+      run: |
+        echo "Deploying proxy to staging environment"
+        # Add staging deployment commands here
+
+  deploy-production:
+    name: Deploy Proxy to Production
+    runs-on: ubuntu-latest
+    needs: [build-production, performance-test]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to production
+      run: |
+        echo "Deploying proxy to production environment"
+        # Add production deployment commands here

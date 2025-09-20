@@ -124,7 +124,7 @@ jobs:
       - name: Run Hadolint on Manager Dockerfile
         uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfile: docker/manager/Dockerfile
+          dockerfile: manager/Dockerfile
           format: sarif
           output-file: hadolint-manager.sarif
           no-fail: true
@@ -132,7 +132,7 @@ jobs:
       - name: Run Hadolint on Proxy Dockerfile  
         uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfile: docker/proxy/Dockerfile
+          dockerfile: proxy/Dockerfile
           format: sarif
           output-file: hadolint-proxy.sarif
           no-fail: true

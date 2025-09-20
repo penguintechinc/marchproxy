@@ -84,8 +84,8 @@ venv/
 env/
 
 # eBPF compiled programs
-/ebpf/programs/*.o
-/ebpf/programs/*.ll
+/proxy/ebpf/build/*.o
+/proxy/ebpf/build/*.ll
 
 # IDE files
 .idea/

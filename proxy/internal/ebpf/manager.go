@@ -399,10 +399,11 @@ func resolveServiceIP(ipfqdn string) net.IP {
 func FindEBPFProgram() (string, error) {
 	// Search in common locations
 	searchPaths := []string{
-		"ebpf/complete_filter.o",
-		"../ebpf/build/complete_filter.o",
+		"ebpf/build/complete_filter.o",
+		"ebpf/build/rule_matcher.o",
 		"/opt/marchproxy/ebpf/complete_filter.o",
 		"./complete_filter.o",
+		"./rule_matcher.o",
 	}
 
 	for _, path := range searchPaths {

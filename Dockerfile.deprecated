@@ -30,7 +30,7 @@ RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo \
     -o marchproxy-metrics ./cmd/metrics
 
 # Python build stage for manager
-FROM python:3.11-slim AS python-builder
+FROM python:3.12-slim AS python-builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
@@ -49,7 +49,7 @@ RUN pip install --no-cache-dir --user -r requirements.txt
 COPY manager/ ./
 
 # Production stage - Manager
-FROM python:3.11-slim AS manager
+FROM python:3.12-slim AS manager
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \

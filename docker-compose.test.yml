@@ -45,9 +45,9 @@ services:
   # MarchProxy Manager for testing
   manager-test:
     build:
-      context: .
+      context: ./manager
       dockerfile: Dockerfile
-      target: manager
+      target: testing
     container_name: marchproxy-manager-test
     environment:
       # Application settings
@@ -114,9 +114,9 @@ services:
   # MarchProxy Proxy for testing
   proxy-test:
     build:
-      context: .
+      context: ./proxy
       dockerfile: Dockerfile
-      target: proxy
+      target: testing
     container_name: marchproxy-proxy-test
     environment:
       # Manager connection
@@ -212,7 +212,7 @@ services:
 
   # Integration test container
   integration-test:
-    image: python:3.11-slim
+    image: python:3.12-slim
     container_name: marchproxy-integration-test
     working_dir: /app
     environment:

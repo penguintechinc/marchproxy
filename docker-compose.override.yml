@@ -1,0 +1,64 @@
+# Docker Compose Override for Development
+# This file is automatically loaded by docker-compose and overrides settings in docker-compose.yml
+# Use for local development with hot-reload and debugging features
+
+version: '3.8'
+
+services:
+  # Manager - Development mode with hot reload
+  manager:
+    build:
+      target: development
+    volumes:
+      # Mount source code for hot reload
+      - ./manager:/app
+      - manager_logs:/app/logs
+      - ./certs:/app/certs:ro
+    environment:
+      # Development-specific settings
+      - DEBUG=true
+      - LOG_LEVEL=debug
+      - MARCHPROXY_ENV=development
+    ports:
+      # Expose additional debugging ports
+      - "8000:8000"   # Main application
+      - "5678:5678"   # Python debugger (debugpy)
+
+  # Proxy - Development mode with hot reload
+  proxy:
+    build:
+      target: development
+    volumes:
+      # Mount source code for hot reload
+      - ./proxy:/app
+      - proxy_logs:/app/logs
+      - ./certs:/app/certs:ro
+    environment:
+      # Development-specific settings
+      - LOG_LEVEL=debug
+      - ENABLE_PROFILING=true
+      - GO_ENV=development
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"   # Health/Admin API
+      - "8081:8081"   # Metrics
+      - "6060:6060"   # Go pprof profiling
+
+  # Reduce resource requirements for development
+  postgres:
+    command: postgres -c shared_buffers=64MB -c max_connections=20
+
+  redis:
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis123} --maxmemory 64mb
+
+  # Disable some monitoring services in development to save resources
+  # Uncomment these lines if you want to disable services for faster startup
+  # elasticsearch:
+  #   profiles: ["monitoring"]
+  #
+  # logstash:
+  #   profiles: ["monitoring"]
+  #
+  # kibana:
+  #   profiles: ["monitoring"]
