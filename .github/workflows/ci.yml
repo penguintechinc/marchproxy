@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        component: [manager, proxy]
+        component: [manager, proxy-egress, proxy-ingress]
 
     steps:
     - name: Checkout code
@@ -33,13 +33,13 @@ jobs:
         python-version: ${{ env.PYTHON_VERSION }}
         cache: 'pip'
 
-    - name: Set up Go (for proxy)
-      if: matrix.component == 'proxy'
+    - name: Set up Go (for proxy components)
+      if: matrix.component == 'proxy-egress' || matrix.component == 'proxy-ingress'
       uses: actions/setup-go@v5
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
-        cache-dependency-path: proxy/go.sum
+        cache-dependency-path: ${{ matrix.component }}/go.sum
 
     - name: Install Python dependencies
       if: matrix.component == 'manager'
@@ -64,24 +64,24 @@ jobs:
         python -m pytest tests/ -v --cov=. --cov-report=xml || echo "No tests found, skipping"
 
     - name: Lint Go code
-      if: matrix.component == 'proxy'
+      if: matrix.component == 'proxy-egress' || matrix.component == 'proxy-ingress'
       run: |
-        cd proxy
+        cd ${{ matrix.component }}
         go fmt ./...
         go vet ./...
         curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.54.2
         golangci-lint run --timeout 5m
 
     - name: Test Go code
-      if: matrix.component == 'proxy'
+      if: matrix.component == 'proxy-egress' || matrix.component == 'proxy-ingress'
       run: |
-        cd proxy
+        cd ${{ matrix.component }}
         go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
-        file: ${{ matrix.component == 'manager' && 'manager/coverage.xml' || 'proxy/coverage.out' }}
+        file: ${{ matrix.component == 'manager' && 'manager/coverage.xml' || format('{0}/coverage.out', matrix.component) }}
         flags: ${{ matrix.component }}
         fail_ci_if_error: false
 
@@ -108,13 +108,20 @@ jobs:
     - name: Run gosec security scanner for Go
       run: |
         go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
-        cd proxy && gosec -fmt sarif -out gosec-results.sarif ./... || true
+        cd proxy-egress && gosec -fmt sarif -out gosec-results-egress.sarif ./... || true
+        cd ../proxy-ingress && gosec -fmt sarif -out gosec-results-ingress.sarif ./... || true
 
-    - name: Upload gosec results
+    - name: Upload gosec results for egress
       if: always()
       uses: github/codeql-action/upload-sarif@v2
       with:
-        sarif_file: proxy/gosec-results.sarif
+        sarif_file: proxy-egress/gosec-results-egress.sarif
+
+    - name: Upload gosec results for ingress
+      if: always()
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: proxy-ingress/gosec-results-ingress.sarif
 
   build-and-test-integration:
     name: Build and Integration Test

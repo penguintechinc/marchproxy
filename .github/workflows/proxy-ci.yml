@@ -1,28 +1,28 @@
-name: Proxy CI/CD
+name: Proxy Egress CI/CD
 
 on:
   push:
     branches: [ main, develop ]
     paths:
-      - 'proxy/**'
+      - 'proxy-egress/**'
       - '.github/workflows/proxy-ci.yml'
   pull_request:
     branches: [ main ]
     paths:
-      - 'proxy/**'
+      - 'proxy-egress/**'
       - '.github/workflows/proxy-ci.yml'
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: marchproxy/proxy
+  IMAGE_NAME: marchproxy/proxy-egress
 
 jobs:
   lint-and-test:
-    name: Lint and Test Proxy
+    name: Lint and Test Proxy Egress
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./proxy
+        working-directory: ./proxy-egress-egress-egress
 
     steps:
     - name: Checkout code
@@ -32,7 +32,7 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version: '1.21'
-        cache-dependency-path: 'proxy/go.sum'
+        cache-dependency-path: 'proxy-egress/go.sum'
 
     - name: Install dependencies
       run: |
@@ -43,7 +43,7 @@ jobs:
       uses: golangci/golangci-lint-action@v4
       with:
         version: latest
-        working-directory: ./proxy
+        working-directory: ./proxy-egress-egress
 
     - name: Run go vet
       run: go vet ./...
@@ -67,16 +67,16 @@ jobs:
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
       with:
-        file: ./proxy/coverage.out
+        file: ./proxy-egress/coverage.out
         flags: proxy
         name: proxy-coverage
 
   security-scan:
-    name: Security Scan Proxy
+    name: Security Scan Proxy Egress
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./proxy
+        working-directory: ./proxy-egress-egress
 
     steps:
     - name: Checkout code
@@ -108,7 +108,7 @@ jobs:
         cat modules.txt
 
   build-and-test:
-    name: Build and Integration Test Proxy
+    name: Build and Integration Test Proxy Egress
     runs-on: ubuntu-latest
     needs: [lint-and-test, security-scan]
 
@@ -122,8 +122,8 @@ jobs:
     - name: Build proxy image
       uses: docker/build-push-action@v5
       with:
-        context: ./proxy
-        file: ./proxy/Dockerfile
+        context: ./proxy-egress
+        file: ./proxy-egress/Dockerfile
         target: production
         push: false
         tags: ${{ env.IMAGE_NAME }}:test
@@ -188,8 +188,8 @@ jobs:
     - name: Build with eBPF support
       uses: docker/build-push-action@v5
       with:
-        context: ./proxy
-        file: ./proxy/Dockerfile
+        context: ./proxy-egress
+        file: ./proxy-egress/Dockerfile
         target: development
         push: false
         tags: ${{ env.IMAGE_NAME }}:ebpf-test
@@ -203,7 +203,7 @@ jobs:
           go test -v ./ebpf/... || echo "eBPF tests may require kernel features not available in CI"
 
   build-production:
-    name: Build Production Proxy Image
+    name: Build Production Proxy Egress Image
     runs-on: ubuntu-latest
     needs: [build-and-test, ebpf-test]
     if: github.ref == 'refs/heads/main'
@@ -236,8 +236,8 @@ jobs:
     - name: Build and push proxy image
       uses: docker/build-push-action@v5
       with:
-        context: ./proxy
-        file: ./proxy/Dockerfile
+        context: ./proxy-egress
+        file: ./proxy-egress/Dockerfile
         target: production
         platforms: linux/amd64,linux/arm64
         push: true
@@ -249,8 +249,8 @@ jobs:
     - name: Build and push debug image
       uses: docker/build-push-action@v5
       with:
-        context: ./proxy
-        file: ./proxy/Dockerfile
+        context: ./proxy-egress
+        file: ./proxy-egress/Dockerfile
         target: debug
         platforms: linux/amd64,linux/arm64
         push: true
@@ -279,7 +279,7 @@ jobs:
         go install github.com/rakyll/hey@latest
 
     - name: Run performance benchmarks
-      working-directory: ./proxy
+      working-directory: ./proxy-egress
       run: |
         # Run Go benchmarks
         go test -bench=. -benchmem -benchtime=10s ./... > benchmark-results.txt
@@ -298,7 +298,7 @@ jobs:
         kill $PROXY_PID || true
 
   deploy-staging:
-    name: Deploy Proxy to Staging
+    name: Deploy Proxy Egress to Staging
     runs-on: ubuntu-latest
     needs: [build-production]
     if: github.ref == 'refs/heads/develop'
@@ -314,7 +314,7 @@ jobs:
         # Add staging deployment commands here
 
   deploy-production:
-    name: Deploy Proxy to Production
+    name: Deploy Proxy Egress to Production
     runs-on: ubuntu-latest
     needs: [build-production, performance-test]
     if: github.ref == 'refs/heads/main'

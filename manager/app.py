@@ -27,6 +27,7 @@ from models.certificate import CertificateModel
 from api.auth import auth_api
 from api.clusters import clusters_api
 from api.proxy import proxy_api
+from api.mtls import mtls_api
 
 # Configure logging
 logging.basicConfig(
@@ -73,6 +74,7 @@ license_manager = LicenseManager(db, LICENSE_KEY)
 auth_endpoints = auth_api(db, jwt_manager)
 cluster_endpoints = clusters_api(db, jwt_manager)
 proxy_endpoints = proxy_api(db, jwt_manager)
+mtls_endpoints = mtls_api(db, jwt_manager)
 
 # Register API routes
 def _call_endpoint(endpoint_func):
@@ -180,6 +182,34 @@ def get_proxy_metrics(proxy_id):
 @application.route('/api/proxies/cleanup', methods=['POST'])
 def cleanup_stale_proxies():
     return _call_endpoint(proxy_endpoints['cleanup_stale'])
+
+# mTLS routes
+@application.route('/api/mtls/certificates', methods=['GET', 'POST'])
+def mtls_certificates():
+    return _call_endpoint(mtls_endpoints['mtls_certificates'])
+
+@application.route('/api/mtls/certificates/validate', methods=['POST'])
+def validate_certificate():
+    return _call_endpoint(mtls_endpoints['validate_certificate'])
+
+@application.route('/api/mtls/config/<int:cluster_id>/<proxy_type>', methods=['GET', 'PUT'])
+def mtls_config(cluster_id, proxy_type):
+    if request.method == 'GET':
+        return _call_endpoint(lambda: mtls_endpoints['get_mtls_config'](cluster_id, proxy_type))
+    else:
+        return _call_endpoint(lambda: mtls_endpoints['update_mtls_config'](cluster_id, proxy_type))
+
+@application.route('/api/mtls/ca/generate', methods=['POST'])
+def generate_ca_certificate():
+    return _call_endpoint(mtls_endpoints['generate_ca_certificate'])
+
+@application.route('/api/mtls/certificates/<int:cert_id>/download', methods=['GET'])
+def download_certificate(cert_id):
+    return _call_endpoint(lambda: mtls_endpoints['download_certificate'](cert_id))
+
+@application.route('/api/mtls/test/connection', methods=['POST'])
+def test_mtls_connection():
+    return _call_endpoint(mtls_endpoints['test_mtls_connection'])
 
 # Health and status endpoints
 @application.route('/healthz', methods=['GET'])
@@ -314,7 +344,8 @@ def index():
             "auth": "/api/auth/*",
             "clusters": "/api/clusters/*",
             "proxies": "/api/proxies/*",
-            "proxy_api": "/api/proxy/*"
+            "proxy_api": "/api/proxy/*",
+            "mtls": "/api/mtls/*"
         }
     }
 
