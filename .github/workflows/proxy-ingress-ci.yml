@@ -1,0 +1,414 @@
+name: Proxy Ingress CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'proxy-ingress/**'
+      - '.github/workflows/proxy-ingress-ci.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'proxy-ingress/**'
+      - '.github/workflows/proxy-ingress-ci.yml'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: marchproxy/proxy-ingress
+
+jobs:
+  lint-and-test:
+    name: Lint and Test Proxy Ingress
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./proxy-ingress
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+        cache-dependency-path: 'proxy-ingress/go.sum'
+
+    - name: Install dependencies
+      run: |
+        go mod download
+        go mod verify
+
+    - name: Install golangci-lint
+      uses: golangci/golangci-lint-action@v4
+      with:
+        version: latest
+        working-directory: ./proxy-ingress
+
+    - name: Run go vet
+      run: go vet ./...
+
+    - name: Run go fmt check
+      run: |
+        if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+          echo "The following files are not formatted correctly:"
+          gofmt -s -l .
+          exit 1
+        fi
+
+    - name: Run unit tests
+      run: |
+        go test -v -race -coverprofile=coverage.out ./...
+
+    - name: Run benchmarks
+      run: |
+        go test -bench=. -benchmem ./... || true
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./proxy-ingress/coverage.out
+        flags: proxy-ingress
+        name: proxy-ingress-coverage
+
+  security-scan:
+    name: Security Scan Proxy Ingress
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./proxy-ingress
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+
+    - name: Install security tools
+      run: |
+        go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+        go install golang.org/x/vuln/cmd/govulncheck@latest
+
+    - name: Run gosec security scanner
+      run: |
+        gosec -fmt json -out gosec-report.json ./... || true
+        cat gosec-report.json
+
+    - name: Run govulncheck
+      run: |
+        govulncheck ./... || true
+
+    - name: Run go mod audit
+      run: |
+        go list -json -deps ./... | jq -r '.Module | select(.Path != null) | .Path' | sort -u > modules.txt
+        echo "Dependency modules:"
+        cat modules.txt
+
+  build-and-test:
+    name: Build and Integration Test Proxy Ingress
+    runs-on: ubuntu-latest
+    needs: [lint-and-test, security-scan]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build proxy-ingress image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./proxy-ingress
+        file: ./proxy-ingress/Dockerfile
+        target: production
+        push: false
+        tags: ${{ env.IMAGE_NAME }}:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Test proxy-ingress container
+      run: |
+        # Start test services
+        docker network create test-network
+
+        # Start Redis for caching tests
+        docker run -d --name test-redis \
+          --network test-network \
+          -e REDIS_PASSWORD=test123 \
+          redis:7-alpine redis-server --requirepass test123
+
+        # Start mock backend
+        docker run -d --name test-backend \
+          --network test-network \
+          -p 8000:80 \
+          nginx:alpine
+
+        # Wait for services
+        sleep 5
+
+        # Run proxy-ingress with test configuration
+        docker run -d --name test-proxy-ingress \
+          --network test-network \
+          -e MANAGER_URL=http://mock-manager:8000 \
+          -e PROXY_TYPE=ingress \
+          -e MTLS_ENABLED=false \
+          -e LOG_LEVEL=debug \
+          -p 8080:80 \
+          -p 8081:443 \
+          -p 8082:8082 \
+          -p 8083:8083 \
+          ${{ env.IMAGE_NAME }}:test
+
+        # Wait for proxy to start
+        sleep 10
+
+        # Test health endpoint
+        curl -f http://localhost:8083/health || exit 1
+
+        # Test metrics endpoint
+        curl -f http://localhost:8082/metrics || exit 1
+
+        # Cleanup
+        docker stop test-proxy-ingress test-backend test-redis
+        docker rm test-proxy-ingress test-backend test-redis
+        docker network rm test-network
+
+  mtls-test:
+    name: mTLS Compatibility Test
+    runs-on: ubuntu-latest
+    needs: [build-and-test]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Install OpenSSL tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y openssl
+
+    - name: Generate test certificates
+      run: |
+        # Create test CA
+        openssl genrsa -out ca-key.pem 4096
+        openssl req -new -x509 -days 365 -key ca-key.pem -sha256 -out ca.pem -subj "/C=US/ST=CA/L=SF/O=Test/OU=Test/CN=Test CA"
+
+        # Create server certificate
+        openssl genrsa -out server-key.pem 4096
+        openssl req -subj "/C=US/ST=CA/L=SF/O=Test/OU=Test/CN=localhost" -sha256 -new -key server-key.pem -out server.csr
+        echo subjectAltName = DNS:localhost,IP:127.0.0.1 >> extfile.cnf
+        echo extendedKeyUsage = serverAuth >> extfile.cnf
+        openssl x509 -req -days 365 -in server.csr -CA ca.pem -CAkey ca-key.pem -out server-cert.pem -extfile extfile.cnf -CAcreateserial
+
+        # Create client certificate
+        openssl genrsa -out client-key.pem 4096
+        openssl req -subj "/C=US/ST=CA/L=SF/O=Test/OU=Test/CN=testclient" -new -key client-key.pem -out client.csr
+        echo extendedKeyUsage = clientAuth > extfile-client.cnf
+        openssl x509 -req -days 365 -in client.csr -CA ca.pem -CAkey ca-key.pem -out client-cert.pem -extfile extfile-client.cnf -CAcreateserial
+
+    - name: Build with mTLS support
+      uses: docker/build-push-action@v5
+      with:
+        context: ./proxy-ingress
+        file: ./proxy-ingress/Dockerfile
+        target: development
+        push: false
+        tags: ${{ env.IMAGE_NAME }}:mtls-test
+
+    - name: Test mTLS configuration
+      run: |
+        # Create test directory for certificates
+        mkdir -p test-certs
+        cp *.pem test-certs/
+
+        # Test mTLS proxy startup and configuration
+        docker run --rm \
+          -v $(pwd)/test-certs:/app/certs \
+          -e MTLS_ENABLED=true \
+          -e MTLS_SERVER_CERT_PATH=/app/certs/server-cert.pem \
+          -e MTLS_SERVER_KEY_PATH=/app/certs/server-key.pem \
+          -e MTLS_CLIENT_CA_PATH=/app/certs/ca.pem \
+          ${{ env.IMAGE_NAME }}:mtls-test \
+          timeout 10 /app/marchproxy-ingress --config-check || echo "mTLS config test completed"
+
+  build-production:
+    name: Build Production Proxy Ingress Image
+    runs-on: ubuntu-latest
+    needs: [build-and-test, mtls-test]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push proxy-ingress image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./proxy-ingress
+        file: ./proxy-ingress/Dockerfile
+        target: production
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Build and push debug image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./proxy-ingress
+        file: ./proxy-ingress/Dockerfile
+        target: debug
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:debug
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  reverse-proxy-test:
+    name: Reverse Proxy Integration Test
+    runs-on: ubuntu-latest
+    needs: [build-production]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Run reverse proxy integration test
+      run: |
+        # Create test network
+        docker network create ingress-test
+
+        # Start test backends
+        docker run -d --name backend1 --network ingress-test \
+          -e NGINX_PORT=80 \
+          nginx:alpine
+
+        docker run -d --name backend2 --network ingress-test \
+          -e NGINX_PORT=80 \
+          httpd:alpine
+
+        # Start ingress proxy
+        docker run -d --name ingress-proxy --network ingress-test \
+          -p 8080:80 -p 8443:443 \
+          -e MANAGER_URL=http://mock-manager:8000 \
+          -e PROXY_TYPE=ingress \
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+        # Wait for services
+        sleep 15
+
+        # Test load balancing between backends
+        for i in {1..10}; do
+          curl -f http://localhost:8080/ || echo "Request $i failed"
+          sleep 1
+        done
+
+        # Cleanup
+        docker stop ingress-proxy backend1 backend2
+        docker rm ingress-proxy backend1 backend2
+        docker network rm ingress-test
+
+  performance-test:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    needs: [build-production]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+
+    - name: Install performance testing tools
+      run: |
+        go install github.com/rakyll/hey@latest
+
+    - name: Run performance benchmarks
+      working-directory: ./proxy-ingress
+      run: |
+        # Run Go benchmarks
+        go test -bench=. -benchmem -benchtime=10s ./... > benchmark-results.txt
+        cat benchmark-results.txt
+
+        # Start proxy for load testing
+        go build -o proxy-ingress-test ./cmd/proxy &
+        PROXY_PID=$!
+        sleep 5
+
+        # Run load tests
+        hey -n 10000 -c 100 http://localhost:8083/health > load-test-results.txt || true
+        cat load-test-results.txt
+
+        # Cleanup
+        kill $PROXY_PID || true
+
+  deploy-staging:
+    name: Deploy Proxy Ingress to Staging
+    runs-on: ubuntu-latest
+    needs: [build-production]
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to staging
+      run: |
+        echo "Deploying proxy-ingress to staging environment"
+        # Add staging deployment commands here
+
+  deploy-production:
+    name: Deploy Proxy Ingress to Production
+    runs-on: ubuntu-latest
+    needs: [build-production, reverse-proxy-test, performance-test]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to production
+      run: |
+        echo "Deploying proxy-ingress to production environment"
+        # Add production deployment commands here

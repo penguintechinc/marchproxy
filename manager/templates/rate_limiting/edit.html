@@ -1,0 +1,365 @@
+{{extend 'layout.html'}}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="bi bi-pencil me-2"></i>Edit Rate Limiting Rule</h2>
+                    <p class="text-muted mb-0">Modify XDP packet rate limiting configuration for {{=cluster.name}}</p>
+                </div>
+                <div>
+                    <a href="{{=URL('rate_limiting/view', rate_limit.id)}}" class="btn btn-outline-secondary me-2">
+                        <i class="bi bi-eye me-1"></i> View Details
+                    </a>
+                    <a href="{{=URL('rate_limiting')}}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i> Back to List
+                    </a>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-gear me-2"></i>Rate Limiting Configuration</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" id="rateLimitForm">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="cluster_id" class="form-label">Target Cluster</label>
+                                            <input type="text" class="form-control" value="{{=cluster.name}}" readonly>
+                                            <input type="hidden" name="cluster_id" value="{{=rate_limit.cluster_id}}">
+                                            <div class="form-text">Cluster assignment cannot be changed after creation</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" name="enabled" id="enabled"
+                                                       {{='checked' if rate_limit.enabled else ''}}>
+                                                <label class="form-check-label" for="enabled">
+                                                    Enable Rate Limiting
+                                                </label>
+                                            </div>
+                                            <div class="form-text">
+                                                {{if rate_limit.enabled:}}
+                                                <span class="text-success">Currently enabled</span>
+                                                {{else:}}
+                                                <span class="text-warning">Currently disabled</span>
+                                                {{pass}}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <hr>
+
+                                <h6><i class="bi bi-globe me-2"></i>Global Rate Limits</h6>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="global_pps_limit" class="form-label">Global Packets Per Second</label>
+                                            <input type="number" class="form-control" name="global_pps_limit" id="global_pps_limit"
+                                                   min="0" value="{{=rate_limit.global_pps_limit}}" placeholder="0 = Unlimited">
+                                            <div class="form-text">
+                                                Current: {{="{:,}".format(rate_limit.global_pps_limit) if rate_limit.global_pps_limit > 0 else "Unlimited"}}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="per_ip_pps_limit" class="form-label">Per-IP Packets Per Second</label>
+                                            <input type="number" class="form-control" name="per_ip_pps_limit" id="per_ip_pps_limit"
+                                                   min="0" value="{{=rate_limit.per_ip_pps_limit}}" placeholder="0 = Unlimited">
+                                            <div class="form-text">
+                                                Current: {{="{:,}".format(rate_limit.per_ip_pps_limit) if rate_limit.per_ip_pps_limit > 0 else "Unlimited"}}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <h6><i class="bi bi-clock me-2"></i>Timing Configuration</h6>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="window_size_seconds" class="form-label">Rate Window Size (seconds)</label>
+                                            <select name="window_size_seconds" id="window_size_seconds" class="form-select">
+                                                <option value="1" {{='selected' if rate_limit.window_size_seconds == 1 else ''}}>1 second</option>
+                                                <option value="5" {{='selected' if rate_limit.window_size_seconds == 5 else ''}}>5 seconds</option>
+                                                <option value="10" {{='selected' if rate_limit.window_size_seconds == 10 else ''}}>10 seconds</option>
+                                                <option value="30" {{='selected' if rate_limit.window_size_seconds == 30 else ''}}>30 seconds</option>
+                                                <option value="60" {{='selected' if rate_limit.window_size_seconds == 60 else ''}}>1 minute</option>
+                                            </select>
+                                            <div class="form-text">Current: {{=rate_limit.window_size_seconds}} seconds</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="burst_allowance" class="form-label">Burst Allowance</label>
+                                            <input type="number" class="form-control" name="burst_allowance" id="burst_allowance"
+                                                   min="0" max="100" value="{{=rate_limit.burst_allowance}}" placeholder="10">
+                                            <div class="form-text">Current: {{=rate_limit.burst_allowance}}% above limit allowed</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <h6><i class="bi bi-exclamation-triangle me-2"></i>Rate Limit Action</h6>
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="action" id="action_pass" value="pass"
+                                               {{='checked' if rate_limit.action == 'pass' else ''}}>
+                                        <label class="form-check-label" for="action_pass">
+                                            <strong>Pass</strong> - Allow all packets (monitoring only)
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="action" id="action_rate_limit" value="rate_limit"
+                                               {{='checked' if rate_limit.action == 'rate_limit' else ''}}>
+                                        <label class="form-check-label" for="action_rate_limit">
+                                            <strong>Rate Limit</strong> - Delay excessive packets
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="action" id="action_drop" value="drop"
+                                               {{='checked' if rate_limit.action == 'drop' else ''}}>
+                                        <label class="form-check-label" for="action_drop">
+                                            <strong>Drop</strong> - Drop excessive packets (recommended)
+                                        </label>
+                                    </div>
+                                    <div class="form-text">
+                                        Current action: <span class="badge bg-{{='danger' if rate_limit.action == 'drop' else 'warning' if rate_limit.action == 'rate_limit' else 'success'}}">
+                                            {{=rate_limit.action.replace('_', ' ').title()}}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-warning" role="alert">
+                                    <h6 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Important</h6>
+                                    <p class="mb-0">Changes will be pushed to all proxies in the cluster immediately. Consider the impact on live traffic before making significant modifications.</p>
+                                </div>
+
+                                <div class="d-flex justify-content-between">
+                                    <button type="button" class="btn btn-outline-info" onclick="validateForm()">
+                                        <i class="bi bi-check-circle me-1"></i> Validate Changes
+                                    </button>
+                                    <div>
+                                        <a href="{{=URL('rate_limiting/view', rate_limit.id)}}" class="btn btn-secondary me-2">Cancel</a>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="bi bi-check-lg me-1"></i> Update Rate Limit Rule
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <!-- Current Statistics -->
+                    {{if stats:}}
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Current Performance</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="text-center mb-3">
+                                <h5 class="text-primary">{{="{:,}".format(stats.current_pps)}} pps</h5>
+                                <small class="text-muted">Current packet rate</small>
+                            </div>
+                            <div class="row text-center">
+                                <div class="col-6">
+                                    <h6 class="text-success">{{="{:,}".format(stats.passed_packets)}}</h6>
+                                    <small class="text-muted">Passed</small>
+                                </div>
+                                <div class="col-6">
+                                    <h6 class="text-danger">{{="{:,}".format(stats.dropped_packets)}}</h6>
+                                    <small class="text-muted">Dropped</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {{pass}}
+
+                    <!-- Configuration Preview -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="bi bi-eye me-2"></i>Change Preview</h6>
+                        </div>
+                        <div class="card-body">
+                            <div id="configPreview">
+                                <p class="text-muted">Modify the form to see changes</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Deployment Status -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="bi bi-router me-2"></i>Proxy Deployment</h6>
+                        </div>
+                        <div class="card-body">
+                            {{if proxies:}}
+                            {{for proxy in proxies:}}
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div>
+                                    <strong>{{=proxy.hostname}}</strong>
+                                    <br><small class="text-muted">{{=proxy.external_ip}}</small>
+                                </div>
+                                <div>
+                                    {{if proxy.xdp_enabled:}}
+                                    <span class="badge bg-success">Ready</span>
+                                    {{else:}}
+                                    <span class="badge bg-warning">Pending</span>
+                                    {{pass}}
+                                </div>
+                            </div>
+                            {{if not loop.last:}}<hr>{{pass}}
+                            {{pass}}
+                            <small class="text-muted">Changes will be deployed to all proxies</small>
+                            {{else:}}
+                            <p class="text-muted text-center">No proxies registered</p>
+                            {{pass}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Store original values for comparison
+const originalValues = {
+    enabled: {{='true' if rate_limit.enabled else 'false'}},
+    global_pps_limit: {{=rate_limit.global_pps_limit}},
+    per_ip_pps_limit: {{=rate_limit.per_ip_pps_limit}},
+    window_size_seconds: {{=rate_limit.window_size_seconds}},
+    burst_allowance: {{=rate_limit.burst_allowance}},
+    action: '{{=rate_limit.action}}'
+};
+
+function updatePreview() {
+    const current = {
+        enabled: document.getElementById('enabled').checked,
+        global_pps_limit: parseInt(document.getElementById('global_pps_limit').value) || 0,
+        per_ip_pps_limit: parseInt(document.getElementById('per_ip_pps_limit').value) || 0,
+        window_size_seconds: parseInt(document.getElementById('window_size_seconds').value),
+        burst_allowance: parseInt(document.getElementById('burst_allowance').value),
+        action: document.querySelector('input[name="action"]:checked')?.value
+    };
+
+    const preview = document.getElementById('configPreview');
+    let changes = [];
+
+    // Compare values and show changes
+    Object.keys(originalValues).forEach(key => {
+        if (current[key] !== originalValues[key]) {
+            let oldVal = originalValues[key];
+            let newVal = current[key];
+
+            if (key.includes('pps_limit')) {
+                oldVal = oldVal === 0 ? 'Unlimited' : `${oldVal.toLocaleString()} pps`;
+                newVal = newVal === 0 ? 'Unlimited' : `${newVal.toLocaleString()} pps`;
+            } else if (key === 'enabled') {
+                oldVal = oldVal ? 'Enabled' : 'Disabled';
+                newVal = newVal ? 'Enabled' : 'Disabled';
+            } else if (key === 'window_size_seconds') {
+                oldVal = `${oldVal}s`;
+                newVal = `${newVal}s`;
+            } else if (key === 'burst_allowance') {
+                oldVal = `${oldVal}%`;
+                newVal = `${newVal}%`;
+            } else if (key === 'action') {
+                oldVal = oldVal.replace('_', ' ').toUpperCase();
+                newVal = newVal ? newVal.replace('_', ' ').toUpperCase() : 'Not Selected';
+            }
+
+            changes.push({
+                field: key.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                old: oldVal,
+                new: newVal
+            });
+        }
+    });
+
+    if (changes.length === 0) {
+        preview.innerHTML = '<p class="text-muted">No changes detected</p>';
+    } else {
+        let html = '<div class="small">';
+        changes.forEach(change => {
+            html += `
+                <div class="mb-2">
+                    <strong>${change.field}:</strong><br>
+                    <span class="text-muted">${change.old}</span> → <span class="text-primary">${change.new}</span>
+                </div>
+            `;
+        });
+        html += '</div>';
+        preview.innerHTML = html;
+    }
+}
+
+function validateForm() {
+    const globalLimit = parseInt(document.getElementById('global_pps_limit').value) || 0;
+    const perIpLimit = parseInt(document.getElementById('per_ip_pps_limit').value) || 0;
+
+    let messages = [];
+
+    if (globalLimit === 0 && perIpLimit === 0) {
+        messages.push('⚠️ Both global and per-IP limits are unlimited. This provides no rate limiting protection.');
+    }
+
+    if (globalLimit > 0 && perIpLimit > 0 && perIpLimit > globalLimit) {
+        messages.push('⚠️ Per-IP limit is higher than global limit. Consider reducing per-IP limit.');
+    }
+
+    // Check for significant changes that might impact traffic
+    const currentGlobal = {{=rate_limit.global_pps_limit}};
+    const currentPerIp = {{=rate_limit.per_ip_pps_limit}};
+
+    if (currentGlobal > 0 && globalLimit > 0 && Math.abs(globalLimit - currentGlobal) / currentGlobal > 0.5) {
+        messages.push('⚠️ Global limit change is >50%. This may significantly impact traffic.');
+    }
+
+    if (currentPerIp > 0 && perIpLimit > 0 && Math.abs(perIpLimit - currentPerIp) / currentPerIp > 0.5) {
+        messages.push('⚠️ Per-IP limit change is >50%. This may significantly impact traffic.');
+    }
+
+    if (messages.length === 0) {
+        messages.push('✅ Changes look good! No issues detected.');
+    }
+
+    alert(messages.join('\n\n'));
+}
+
+// Update preview when form changes
+document.addEventListener('DOMContentLoaded', function() {
+    const inputs = ['enabled', 'global_pps_limit', 'per_ip_pps_limit', 'window_size_seconds', 'burst_allowance'];
+    inputs.forEach(id => {
+        document.getElementById(id)?.addEventListener('change', updatePreview);
+        document.getElementById(id)?.addEventListener('input', updatePreview);
+    });
+
+    document.querySelectorAll('input[name="action"]').forEach(radio => {
+        radio.addEventListener('change', updatePreview);
+    });
+
+    updatePreview();
+});
+</script>
+
+<style>
+.form-check-input:checked {
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+}
+.card-header h6 {
+    color: #495057;
+}
+.badge {
+    font-size: 0.75em;
+}
+</style>

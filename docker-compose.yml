@@ -1,0 +1,548 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: marchproxy-postgres
+    environment:
+      POSTGRES_DB: marchproxy
+      POSTGRES_USER: marchproxy
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-marchproxy123}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    networks:
+      - marchproxy-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marchproxy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: marchproxy-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis123}
+    volumes:
+      - redis_data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    ports:
+      - "6379:6379"
+    networks:
+      - marchproxy-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # MarchProxy Manager (Python/py4web)
+  manager:
+    build:
+      context: ./manager
+      dockerfile: Dockerfile
+      target: production
+    container_name: marchproxy-manager
+    environment:
+      # Application settings
+      - DATABASE_URL=postgresql://marchproxy:${POSTGRES_PASSWORD:-marchproxy123}@postgres:5432/marchproxy
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis123}@redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-this}
+      - DEBUG=${DEBUG:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - MARCHPROXY_ENV=${MARCHPROXY_ENV:-production}
+
+      # Database fallback configuration
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-marchproxy}
+      - DB_USERNAME=${DB_USERNAME:-marchproxy}
+      - DB_PASSWORD=${DB_PASSWORD:-${POSTGRES_PASSWORD:-marchproxy123}}
+      - DB_SSL_MODE=${DB_SSL_MODE:-prefer}
+      - DB_POOL_SIZE=${DB_POOL_SIZE:-20}
+      - DB_MAX_OVERFLOW=${DB_MAX_OVERFLOW:-10}
+
+      # SMTP fallback configuration
+      - SMTP_HOST=${SMTP_HOST:-localhost}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USERNAME=${SMTP_USERNAME:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM=${SMTP_FROM:-marchproxy@company.com}
+      - SMTP_USE_TLS=${SMTP_USE_TLS:-true}
+      - SMTP_USE_SSL=${SMTP_USE_SSL:-false}
+
+      # Syslog configuration for ELK integration
+      - SYSLOG_ENABLED=${SYSLOG_ENABLED:-true}
+      - SYSLOG_HOST=${SYSLOG_HOST:-logstash}
+      - SYSLOG_PORT=${SYSLOG_PORT:-5514}
+      - SYSLOG_PROTOCOL=${SYSLOG_PROTOCOL:-udp}
+      - SYSLOG_FACILITY=${SYSLOG_FACILITY:-local0}
+      - SYSLOG_TAG=${SYSLOG_TAG:-marchproxy-manager}
+
+      # Redis fallback configuration
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis123}
+      - REDIS_DATABASE=${REDIS_DATABASE:-0}
+      - REDIS_SSL=${REDIS_SSL:-false}
+      - REDIS_POOL_SIZE=${REDIS_POOL_SIZE:-10}
+
+      # License configuration
+      - LICENSE_KEY=${LICENSE_KEY:-}
+      - LICENSE_SERVER_URL=${LICENSE_SERVER_URL:-https://license.penguintech.io}
+      - LICENSE_CHECK_INTERVAL=${LICENSE_CHECK_INTERVAL:-24}
+      - LICENSE_OFFLINE_GRACE=${LICENSE_OFFLINE_GRACE:-7}
+
+      # Monitoring fallback configuration
+      - ALERT_EMAIL_DEFAULT=${ALERT_EMAIL_DEFAULT:-ops-team@company.com}
+      - ALERT_EMAIL_CRITICAL=${ALERT_EMAIL_CRITICAL:-critical-alerts@company.com}
+      - ALERT_EMAIL_LICENSE=${ALERT_EMAIL_LICENSE:-license-admin@company.com}
+      - ALERT_EMAIL_PERFORMANCE=${ALERT_EMAIL_PERFORMANCE:-performance-team@company.com}
+      - ALERT_EMAIL_SECURITY=${ALERT_EMAIL_SECURITY:-security-team@company.com}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      - PAGERDUTY_URL=${PAGERDUTY_URL:-}
+      - METRICS_RETENTION_DAYS=${METRICS_RETENTION_DAYS:-30}
+      - LOGS_RETENTION_DAYS=${LOGS_RETENTION_DAYS:-7}
+      - TRACES_RETENTION_DAYS=${TRACES_RETENTION_DAYS:-3}
+    volumes:
+      - ./manager:/app
+      - manager_logs:/app/logs
+      - ./certs:/app/certs:ro
+    ports:
+      - "8000:8000"
+    networks:
+      - marchproxy-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      logstash:
+        condition: service_started
+    restart: unless-stopped
+    logging:
+      driver: syslog
+      options:
+        syslog-address: "udp://logstash:5514"
+        syslog-facility: "local0"
+        tag: "marchproxy-manager"
+    labels:
+      - "service=marchproxy-manager"
+      - "component=manager"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # MarchProxy Egress Proxy (Go)
+  proxy-egress:
+    build:
+      context: ./proxy-egress
+      dockerfile: Dockerfile
+      target: production
+    container_name: marchproxy-proxy-egress
+    environment:
+      # Manager connection
+      - MANAGER_URL=http://manager:8000
+      - CLUSTER_API_KEY=${CLUSTER_API_KEY:-default-api-key}
+
+      # Proxy configuration
+      - PROXY_NAME=${PROXY_EGRESS_NAME:-proxy-egress-1}
+      - PROXY_TYPE=egress
+      - LISTEN_PORT=8080
+      - ADMIN_PORT=8081
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+
+      # mTLS configuration
+      - MTLS_ENABLED=${MTLS_ENABLED:-false}
+      - MTLS_SERVER_CERT_PATH=/app/certs/server-cert.pem
+      - MTLS_SERVER_KEY_PATH=/app/certs/server-key.pem
+      - MTLS_CLIENT_CA_PATH=/app/certs/ca.pem
+      - MTLS_CLIENT_CERT_PATH=/app/certs/client-cert.pem
+      - MTLS_CLIENT_KEY_PATH=/app/certs/client-key.pem
+      - MTLS_REQUIRE_CLIENT_CERT=${MTLS_REQUIRE_CLIENT_CERT:-true}
+      - MTLS_VERIFY_CLIENT_CERT=${MTLS_VERIFY_CLIENT_CERT:-true}
+
+      # Network acceleration
+      - ENABLE_EBPF=${ENABLE_EBPF:-true}
+      - ENABLE_METRICS=${ENABLE_METRICS:-true}
+      - ENABLE_XDP=${ENABLE_XDP:-false}
+      - ENABLE_DPDK=${ENABLE_DPDK:-false}
+      - ENABLE_AF_XDP=${ENABLE_AF_XDP:-false}
+      - ENABLE_SR_IOV=${ENABLE_SR_IOV:-false}
+
+      # Rate limiting
+      - RATE_LIMIT_ENABLED=${RATE_LIMIT_ENABLED:-false}
+      - RATE_LIMIT_RPS=${RATE_LIMIT_RPS:-1000}
+
+      # Syslog configuration
+      - SYSLOG_ENDPOINT=${SYSLOG_ENDPOINT:-logstash:5514}
+
+      # License configuration
+      - LICENSE_KEY=${LICENSE_KEY:-}
+    volumes:
+      - ./certs:/app/certs:ro
+      - proxy_egress_logs:/app/logs
+    ports:
+      - "8080:8080"   # Proxy port
+      - "8081:8081"   # Admin/Metrics port
+    networks:
+      - marchproxy-network
+    depends_on:
+      manager:
+        condition: service_healthy
+      logstash:
+        condition: service_started
+    restart: unless-stopped
+    logging:
+      driver: syslog
+      options:
+        syslog-address: "udp://logstash:5514"
+        syslog-facility: "local1"
+        tag: "marchproxy-proxy-egress"
+    labels:
+      - "service=marchproxy-proxy-egress"
+      - "component=proxy"
+      - "proxy-type=egress"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # MarchProxy Ingress Proxy (Go)
+  proxy-ingress:
+    build:
+      context: ./proxy-ingress
+      dockerfile: Dockerfile
+      target: production
+    container_name: marchproxy-proxy-ingress
+    environment:
+      # Manager connection
+      - MANAGER_URL=http://manager:8000
+      - CLUSTER_API_KEY=${CLUSTER_API_KEY:-default-api-key}
+
+      # Proxy configuration
+      - PROXY_NAME=${PROXY_INGRESS_NAME:-proxy-ingress-1}
+      - PROXY_TYPE=ingress
+      - LISTEN_PORT=80
+      - TLS_PORT=443
+      - ADMIN_PORT=8082
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+
+      # mTLS configuration
+      - MTLS_ENABLED=${MTLS_ENABLED:-false}
+      - MTLS_SERVER_CERT_PATH=/app/certs/server-cert.pem
+      - MTLS_SERVER_KEY_PATH=/app/certs/server-key.pem
+      - MTLS_CLIENT_CA_PATH=/app/certs/ca.pem
+      - MTLS_REQUIRE_CLIENT_CERT=${MTLS_REQUIRE_CLIENT_CERT:-false}
+      - MTLS_VERIFY_CLIENT_CERT=${MTLS_VERIFY_CLIENT_CERT:-true}
+
+      # Load balancing and routing
+      - LOAD_BALANCER_ALGORITHM=${LOAD_BALANCER_ALGORITHM:-round_robin}
+      - HEALTH_CHECK_ENABLED=${HEALTH_CHECK_ENABLED:-true}
+      - HEALTH_CHECK_INTERVAL=${HEALTH_CHECK_INTERVAL:-30}
+      - HEALTH_CHECK_TIMEOUT=${HEALTH_CHECK_TIMEOUT:-5}
+
+      # Network acceleration
+      - ENABLE_EBPF=${ENABLE_EBPF:-true}
+      - ENABLE_METRICS=${ENABLE_METRICS:-true}
+      - ENABLE_XDP=${ENABLE_XDP:-false}
+
+      # Rate limiting and DDoS protection
+      - RATE_LIMIT_ENABLED=${RATE_LIMIT_ENABLED:-true}
+      - RATE_LIMIT_RPS=${RATE_LIMIT_RPS:-10000}
+      - DDOS_PROTECTION_ENABLED=${DDOS_PROTECTION_ENABLED:-true}
+
+      # Syslog configuration
+      - SYSLOG_ENDPOINT=${SYSLOG_ENDPOINT:-logstash:5514}
+
+      # License configuration
+      - LICENSE_KEY=${LICENSE_KEY:-}
+    volumes:
+      - ./certs:/app/certs:ro
+      - proxy_ingress_logs:/app/logs
+    ports:
+      - "80:80"       # HTTP port
+      - "443:443"     # HTTPS/TLS port
+      - "8082:8082"   # Admin/Metrics port
+    networks:
+      - marchproxy-network
+    depends_on:
+      manager:
+        condition: service_healthy
+      logstash:
+        condition: service_started
+    restart: unless-stopped
+    logging:
+      driver: syslog
+      options:
+        syslog-address: "udp://logstash:5514"
+        syslog-facility: "local2"
+        tag: "marchproxy-proxy-ingress"
+    labels:
+      - "service=marchproxy-proxy-ingress"
+      - "component=proxy"
+      - "proxy-type=ingress"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: marchproxy-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - marchproxy-network
+    restart: unless-stopped
+
+  # AlertManager for alert routing
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: marchproxy-alertmanager
+    restart: unless-stopped
+    environment:
+      # SMTP Configuration (pulled from manager settings)
+      - SMTP_HOST=${SMTP_HOST:-localhost}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_FROM=${SMTP_FROM:-marchproxy-alerts@company.com}
+      - SMTP_USERNAME=${SMTP_USERNAME:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+
+      # Alert email destinations
+      - ALERT_EMAIL_DEFAULT=${ALERT_EMAIL_DEFAULT:-ops-team@company.com}
+      - ALERT_EMAIL_CRITICAL=${ALERT_EMAIL_CRITICAL:-critical-alerts@company.com}
+      - ALERT_EMAIL_LICENSE=${ALERT_EMAIL_LICENSE:-license-admin@company.com}
+      - ALERT_EMAIL_PERFORMANCE=${ALERT_EMAIL_PERFORMANCE:-performance-team@company.com}
+      - ALERT_EMAIL_SECURITY=${ALERT_EMAIL_SECURITY:-security-team@company.com}
+
+      # Additional integrations
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      - PAGERDUTY_URL=${PAGERDUTY_URL:-}
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager:/etc/alertmanager
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
+    networks:
+      - marchproxy-network
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: marchproxy-grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    ports:
+      - "3000:3000"
+    networks:
+      - marchproxy-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  # Loki for log aggregation
+  loki:
+    image: grafana/loki:latest
+    container_name: marchproxy-loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./monitoring/loki/loki.yml:/etc/loki/local-config.yaml
+      - loki_data:/loki
+    networks:
+      - marchproxy-network
+
+  # Promtail for log collection
+  promtail:
+    image: grafana/promtail:latest
+    container_name: marchproxy-promtail
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/promtail/promtail.yml:/etc/promtail/config.yml
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - marchproxy-network
+    depends_on:
+      - loki
+
+  # Configuration synchronization service
+  config-sync:
+    build:
+      context: ./monitoring/config-sync
+      dockerfile: Dockerfile
+    container_name: marchproxy-config-sync
+    restart: unless-stopped
+    environment:
+      - MANAGER_URL=http://manager:8000
+      - CLUSTER_API_KEY=${CLUSTER_API_KEY:-default-api-key}
+      - SYNC_INTERVAL=${CONFIG_SYNC_INTERVAL:-300}
+    volumes:
+      - ./monitoring/config-sync:/app
+      - config_sync_data:/etc/monitoring
+    networks:
+      - marchproxy-network
+    depends_on:
+      - manager
+
+  # Elasticsearch for log storage (ELK Stack)
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: marchproxy-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - cluster.name=marchproxy-logs
+      - node.name=elasticsearch-1
+      - xpack.security.enabled=false
+      - xpack.license.self_generated.type=basic
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+    volumes:
+      - ./monitoring/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - marchproxy-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Logstash for log processing (ELK Stack)
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.0
+    container_name: marchproxy-logstash
+    environment:
+      - "LS_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - ./monitoring/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - ./monitoring/logstash/pipeline:/usr/share/logstash/pipeline:ro
+      - ./monitoring/logstash/templates:/usr/share/logstash/templates:ro
+    ports:
+      - "5044:5044"    # Beats input
+      - "5514:5514/udp" # Syslog input
+      - "9600:9600"    # API
+    networks:
+      - marchproxy-network
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Kibana for log visualization (ELK Stack)
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: marchproxy-kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - SERVER_NAME=marchproxy-kibana
+      - XPACK_SECURITY_ENABLED=false
+    volumes:
+      - ./monitoring/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
+      - ./monitoring/kibana/dashboards:/usr/share/kibana/config/dashboards:ro
+    ports:
+      - "5601:5601"
+    networks:
+      - marchproxy-network
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5601/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Jaeger for distributed tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: marchproxy-jaeger
+    environment:
+      - COLLECTOR_ZIPKIN_HTTP_PORT=9411
+    ports:
+      - "5775:5775/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "16686:16686"
+      - "14268:14268"
+      - "14250:14250"
+      - "9411:9411"
+    networks:
+      - marchproxy-network
+    restart: unless-stopped
+
+networks:
+  marchproxy-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  alertmanager_data:
+    driver: local
+  loki_data:
+    driver: local
+  config_sync_data:
+    driver: local
+  elasticsearch_data:
+    driver: local
+  manager_logs:
+    driver: local
+  proxy_egress_logs:
+    driver: local
+  proxy_ingress_logs:
+    driver: local

@@ -1,0 +1,249 @@
+{{extend 'layout.html'}}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="bi bi-speedometer me-2"></i>XDP Rate Limiting</h2>
+                    <p class="text-muted mb-0">Configure high-performance packet rate limiting with XDP/eBPF</p>
+                </div>
+                {{if enterprise_enabled:}}
+                <a href="{{=URL('rate_limiting/create')}}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-1"></i> Create Rate Limit Rule
+                </a>
+                {{else:}}
+                <div class="text-end">
+                    <span class="badge bg-warning text-dark mb-2">Enterprise Feature</span>
+                    <br>
+                    <a href="{{=URL('license')}}" class="btn btn-outline-primary">
+                        <i class="bi bi-key me-1"></i> Upgrade License
+                    </a>
+                </div>
+                {{pass}}
+            </div>
+
+            <!-- Feature Info Card -->
+            <div class="card border-info mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>XDP Rate Limiting Overview</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h6><i class="bi bi-lightning me-1"></i>High Performance</h6>
+                            <p class="small text-muted">XDP processes packets at driver level for maximum throughput with minimal latency</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h6><i class="bi bi-people me-1"></i>Per-IP Limiting</h6>
+                            <p class="small text-muted">Individual rate limits per source IP address with configurable burst allowance</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h6><i class="bi bi-globe me-1"></i>Global Protection</h6>
+                            <p class="small text-muted">Global packet-per-second limits protect against distributed attacks</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cluster Filter -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-6">
+                            <label for="cluster_id" class="form-label">Filter by Cluster</label>
+                            <select name="cluster_id" id="cluster_id" class="form-select">
+                                <option value="">All Clusters</option>
+                                {{for cluster in clusters:}}
+                                <option value="{{=cluster.id}}" {{='selected' if current_cluster_id == cluster.id else ''}}>
+                                    {{=cluster.name}}
+                                </option>
+                                {{pass}}
+                            </select>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <button type="submit" class="btn btn-outline-primary me-2">
+                                <i class="bi bi-funnel me-1"></i> Filter
+                            </button>
+                            <a href="{{=URL('rate_limiting')}}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-1"></i> Clear
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Rate Limiting Rules -->
+            {{if rate_limits:}}
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Cluster</th>
+                                    <th>Status</th>
+                                    <th>Global Limit</th>
+                                    <th>Per-IP Limit</th>
+                                    <th>Window Size</th>
+                                    <th>Action</th>
+                                    <th>Last Updated</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{for rate_limit in rate_limits:}}
+                                <tr>
+                                    <td>
+                                        {{for cluster in clusters:}}
+                                        {{if cluster.id == rate_limit.cluster_id:}}
+                                        <span class="badge bg-primary">{{=cluster.name}}</span>
+                                        {{pass}}
+                                        {{pass}}
+                                    </td>
+                                    <td>
+                                        {{if rate_limit.enabled:}}
+                                        <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Enabled</span>
+                                        {{else:}}
+                                        <span class="badge bg-secondary"><i class="bi bi-pause-circle me-1"></i>Disabled</span>
+                                        {{pass}}
+                                    </td>
+                                    <td>
+                                        {{if rate_limit.global_pps_limit > 0:}}
+                                        <code>{{="{:,}".format(rate_limit.global_pps_limit)}} pps</code>
+                                        {{else:}}
+                                        <span class="text-muted">Unlimited</span>
+                                        {{pass}}
+                                    </td>
+                                    <td>
+                                        {{if rate_limit.per_ip_pps_limit > 0:}}
+                                        <code>{{="{:,}".format(rate_limit.per_ip_pps_limit)}} pps</code>
+                                        {{else:}}
+                                        <span class="text-muted">Unlimited</span>
+                                        {{pass}}
+                                    </td>
+                                    <td>
+                                        <code>{{=rate_limit.window_size_seconds}}s</code>
+                                    </td>
+                                    <td>
+                                        {{if rate_limit.action == 'drop':}}
+                                        <span class="badge bg-danger">Drop</span>
+                                        {{elif rate_limit.action == 'rate_limit':}}
+                                        <span class="badge bg-warning text-dark">Rate Limit</span>
+                                        {{else:}}
+                                        <span class="badge bg-success">Pass</span>
+                                        {{pass}}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{=rate_limit.updated_on.strftime('%Y-%m-%d %H:%M')}}</small>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{=URL('rate_limiting/view', rate_limit.id)}}" class="btn btn-sm btn-outline-primary" title="View Details">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <a href="{{=URL('rate_limiting/edit', rate_limit.id)}}" class="btn btn-sm btn-outline-secondary" title="Edit">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <a href="{{=URL('rate_limiting/stats', rate_limit.id)}}" class="btn btn-sm btn-outline-info" title="Statistics">
+                                                <i class="bi bi-bar-chart"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {{pass}}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Global Statistics Summary -->
+            {{if stats:}}
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <div class="card metric-card">
+                        <div class="card-body">
+                            <h5 class="card-title text-primary">Total Packets</h5>
+                            <h3 class="mb-0">{{="{:,}".format(stats.total_packets)}}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card metric-card">
+                        <div class="card-body">
+                            <h5 class="card-title text-success">Passed</h5>
+                            <h3 class="mb-0">{{="{:,}".format(stats.passed_packets)}}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card metric-card">
+                        <div class="card-body">
+                            <h5 class="card-title text-danger">Dropped</h5>
+                            <h3 class="mb-0">{{="{:,}".format(stats.dropped_packets)}}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card metric-card">
+                        <div class="card-body">
+                            <h5 class="card-title text-warning">Rate Limited IPs</h5>
+                            <h3 class="mb-0">{{="{:,}".format(stats.rate_limited_ips)}}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{pass}}
+
+            {{else:}}
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-speedometer fa-3x text-muted mb-3"></i>
+                    <h4>No Rate Limiting Rules</h4>
+                    {{if not enterprise_enabled:}}
+                    <p class="text-muted">XDP Rate Limiting requires an Enterprise license.</p>
+                    <a href="{{=URL('license')}}" class="btn btn-primary">
+                        <i class="bi bi-key me-1"></i> Upgrade to Enterprise
+                    </a>
+                    {{elif current_cluster_id:}}
+                    <p class="text-muted">No rate limiting rules found for the selected cluster.</p>
+                    <a href="{{=URL('rate_limiting/create')}}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle me-1"></i> Create Rate Limit Rule
+                    </a>
+                    {{else:}}
+                    <p class="text-muted">Create your first XDP rate limiting rule to protect against traffic spikes.</p>
+                    <a href="{{=URL('rate_limiting/create')}}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle me-1"></i> Create Your First Rate Limit Rule
+                    </a>
+                    {{pass}}
+                </div>
+            </div>
+            {{pass}}
+        </div>
+    </div>
+</div>
+
+<style>
+.metric-card {
+    border-left: 4px solid var(--bs-primary);
+    transition: transform 0.2s;
+}
+.metric-card:hover {
+    transform: translateY(-2px);
+}
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: #495057;
+}
+.badge {
+    font-size: 0.75em;
+}
+.btn-group .btn {
+    border-radius: 0.25rem;
+}
+.btn-group .btn:not(:last-child) {
+    margin-right: 0.25rem;
+}
+</style>

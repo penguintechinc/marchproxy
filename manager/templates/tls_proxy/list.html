@@ -1,0 +1,240 @@
+{{extend 'layout.html'}}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="bi bi-shield-lock-fill me-2"></i>TLS Proxy Configuration</h2>
+                    <p class="text-muted mb-0">Enterprise TLS interception with wildcard certificates</p>
+                </div>
+                {{if enterprise_enabled:}}
+                <a href="{{=URL('tls_proxy/create')}}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-1"></i> Configure TLS Proxy
+                </a>
+                {{else:}}
+                <div class="text-end">
+                    <span class="badge bg-warning text-dark mb-2">Enterprise Feature</span>
+                    <br>
+                    <a href="{{=URL('license')}}" class="btn btn-outline-primary">
+                        <i class="bi bi-key me-1"></i> Upgrade License
+                    </a>
+                </div>
+                {{pass}}
+            </div>
+
+            <!-- Feature Info Card -->
+            <div class="card border-warning mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>TLS Proxy Overview</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h6><i class="bi bi-fingerprint me-1"></i>Protocol Detection</h6>
+                            <p class="small text-muted">Automatically detects HTTPS traffic using protocol fingerprinting, not port-based assumptions</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h6><i class="bi bi-shield-check me-1"></i>Wildcard Certificates</h6>
+                            <p class="small text-muted">Uses wildcard certificates from user-provided or auto-generated CA for seamless interception</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h6><i class="bi bi-lock me-1"></i>Modern Cryptography</h6>
+                            <p class="small text-muted">ECC P-384 keys with SHA-512 hashing and 10-year certificate lifetimes</p>
+                        </div>
+                    </div>
+                    <div class="alert alert-warning mt-3 mb-0">
+                        <small><strong>Important:</strong> TLS proxy requires source entities to trust the CA certificate or TLS errors will occur. This feature is disabled by default.</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cluster Filter -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-6">
+                            <label for="cluster_id" class="form-label">Filter by Cluster</label>
+                            <select name="cluster_id" id="cluster_id" class="form-select">
+                                <option value="">All Clusters</option>
+                                {{for cluster in clusters:}}
+                                <option value="{{=cluster.id}}" {{='selected' if current_cluster_id == cluster.id else ''}}>
+                                    {{=cluster.name}}
+                                </option>
+                                {{pass}}
+                            </select>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <button type="submit" class="btn btn-outline-primary me-2">
+                                <i class="bi bi-funnel me-1"></i> Filter
+                            </button>
+                            <a href="{{=URL('tls_proxy')}}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-1"></i> Clear
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- TLS Proxy Configurations -->
+            {{if tls_configs:}}
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Cluster</th>
+                                    <th>Status</th>
+                                    <th>CA Type</th>
+                                    <th>Certificate</th>
+                                    <th>Expires</th>
+                                    <th>Domains</th>
+                                    <th>Last Updated</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{for config in tls_configs:}}
+                                <tr>
+                                    <td>
+                                        {{for cluster in clusters:}}
+                                        {{if cluster.id == config.cluster_id:}}
+                                        <span class="badge bg-primary">{{=cluster.name}}</span>
+                                        {{pass}}
+                                        {{pass}}
+                                    </td>
+                                    <td>
+                                        {{if config.enabled:}}
+                                        <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Enabled</span>
+                                        {{else:}}
+                                        <span class="badge bg-secondary"><i class="bi bi-pause-circle me-1"></i>Disabled</span>
+                                        {{pass}}
+                                    </td>
+                                    <td>
+                                        {{if config.ca_type == 'user_provided':}}
+                                        <span class="badge bg-info">User Provided</span>
+                                        {{else:}}
+                                        <span class="badge bg-success">Auto-Generated</span>
+                                        {{pass}}
+                                    </td>
+                                    <td>
+                                        <code class="small">{{=config.certificate_cn}}</code>
+                                    </td>
+                                    <td>
+                                        {{if config.certificate_expires:}}
+                                        <small class="{{='text-danger' if config.certificate_expires < datetime.now() else 'text-muted'}}">
+                                            {{=config.certificate_expires.strftime('%Y-%m-%d')}}
+                                        </small>
+                                        {{else:}}
+                                        <span class="text-muted">Unknown</span>
+                                        {{pass}}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">*.{{=config.wildcard_domain}}</span>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{=config.updated_on.strftime('%Y-%m-%d %H:%M')}}</small>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{=URL('tls_proxy/view', config.id)}}" class="btn btn-sm btn-outline-primary" title="View Details">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <a href="{{=URL('tls_proxy/edit', config.id)}}" class="btn btn-sm btn-outline-secondary" title="Edit">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <a href="{{=URL('tls_proxy/download_ca', config.id)}}" class="btn btn-sm btn-outline-info" title="Download CA">
+                                                <i class="bi bi-download"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {{pass}}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CA Certificate Status -->
+            {{if ca_info:}}
+            <div class="row mt-4">
+                <div class="col-md-4">
+                    <div class="card border-info">
+                        <div class="card-body text-center">
+                            <h5 class="card-title text-info">Certificate Authority</h5>
+                            <h6 class="mb-0">{{=ca_info.total_cas}}</h6>
+                            <small class="text-muted">Total CAs</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-success">
+                        <div class="card-body text-center">
+                            <h5 class="card-title text-success">Active Certificates</h5>
+                            <h6 class="mb-0">{{=ca_info.active_certs}}</h6>
+                            <small class="text-muted">Valid certificates</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-warning">
+                        <div class="card-body text-center">
+                            <h5 class="card-title text-warning">Expiring Soon</h5>
+                            <h6 class="mb-0">{{=ca_info.expiring_soon}}</h6>
+                            <small class="text-muted">Within 30 days</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{pass}}
+
+            {{else:}}
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-shield-lock-fill fa-3x text-muted mb-3"></i>
+                    <h4>No TLS Proxy Configuration</h4>
+                    {{if not enterprise_enabled:}}
+                    <p class="text-muted">TLS Proxy requires an Enterprise license.</p>
+                    <a href="{{=URL('license')}}" class="btn btn-primary">
+                        <i class="bi bi-key me-1"></i> Upgrade to Enterprise
+                    </a>
+                    {{elif current_cluster_id:}}
+                    <p class="text-muted">No TLS proxy configuration found for the selected cluster.</p>
+                    <a href="{{=URL('tls_proxy/create')}}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle me-1"></i> Configure TLS Proxy
+                    </a>
+                    {{else:}}
+                    <p class="text-muted">Configure TLS interception with wildcard certificates for HTTPS traffic.</p>
+                    <a href="{{=URL('tls_proxy/create')}}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle me-1"></i> Configure Your First TLS Proxy
+                    </a>
+                    {{pass}}
+                </div>
+            </div>
+            {{pass}}
+        </div>
+    </div>
+</div>
+
+<style>
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: #495057;
+}
+.badge {
+    font-size: 0.75em;
+}
+.btn-group .btn {
+    border-radius: 0.25rem;
+}
+.btn-group .btn:not(:last-child) {
+    margin-right: 0.25rem;
+}
+.card-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+</style>

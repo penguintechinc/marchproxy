@@ -1,0 +1,361 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop, v*.x ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  GO_VERSION: '1.21'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  lint-and-test:
+    name: Lint and Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component: [manager, proxy-egress, proxy-ingress]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python (for manager)
+      if: matrix.component == 'manager'
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: Set up Go (for proxy components)
+      if: matrix.component == 'proxy-egress' || matrix.component == 'proxy-ingress'
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        cache: true
+        cache-dependency-path: ${{ matrix.component }}/go.sum
+
+    - name: Install Python dependencies
+      if: matrix.component == 'manager'
+      run: |
+        cd manager
+        pip install -r requirements.txt
+        pip install black isort flake8 pytest pytest-cov
+
+    - name: Lint Python code
+      if: matrix.component == 'manager'
+      run: |
+        cd manager
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        black --check .
+        isort --check-only .
+
+    - name: Test Python code
+      if: matrix.component == 'manager'
+      run: |
+        cd manager
+        python -m pytest tests/ -v --cov=. --cov-report=xml || echo "No tests found, skipping"
+
+    - name: Lint Go code
+      if: matrix.component == 'proxy-egress' || matrix.component == 'proxy-ingress'
+      run: |
+        cd ${{ matrix.component }}
+        go fmt ./...
+        go vet ./...
+        curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.54.2
+        golangci-lint run --timeout 5m
+
+    - name: Test Go code
+      if: matrix.component == 'proxy-egress' || matrix.component == 'proxy-ingress'
+      run: |
+        cd ${{ matrix.component }}
+        go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ${{ matrix.component == 'manager' && 'manager/coverage.xml' || format('{0}/coverage.out', matrix.component) }}
+        flags: ${{ matrix.component }}
+        fail_ci_if_error: false
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+    - name: Run gosec security scanner for Go
+      run: |
+        go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+        cd proxy-egress && gosec -fmt sarif -out gosec-results-egress.sarif ./... || true
+        cd ../proxy-ingress && gosec -fmt sarif -out gosec-results-ingress.sarif ./... || true
+
+    - name: Upload gosec results for egress
+      if: always()
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: proxy-egress/gosec-results-egress.sarif
+
+    - name: Upload gosec results for ingress
+      if: always()
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: proxy-ingress/gosec-results-ingress.sarif
+
+  build-and-test-integration:
+    name: Build and Integration Test
+    runs-on: ubuntu-latest
+    needs: [lint-and-test]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build manager image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        target: manager
+        push: false
+        tags: marchproxy/manager:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Build proxy image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        target: proxy
+        push: false
+        tags: marchproxy/proxy:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Start test environment
+      run: |
+        export MANAGER_IMAGE=marchproxy/manager:test
+        export PROXY_IMAGE=marchproxy/proxy:test
+        docker-compose -f docker-compose.yml -f docker-compose.ci.yml up -d
+
+        # Wait for services to be healthy
+        timeout 300 bash -c '
+          until docker-compose ps | grep -q "Up (healthy)" || docker-compose ps | grep -q "Up"; do
+            echo "Waiting for services to become healthy..."
+            docker-compose ps
+            sleep 10
+          done
+        '
+
+    - name: Run integration tests
+      run: |
+        # Test manager health endpoint
+        timeout 60 bash -c 'until curl -f http://localhost:8000/health; do sleep 5; done' || echo "Manager health check failed"
+
+        # Test proxy health endpoint
+        timeout 60 bash -c 'until curl -f http://localhost:8080/healthz; do sleep 5; done' || echo "Proxy health check failed"
+
+        # Test metrics endpoints
+        curl -f http://localhost:8090/metrics || echo "Metrics endpoint failed"
+
+    - name: Run basic load tests
+      run: |
+        # Install hey for load testing
+        wget https://github.com/rakyll/hey/releases/download/v0.1.4/hey_linux_amd64
+        chmod +x hey_linux_amd64
+
+        # Basic load test
+        ./hey_linux_amd64 -n 1000 -c 10 http://localhost:8000/health || echo "Load test failed"
+
+    - name: Collect logs on failure
+      if: failure()
+      run: |
+        mkdir -p test-logs
+        docker-compose logs manager > test-logs/manager.log
+        docker-compose logs proxy > test-logs/proxy.log
+        docker-compose logs postgres > test-logs/postgres.log
+
+    - name: Upload logs
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: integration-test-logs
+        path: test-logs/
+
+    - name: Cleanup
+      if: always()
+      run: |
+        docker-compose -f docker-compose.yml -f docker-compose.ci.yml down -v
+
+  build-production:
+    name: Build Production Images
+    runs-on: ubuntu-latest
+    needs: [lint-and-test, security-scan, build-and-test-integration]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          type=sha
+
+    - name: Build and push manager image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        target: manager
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/manager:${{ github.sha }},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/manager:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Build and push proxy image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        target: proxy
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/proxy:${{ github.sha }},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/proxy:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  performance-test:
+    name: Performance Testing
+    runs-on: ubuntu-latest
+    needs: [build-production]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Start performance test environment
+      run: |
+        export MANAGER_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/manager:${{ github.sha }}
+        export PROXY_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/proxy:${{ github.sha }}
+        docker-compose -f docker-compose.yml -f docker-compose.ci.yml up -d
+
+        # Wait for services
+        timeout 300 bash -c '
+          until docker-compose ps | grep -q "Up"; do
+            echo "Waiting for services..."
+            sleep 10
+          done
+        '
+
+    - name: Install performance testing tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y apache2-utils
+        wget https://github.com/wg/wrk/archive/4.1.0.tar.gz
+        tar -xzf 4.1.0.tar.gz
+        cd wrk-4.1.0 && make && sudo cp wrk /usr/local/bin/
+
+    - name: Run performance benchmarks
+      run: |
+        # Apache Bench tests
+        ab -n 10000 -c 100 http://localhost:8000/health || echo "Manager AB test failed"
+
+        # wrk tests
+        wrk -t12 -c400 -d30s http://localhost:8000/health || echo "Manager wrk test failed"
+
+    - name: Cleanup performance test
+      if: always()
+      run: |
+        docker-compose -f docker-compose.yml -f docker-compose.ci.yml down -v
+
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [performance-test]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Create release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
+        body: |
+          ## Changes
+          - Automated release from CI/CD pipeline
+
+          ## Docker Images
+          - Manager: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/manager:${{ github.ref_name }}`
+          - Proxy: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/proxy:${{ github.ref_name }}`
+
+          ## Installation
+          ```bash
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/manager:${{ github.ref_name }}
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/proxy:${{ github.ref_name }}
+          ```

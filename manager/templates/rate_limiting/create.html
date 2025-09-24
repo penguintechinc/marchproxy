@@ -1,0 +1,298 @@
+{{extend 'layout.html'}}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="bi bi-plus-circle me-2"></i>Create Rate Limiting Rule</h2>
+                    <p class="text-muted mb-0">Configure XDP packet rate limiting for a cluster</p>
+                </div>
+                <a href="{{=URL('rate_limiting')}}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Back to List
+                </a>
+            </div>
+
+            {{if not enterprise_enabled:}}
+            <div class="alert alert-warning" role="alert">
+                <h4 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Enterprise Feature Required</h4>
+                <p>XDP Rate Limiting is an Enterprise feature that requires a valid license.</p>
+                <hr>
+                <p class="mb-0">
+                    <a href="{{=URL('license')}}" class="btn btn-warning">
+                        <i class="bi bi-key me-1"></i> Upgrade License
+                    </a>
+                </p>
+            </div>
+            {{else:}}
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-gear me-2"></i>Rate Limiting Configuration</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" id="rateLimitForm">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="cluster_id" class="form-label">Target Cluster <span class="text-danger">*</span></label>
+                                            <select name="cluster_id" id="cluster_id" class="form-select" required>
+                                                <option value="">Select a cluster...</option>
+                                                {{for cluster in clusters:}}
+                                                <option value="{{=cluster.id}}" {{='selected' if cluster.id == form_data.get('cluster_id') else ''}}>
+                                                    {{=cluster.name}}
+                                                </option>
+                                                {{pass}}
+                                            </select>
+                                            <div class="form-text">Choose which cluster this rate limiting rule applies to</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" name="enabled" id="enabled" {{='checked' if form_data.get('enabled') else ''}}>
+                                                <label class="form-check-label" for="enabled">
+                                                    Enable Rate Limiting
+                                                </label>
+                                            </div>
+                                            <div class="form-text">Rate limiting is disabled by default for safety</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <hr>
+
+                                <h6><i class="bi bi-globe me-2"></i>Global Rate Limits</h6>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="global_pps_limit" class="form-label">Global Packets Per Second</label>
+                                            <input type="number" class="form-control" name="global_pps_limit" id="global_pps_limit"
+                                                   min="0" value="{{=form_data.get('global_pps_limit', 0)}}" placeholder="0 = Unlimited">
+                                            <div class="form-text">Maximum packets per second across all source IPs (0 = unlimited)</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="per_ip_pps_limit" class="form-label">Per-IP Packets Per Second</label>
+                                            <input type="number" class="form-control" name="per_ip_pps_limit" id="per_ip_pps_limit"
+                                                   min="0" value="{{=form_data.get('per_ip_pps_limit', 0)}}" placeholder="0 = Unlimited">
+                                            <div class="form-text">Maximum packets per second per source IP (0 = unlimited)</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <h6><i class="bi bi-clock me-2"></i>Timing Configuration</h6>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="window_size_seconds" class="form-label">Rate Window Size (seconds)</label>
+                                            <select name="window_size_seconds" id="window_size_seconds" class="form-select">
+                                                <option value="1" {{='selected' if form_data.get('window_size_seconds', 1) == 1 else ''}}>1 second</option>
+                                                <option value="5" {{='selected' if form_data.get('window_size_seconds', 1) == 5 else ''}}>5 seconds</option>
+                                                <option value="10" {{='selected' if form_data.get('window_size_seconds', 1) == 10 else ''}}>10 seconds</option>
+                                                <option value="30" {{='selected' if form_data.get('window_size_seconds', 1) == 30 else ''}}>30 seconds</option>
+                                                <option value="60" {{='selected' if form_data.get('window_size_seconds', 1) == 60 else ''}}>1 minute</option>
+                                            </select>
+                                            <div class="form-text">Time window for rate calculation</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="burst_allowance" class="form-label">Burst Allowance</label>
+                                            <input type="number" class="form-control" name="burst_allowance" id="burst_allowance"
+                                                   min="0" max="100" value="{{=form_data.get('burst_allowance', 10)}}" placeholder="10">
+                                            <div class="form-text">Percentage above limit allowed for short bursts (0-100%)</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <h6><i class="bi bi-exclamation-triangle me-2"></i>Rate Limit Action</h6>
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="action" id="action_pass" value="pass"
+                                               {{='checked' if form_data.get('action', 'drop') == 'pass' else ''}}>
+                                        <label class="form-check-label" for="action_pass">
+                                            <strong>Pass</strong> - Allow all packets (monitoring only)
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="action" id="action_rate_limit" value="rate_limit"
+                                               {{='checked' if form_data.get('action', 'drop') == 'rate_limit' else ''}}>
+                                        <label class="form-check-label" for="action_rate_limit">
+                                            <strong>Rate Limit</strong> - Delay excessive packets
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="action" id="action_drop" value="drop"
+                                               {{='checked' if form_data.get('action', 'drop') == 'drop' else ''}}>
+                                        <label class="form-check-label" for="action_drop">
+                                            <strong>Drop</strong> - Drop excessive packets (recommended)
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-between">
+                                    <button type="button" class="btn btn-outline-info" onclick="validateForm()">
+                                        <i class="bi bi-check-circle me-1"></i> Validate Configuration
+                                    </button>
+                                    <div>
+                                        <a href="{{=URL('rate_limiting')}}" class="btn btn-secondary me-2">Cancel</a>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="bi bi-check-lg me-1"></i> Create Rate Limit Rule
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <!-- Configuration Preview -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="bi bi-eye me-2"></i>Configuration Preview</h6>
+                        </div>
+                        <div class="card-body">
+                            <div id="configPreview">
+                                <p class="text-muted">Fill in the form to see a preview of your configuration</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Best Practices -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Best Practices</h6>
+                        </div>
+                        <div class="card-body">
+                            <ul class="small mb-0">
+                                <li><strong>Start Conservative:</strong> Begin with higher limits and adjust based on monitoring</li>
+                                <li><strong>Monitor First:</strong> Use "Pass" action initially to observe traffic patterns</li>
+                                <li><strong>Per-IP Limits:</strong> Usually lower than global limits to prevent single-source attacks</li>
+                                <li><strong>Burst Allowance:</strong> 10-20% works well for most applications</li>
+                                <li><strong>Window Size:</strong> Shorter windows (1-5s) for real-time protection</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{pass}}
+        </div>
+    </div>
+</div>
+
+<script>
+function updatePreview() {
+    const cluster = document.getElementById('cluster_id');
+    const enabled = document.getElementById('enabled').checked;
+    const globalLimit = document.getElementById('global_pps_limit').value;
+    const perIpLimit = document.getElementById('per_ip_pps_limit').value;
+    const windowSize = document.getElementById('window_size_seconds').value;
+    const burstAllowance = document.getElementById('burst_allowance').value;
+    const action = document.querySelector('input[name="action"]:checked')?.value;
+
+    const preview = document.getElementById('configPreview');
+
+    if (!cluster.value) {
+        preview.innerHTML = '<p class="text-muted">Select a cluster to see preview</p>';
+        return;
+    }
+
+    const clusterName = cluster.options[cluster.selectedIndex].text;
+
+    preview.innerHTML = `
+        <div class="mb-2">
+            <strong>Cluster:</strong> <span class="badge bg-primary">${clusterName}</span>
+        </div>
+        <div class="mb-2">
+            <strong>Status:</strong>
+            <span class="badge bg-${enabled ? 'success' : 'secondary'}">
+                ${enabled ? 'Enabled' : 'Disabled'}
+            </span>
+        </div>
+        <div class="mb-2">
+            <strong>Global Limit:</strong>
+            <code>${globalLimit || '0'} pps</code>
+            ${globalLimit == '0' ? '<small class="text-muted">(unlimited)</small>' : ''}
+        </div>
+        <div class="mb-2">
+            <strong>Per-IP Limit:</strong>
+            <code>${perIpLimit || '0'} pps</code>
+            ${perIpLimit == '0' ? '<small class="text-muted">(unlimited)</small>' : ''}
+        </div>
+        <div class="mb-2">
+            <strong>Window:</strong> <code>${windowSize}s</code>
+        </div>
+        <div class="mb-2">
+            <strong>Burst:</strong> <code>${burstAllowance}%</code>
+        </div>
+        <div class="mb-2">
+            <strong>Action:</strong>
+            <span class="badge bg-${action === 'drop' ? 'danger' : action === 'rate_limit' ? 'warning' : 'success'}">
+                ${action ? action.replace('_', ' ').toUpperCase() : 'Not Selected'}
+            </span>
+        </div>
+    `;
+}
+
+function validateForm() {
+    const globalLimit = parseInt(document.getElementById('global_pps_limit').value) || 0;
+    const perIpLimit = parseInt(document.getElementById('per_ip_pps_limit').value) || 0;
+
+    let messages = [];
+
+    if (globalLimit === 0 && perIpLimit === 0) {
+        messages.push('⚠️ Both global and per-IP limits are unlimited. This provides no rate limiting protection.');
+    }
+
+    if (globalLimit > 0 && perIpLimit > 0 && perIpLimit > globalLimit) {
+        messages.push('⚠️ Per-IP limit is higher than global limit. Consider reducing per-IP limit.');
+    }
+
+    if (globalLimit > 1000000) {
+        messages.push('⚠️ Global limit is very high (>1M pps). Ensure your hardware can handle this.');
+    }
+
+    if (perIpLimit > 100000) {
+        messages.push('⚠️ Per-IP limit is very high (>100K pps). This may not provide adequate protection.');
+    }
+
+    if (messages.length === 0) {
+        messages.push('✅ Configuration looks good! No issues detected.');
+    }
+
+    alert(messages.join('\n\n'));
+}
+
+// Update preview when form changes
+document.addEventListener('DOMContentLoaded', function() {
+    const inputs = ['cluster_id', 'enabled', 'global_pps_limit', 'per_ip_pps_limit', 'window_size_seconds', 'burst_allowance'];
+    inputs.forEach(id => {
+        document.getElementById(id)?.addEventListener('change', updatePreview);
+        document.getElementById(id)?.addEventListener('input', updatePreview);
+    });
+
+    document.querySelectorAll('input[name="action"]').forEach(radio => {
+        radio.addEventListener('change', updatePreview);
+    });
+
+    updatePreview();
+});
+</script>
+
+<style>
+.form-check-input:checked {
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+}
+.card-header h6 {
+    color: #495057;
+}
+.badge {
+    font-size: 0.75em;
+}
+</style>

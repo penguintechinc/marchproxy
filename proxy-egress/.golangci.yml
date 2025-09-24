@@ -1,0 +1,128 @@
+# golangci-lint configuration for MarchProxy
+run:
+  timeout: 5m
+  tests: true
+  modules-download-mode: readonly
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+        - gosec
+    - path: cmd/
+      linters:
+        - gochecknoinits
+
+linters:
+  enable:
+    - asciicheck
+    - bodyclose
+    - depguard
+    - dogsled
+    - dupl
+    - durationcheck
+    - errcheck
+    - errorlint
+    - exhaustive
+    - exportloopref
+    - forbidigo
+    - forcetypeassert
+    - gci
+    - gochecknoglobals
+    - gochecknoinits
+    - gocognit
+    - goconst
+    - gocritic
+    - gocyclo
+    - godot
+    - gofmt
+    - gofumpt
+    - goheader
+    - goimports
+    - gomodguard
+    - goprintffuncname
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - lll
+    - makezero
+    - misspell
+    - nakedret
+    - nilerr
+    - noctx
+    - nolintlint
+    - prealloc
+    - predeclared
+    - revive
+    - staticcheck
+    - stylecheck
+    - thelper
+    - tparallel
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - wastedassign
+    - whitespace
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+  
+  gocognit:
+    min-complexity: 15
+  
+  gocyclo:
+    min-complexity: 15
+  
+  lll:
+    line-length: 120
+  
+  misspell:
+    locale: US
+  
+  nakedret:
+    max-func-lines: 30
+  
+  prealloc:
+    simple: true
+    range-loops: true
+    for-loops: false
+  
+  staticcheck:
+    go: "1.22"
+  
+  stylecheck:
+    go: "1.22"
+  
+  gosec:
+    excludes:
+      - G204  # Subprocess launched with variable
+      - G304  # File path provided as taint input
+  
+  govet:
+    enable:
+      - atomic
+      - bools
+      - buildtag
+      - copylocks
+      - fieldalignment
+      - httpresponse
+      - loopclosure
+      - lostcancel
+      - nilfunc
+      - printf
+      - shift
+      - stdmethods
+      - structtag
+      - tests
+      - unmarshal
+      - unreachable
+      - unsafeptr
+      - unusedresult
+  
+  gofumpt:
+    extra-rules: true

@@ -1,0 +1,50 @@
+# Docker Compose override for CI/CD environments
+# Use with: docker-compose -f docker-compose.yml -f docker-compose.ci.yml up
+
+version: '3.8'
+
+services:
+  manager:
+    image: ${MANAGER_IMAGE:-ghcr.io/marchproxy/manager:latest}
+    environment:
+      - LOG_LEVEL=INFO
+      - CI_ENVIRONMENT=true
+      - SKIP_BOOTSTRAP=false
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  proxy:
+    image: ${PROXY_IMAGE:-ghcr.io/marchproxy/proxy:latest}
+    environment:
+      - LOG_LEVEL=INFO
+      - CI_ENVIRONMENT=true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  postgres:
+    environment:
+      - POSTGRES_DB=marchproxy_ci
+      - POSTGRES_USER=marchproxy_ci
+      - POSTGRES_PASSWORD=ci_password_123
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marchproxy_ci -d marchproxy_ci"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  syslog:
+    healthcheck:
+      test: ["CMD", "netstat", "-ln", "|", "grep", ":514"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s

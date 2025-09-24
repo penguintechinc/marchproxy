@@ -1,0 +1,212 @@
+[[extend 'layout.html']]
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Dashboard</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Stats Cards -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Active Clusters
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">[[=len(clusters or [])]]</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-diagram-3 fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Active Proxies
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            [[total_proxies = sum(stats.get('active', 0) for stats in proxy_stats.values()) if proxy_stats else 0]]
+                            [[=total_proxies]]
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-server fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            License Status
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            [[if license_info and license_info.get('valid'):]]
+                                <span class="badge bg-success">Valid</span>
+                            [[else:]]
+                                <span class="badge bg-warning">Community</span>
+                            [[pass]]
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-shield-check fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Edition
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            [[=license_info.get('edition', 'Community') if license_info else 'Community']]
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-award fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Clusters Overview -->
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Clusters Overview</h6>
+            </div>
+            <div class="card-body">
+                [[if clusters:]]
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Cluster Name</th>
+                                <th>Active Proxies</th>
+                                <th>Max Proxies</th>
+                                <th>Utilization</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            [[for cluster in clusters:]]
+                            <tr>
+                                <td>[[=cluster.name]]</td>
+                                <td>[[=proxy_stats.get(cluster.id, {}).get('active', 0)]]</td>
+                                <td>[[=proxy_stats.get(cluster.id, {}).get('max', 0)]]</td>
+                                <td>
+                                    [[utilization = proxy_stats.get(cluster.id, {}).get('utilization', 0)]]
+                                    <div class="progress">
+                                        <div class="progress-bar [[if utilization > 80:]]bg-danger[[elif utilization > 60:]]bg-warning[[else:]]bg-success[[pass]]" 
+                                             style="width: [[=utilization]]%">
+                                            [[=f"{utilization:.1f}%"]]
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    [[if cluster.is_active:]]
+                                        <span class="badge bg-success">Active</span>
+                                    [[else:]]
+                                        <span class="badge bg-secondary">Inactive</span>
+                                    [[pass]]
+                                </td>
+                            </tr>
+                            [[pass]]
+                        </tbody>
+                    </table>
+                </div>
+                [[else:]]
+                <div class="text-center py-4">
+                    <i class="bi bi-diagram-3 display-4 text-muted"></i>
+                    <p class="text-muted mt-2">No clusters configured</p>
+                    <a href="[[=URL('clusters/create')]]" class="btn btn-primary">Create First Cluster</a>
+                </div>
+                [[pass]]
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    <a href="[[=URL('clusters')]]" class="list-group-item list-group-item-action">
+                        <i class="bi bi-diagram-3"></i> Manage Clusters
+                    </a>
+                    <a href="[[=URL('services')]]" class="list-group-item list-group-item-action">
+                        <i class="bi bi-server"></i> Configure Services
+                    </a>
+                    <a href="[[=URL('mappings')]]" class="list-group-item list-group-item-action">
+                        <i class="bi bi-diagram-2"></i> Setup Mappings
+                    </a>
+                    <a href="[[=URL('certificates')]]" class="list-group-item list-group-item-action">
+                        <i class="bi bi-file-earmark-lock"></i> Manage Certificates
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">System Information</h6>
+            </div>
+            <div class="card-body">
+                <p><strong>User:</strong> [[=user.username if user else 'Unknown']]</p>
+                <p><strong>Role:</strong> 
+                    [[if user and user.is_admin:]]
+                        <span class="badge bg-danger">Administrator</span>
+                    [[else:]]
+                        <span class="badge bg-info">User</span>
+                    [[pass]]
+                </p>
+                <p><strong>2FA:</strong> 
+                    [[if user and user.totp_enabled:]]
+                        <span class="badge bg-success">Enabled</span>
+                    [[else:]]
+                        <span class="badge bg-warning">Disabled</span>
+                    [[pass]]
+                </p>
+                <p><strong>Last Login:</strong> [[=user.last_login.strftime('%Y-%m-%d %H:%M') if user and user.last_login else 'Never']]</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.border-left-primary { border-left: 0.25rem solid #4e73df !important; }
+.border-left-success { border-left: 0.25rem solid #1cc88a !important; }
+.border-left-info { border-left: 0.25rem solid #36b9cc !important; }
+.border-left-warning { border-left: 0.25rem solid #f6c23e !important; }
+</style>

@@ -1,0 +1,67 @@
+[[extend 'layout.html']]
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow">
+                <div class="card-header text-center bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-shield-check"></i>
+                        MarchProxy Login
+                    </h4>
+                </div>
+                <div class="card-body">
+                    [[if form.errors:]]
+                    <div class="alert alert-danger">
+                        <h6>Please fix the following errors:</h6>
+                        <ul class="mb-0">
+                            [[for field_name, error in form.errors.items():]]
+                            <li>[[=error]]</li>
+                            [[pass]]
+                        </ul>
+                    </div>
+                    [[pass]]
+                    
+                    [[=form]]
+                </div>
+                <div class="card-footer text-center text-muted">
+                    <small>
+                        Default credentials: admin / admin<br>
+                        Please change after first login
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-control {
+    margin-bottom: 0.5rem;
+}
+
+input[type="submit"] {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: white;
+    padding: 0.5rem 2rem;
+    border: none;
+    border-radius: 0.25rem;
+    width: 100%;
+    cursor: pointer;
+}
+
+input[type="submit"]:hover {
+    background-color: #0b5ed7;
+}
+
+label {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    display: block;
+}
+</style>

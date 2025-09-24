@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  manager:
+    build:
+      context: manager
+      dockerfile: Dockerfile
+      target: development
+    environment:
+      - DATABASE_URL=postgresql://marchproxy:marchproxy@postgres:5432/marchproxy
+      - LOG_LEVEL=debug
+      - ENABLE_DEBUG=true
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+    volumes:
+      - ./manager:/app
+    networks:
+      - marchproxy-test
+
+  proxy-egress:
+    build:
+      context: proxy-egress
+      dockerfile: Dockerfile
+      target: development
+    environment:
+      - MANAGER_URL=http://manager:8000
+      - CLUSTER_API_KEY=test-cluster-api-key
+      - PROXY_NAME=test-proxy-egress
+      - LOG_LEVEL=debug
+      - LISTEN_PORT=8080
+      - ADMIN_PORT=8081
+      - ENABLE_METRICS=true
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    depends_on:
+      - manager
+    networks:
+      - marchproxy-test
+
+  proxy-ingress:
+    build:
+      context: proxy-ingress
+      dockerfile: Dockerfile
+      target: development
+    environment:
+      - MANAGER_URL=http://manager:8000
+      - CLUSTER_API_KEY=test-cluster-api-key
+      - PROXY_NAME=test-proxy-ingress
+      - LOG_LEVEL=debug
+      - LISTEN_PORT=8082
+      - ADMIN_PORT=8083
+      - ENABLE_METRICS=true
+    ports:
+      - "8082:8082"
+      - "8083:8083"
+    depends_on:
+      - manager
+    networks:
+      - marchproxy-test
+
+  postgres:
+    image: postgres:14-alpine
+    environment:
+      - POSTGRES_DB=marchproxy
+      - POSTGRES_USER=marchproxy
+      - POSTGRES_PASSWORD=marchproxy
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    networks:
+      - marchproxy-test
+
+  # Test backend service
+  test-backend:
+    image: nginx:alpine
+    ports:
+      - "9999:80"
+    volumes:
+      - ./test/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - marchproxy-test
+
+volumes:
+  postgres_test_data:
+
+networks:
+  marchproxy-test:
+    driver: bridge

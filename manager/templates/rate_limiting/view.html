@@ -1,0 +1,237 @@
+{{extend 'layout.html'}}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="bi bi-speedometer me-2"></i>Rate Limiting Rule Details</h2>
+                    <p class="text-muted mb-0">View XDP rate limiting configuration and statistics</p>
+                </div>
+                <div>
+                    <a href="{{=URL('rate_limiting')}}" class="btn btn-outline-secondary me-2">
+                        <i class="bi bi-arrow-left me-1"></i> Back to List
+                    </a>
+                    <a href="{{=URL('rate_limiting/edit', rate_limit.id)}}" class="btn btn-primary">
+                        <i class="bi bi-pencil me-1"></i> Edit Rule
+                    </a>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <!-- Configuration Details -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-gear me-2"></i>Configuration</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <dl class="row">
+                                        <dt class="col-sm-4">Cluster:</dt>
+                                        <dd class="col-sm-8">
+                                            <span class="badge bg-primary">{{=cluster.name}}</span>
+                                        </dd>
+                                        <dt class="col-sm-4">Status:</dt>
+                                        <dd class="col-sm-8">
+                                            {{if rate_limit.enabled:}}
+                                            <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Enabled</span>
+                                            {{else:}}
+                                            <span class="badge bg-secondary"><i class="bi bi-pause-circle me-1"></i>Disabled</span>
+                                            {{pass}}
+                                        </dd>
+                                        <dt class="col-sm-4">Global Limit:</dt>
+                                        <dd class="col-sm-8">
+                                            {{if rate_limit.global_pps_limit > 0:}}
+                                            <code>{{="{:,}".format(rate_limit.global_pps_limit)}} pps</code>
+                                            {{else:}}
+                                            <span class="text-muted">Unlimited</span>
+                                            {{pass}}
+                                        </dd>
+                                        <dt class="col-sm-4">Per-IP Limit:</dt>
+                                        <dd class="col-sm-8">
+                                            {{if rate_limit.per_ip_pps_limit > 0:}}
+                                            <code>{{="{:,}".format(rate_limit.per_ip_pps_limit)}} pps</code>
+                                            {{else:}}
+                                            <span class="text-muted">Unlimited</span>
+                                            {{pass}}
+                                        </dd>
+                                    </dl>
+                                </div>
+                                <div class="col-md-6">
+                                    <dl class="row">
+                                        <dt class="col-sm-4">Window Size:</dt>
+                                        <dd class="col-sm-8"><code>{{=rate_limit.window_size_seconds}}s</code></dd>
+                                        <dt class="col-sm-4">Burst Allowance:</dt>
+                                        <dd class="col-sm-8"><code>{{=rate_limit.burst_allowance}}%</code></dd>
+                                        <dt class="col-sm-4">Action:</dt>
+                                        <dd class="col-sm-8">
+                                            {{if rate_limit.action == 'drop':}}
+                                            <span class="badge bg-danger">Drop</span>
+                                            {{elif rate_limit.action == 'rate_limit':}}
+                                            <span class="badge bg-warning text-dark">Rate Limit</span>
+                                            {{else:}}
+                                            <span class="badge bg-success">Pass</span>
+                                            {{pass}}
+                                        </dd>
+                                        <dt class="col-sm-4">Created:</dt>
+                                        <dd class="col-sm-8">
+                                            <small class="text-muted">{{=rate_limit.created_on.strftime('%Y-%m-%d %H:%M:%S')}}</small>
+                                        </dd>
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Real-time Statistics -->
+                    {{if stats:}}
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Real-time Statistics</h5>
+                            <button class="btn btn-sm btn-outline-primary" onclick="refreshStats()">
+                                <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <h4 class="text-primary">{{="{:,}".format(stats.total_packets)}}</h4>
+                                        <small class="text-muted">Total Packets</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <h4 class="text-success">{{="{:,}".format(stats.passed_packets)}}</h4>
+                                        <small class="text-muted">Passed</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <h4 class="text-danger">{{="{:,}".format(stats.dropped_packets)}}</h4>
+                                        <small class="text-muted">Dropped</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <h4 class="text-warning">{{="{:,}".format(stats.rate_limited_ips)}}</h4>
+                                        <small class="text-muted">Rate Limited IPs</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <small class="text-muted">Drop Rate:</small>
+                                    <div class="progress mt-1">
+                                        <div class="progress-bar bg-danger" style="width: {{=stats.drop_rate}}%">
+                                            {{="{:.1f}%".format(stats.drop_rate)}}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <small class="text-muted">Current PPS:</small>
+                                    <h6 class="mt-1">{{="{:,}".format(stats.current_pps)}} pps</h6>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {{pass}}
+                </div>
+
+                <div class="col-lg-4">
+                    <!-- Quick Actions -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="bi bi-lightning me-2"></i>Quick Actions</h6>
+                        </div>
+                        <div class="card-body">
+                            {{if rate_limit.enabled:}}
+                            <form method="POST" action="{{=URL('rate_limiting/toggle', rate_limit.id)}}" class="mb-2">
+                                <button type="submit" class="btn btn-warning btn-sm w-100">
+                                    <i class="bi bi-pause me-1"></i> Disable Rate Limiting
+                                </button>
+                            </form>
+                            {{else:}}
+                            <form method="POST" action="{{=URL('rate_limiting/toggle', rate_limit.id)}}" class="mb-2">
+                                <button type="submit" class="btn btn-success btn-sm w-100">
+                                    <i class="bi bi-play me-1"></i> Enable Rate Limiting
+                                </button>
+                            </form>
+                            {{pass}}
+                            <a href="{{=URL('rate_limiting/stats', rate_limit.id)}}" class="btn btn-info btn-sm w-100 mb-2">
+                                <i class="bi bi-graph-up me-1"></i> View Detailed Stats
+                            </a>
+                            <button class="btn btn-outline-danger btn-sm w-100" onclick="clearStats()">
+                                <i class="bi bi-trash me-1"></i> Clear Statistics
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Proxy Status -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="bi bi-router me-2"></i>Proxy Status</h6>
+                        </div>
+                        <div class="card-body">
+                            {{if proxies:}}
+                            {{for proxy in proxies:}}
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div>
+                                    <strong>{{=proxy.hostname}}</strong>
+                                    <br><small class="text-muted">{{=proxy.external_ip}}</small>
+                                </div>
+                                <div>
+                                    {{if proxy.xdp_enabled:}}
+                                    <span class="badge bg-success">XDP Active</span>
+                                    {{else:}}
+                                    <span class="badge bg-secondary">XDP Inactive</span>
+                                    {{pass}}
+                                </div>
+                            </div>
+                            {{if not loop.last:}}<hr>{{pass}}
+                            {{pass}}
+                            {{else:}}
+                            <p class="text-muted text-center">No proxies registered for this cluster</p>
+                            {{pass}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function refreshStats() {
+    window.location.reload();
+}
+
+function clearStats() {
+    if (confirm('Are you sure you want to clear all statistics? This action cannot be undone.')) {
+        fetch('{{=URL("rate_limiting/clear_stats", rate_limit.id)}}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        }).then(response => {
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                alert('Failed to clear statistics');
+            }
+        });
+    }
+}
+</script>
+
+<style>
+.progress {
+    height: 20px;
+}
+.card-header h6 {
+    color: #495057;
+}
+</style>

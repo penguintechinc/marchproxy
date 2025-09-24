@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Cluster - MarchProxy</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <script defer src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"></script>
+</head>
+<body>
+    <nav class="navbar is-dark" role="navigation">
+        <div class="navbar-brand">
+            <a class="navbar-item" href="[[=URL('dashboard')]]">
+                <strong>MarchProxy</strong>
+            </a>
+        </div>
+        
+        <div class="navbar-menu">
+            <div class="navbar-start">
+                <a class="navbar-item" href="[[=URL('dashboard')]]">Dashboard</a>
+                <a class="navbar-item is-active" href="[[=URL('clusters')]]">Clusters</a>
+                <a class="navbar-item" href="[[=URL('services')]]">Services</a>
+                [[if user.is_admin:]]
+                <a class="navbar-item" href="[[=URL('users')]]">Users</a>
+                [[pass]]
+            </div>
+            
+            <div class="navbar-end">
+                <div class="navbar-item has-dropdown is-hoverable">
+                    <a class="navbar-link">
+                        [[=user.username]]
+                    </a>
+                    <div class="navbar-dropdown">
+                        <a class="navbar-item" href="[[=URL('auth/setup-2fa')]]">2FA Setup</a>
+                        <hr class="navbar-divider">
+                        <a class="navbar-item" href="[[=URL('auth/logout')]]">Logout</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8 is-offset-2">
+                    <h1 class="title">Create Cluster</h1>
+                    <p class="subtitle">Configure a new cluster for organizing proxy servers</p>
+                    
+                    <div class="card">
+                        <div class="card-content">
+                            [[=form.custom.begin]]
+                            
+                            <div class="field">
+                                <label class="label">Cluster Name</label>
+                                <div class="control has-icons-left">
+                                    [[=form.custom.widget.name]]
+                                    <span class="icon is-small is-left">
+                                        <i class="fas fa-server"></i>
+                                    </span>
+                                </div>
+                                [[if form.errors.name:]]
+                                <p class="help is-danger">[[=form.errors.name]]</p>
+                                [[pass]]
+                                <p class="help">Choose a descriptive name for this cluster (e.g., "Production", "Development", "DMZ")</p>
+                            </div>
+                            
+                            <div class="field">
+                                <label class="label">Description</label>
+                                <div class="control">
+                                    [[=form.custom.widget.description]]
+                                </div>
+                                [[if form.errors.description:]]
+                                <p class="help is-danger">[[=form.errors.description]]</p>
+                                [[pass]]
+                                <p class="help">Optional description of this cluster's purpose and configuration</p>
+                            </div>
+                            
+                            <hr>
+                            
+                            <h2 class="title is-5">Centralized Logging Configuration</h2>
+                            
+                            <div class="field">
+                                <label class="label">Syslog Endpoint</label>
+                                <div class="control has-icons-left">
+                                    [[=form.custom.widget.syslog_endpoint]]
+                                    <span class="icon is-small is-left">
+                                        <i class="fas fa-network-wired"></i>
+                                    </span>
+                                </div>
+                                [[if form.errors.syslog_endpoint:]]
+                                <p class="help is-danger">[[=form.errors.syslog_endpoint]]</p>
+                                [[pass]]
+                                <p class="help">UDP syslog server endpoint (format: hostname:port, e.g., "syslog.example.com:514")</p>
+                            </div>
+                            
+                            <div class="field">
+                                <label class="label">Log Types</label>
+                                <div class="field">
+                                    <div class="control">
+                                        <label class="checkbox">
+                                            [[=form.custom.widget.log_auth]]
+                                            Authentication Events
+                                        </label>
+                                    </div>
+                                    <p class="help is-small">Log login attempts, 2FA events, and API key usage</p>
+                                </div>
+                                
+                                <div class="field">
+                                    <div class="control">
+                                        <label class="checkbox">
+                                            [[=form.custom.widget.log_netflow]]
+                                            Network Flow
+                                        </label>
+                                    </div>
+                                    <p class="help is-small">Log connection details, traffic volumes, and proxy routing</p>
+                                </div>
+                                
+                                <div class="field">
+                                    <div class="control">
+                                        <label class="checkbox">
+                                            [[=form.custom.widget.log_debug]]
+                                            Debug Logging
+                                        </label>
+                                    </div>
+                                    <p class="help is-small">Detailed troubleshooting logs (high volume, use sparingly)</p>
+                                </div>
+                            </div>
+                            
+                            <div class="notification is-info is-light">
+                                <p><strong>Enterprise Feature:</strong> Multi-cluster support requires an Enterprise license.</p>
+                                <p>Each cluster gets its own API key for proxy server authentication and logging configuration.</p>
+                            </div>
+                            
+                            <div class="field is-grouped">
+                                <div class="control">
+                                    <button class="button is-primary is-large" type="submit">
+                                        <span class="icon"><i class="fas fa-plus"></i></span>
+                                        <span>Create Cluster</span>
+                                    </button>
+                                </div>
+                                <div class="control">
+                                    <a class="button is-light is-large" href="[[=URL('clusters')]]">
+                                        Cancel
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            [[=form.custom.end]]
+                        </div>
+                    </div>
+                    
+                    <div class="notification is-warning is-light mt-4">
+                        <p><strong>Important:</strong> After creating the cluster, you'll receive an API key that must be configured on all proxy servers in this cluster.</p>
+                        <p>Store this key securely as it cannot be retrieved later (only rotated).</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <style>
+        .input, .textarea, .select select {
+            border-radius: 4px;
+        }
+        .card {
+            border-radius: 8px;
+        }
+        .checkbox {
+            font-weight: 500;
+        }
+    </style>
+</body>
+</html>
