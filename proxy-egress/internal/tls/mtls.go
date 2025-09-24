@@ -9,7 +9,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/penguintech/marchproxy-egress/internal/config"
+	"marchproxy-egress/internal/config"
 )
 
 // MTLSManager handles mTLS configuration and certificate management

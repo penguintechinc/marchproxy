@@ -1,4 +1,4 @@
-module github.com/penguintech/marchproxy-egress
+module marchproxy-egress
 
 go 1.24.0
 

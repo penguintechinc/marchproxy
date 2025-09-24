@@ -6,15 +6,17 @@
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-Ready-brightgreen)](https://kubernetes.io/)
 [![Performance](https://img.shields.io/badge/Performance-100Gbps%2B-red)](https://github.com/marchproxy/marchproxy/blob/main/docs/performance.md)
 
-**A high-performance, enterprise-grade proxy suite for managing egress traffic in data center environments with advanced eBPF acceleration and hardware optimization.**
+**A high-performance, enterprise-grade dual proxy suite for managing both egress and ingress traffic in data center environments with advanced eBPF acceleration, mTLS authentication, and hardware optimization.**
 
-MarchProxy is a next-generation proxy solution designed for enterprise data centers that need to control and monitor egress traffic to the internet. Built with a unique multi-tier performance architecture combining eBPF kernel programming, hardware acceleration (XDP, AF_XDP, DPDK, SR-IOV), and enterprise-grade management capabilities.
+MarchProxy is a next-generation dual proxy solution designed for enterprise data centers that need to control and monitor both egress traffic to the internet and ingress traffic from external clients. Built with a unique multi-tier performance architecture combining eBPF kernel programming, mTLS mutual authentication, hardware acceleration (XDP, AF_XDP, DPDK, SR-IOV), and enterprise-grade management capabilities.
 
 ## Why MarchProxy?
 
+- **Dual Proxy Architecture**: Complete solution with both egress (forward proxy) and ingress (reverse proxy) functionality
 - **Unmatched Performance**: Multi-tier acceleration from standard networking → eBPF → XDP/AF_XDP → DPDK supporting 100+ Gbps throughput
-- **Enterprise Security**: Built-in WAF, DDoS protection, XDP-based rate limiting, and comprehensive authentication (SAML, OAuth2, SCIM)
+- **Enterprise Security**: Built-in mTLS authentication, WAF, DDoS protection, XDP-based rate limiting, and comprehensive authentication (SAML, OAuth2, SCIM)
 - **Service-Centric**: Designed for service-to-service communication with granular access control and cluster isolation
+- **mTLS by Default**: Mutual TLS authentication with automated certificate management and ECC P-384 cryptography
 - **Production Ready**: Comprehensive monitoring, centralized logging, automatic failover, and zero-downtime configuration updates
 - **Open Source + Enterprise**: Community edition with core features, Enterprise edition with advanced acceleration and unlimited scaling
 
@@ -45,10 +47,12 @@ open http://localhost:8000
 ```
 
 **What you get out of the box:**
-- ✅ Manager web interface with modern dashboard
-- ✅ High-performance Go proxy with eBPF acceleration
+- ✅ Manager web interface with modern dashboard and mTLS certificate management
+- ✅ High-performance proxy-egress (forward proxy) with eBPF acceleration
+- ✅ High-performance proxy-ingress (reverse proxy) with load balancing
+- ✅ Complete mTLS authentication with automated certificate generation
 - ✅ PostgreSQL database with sample data
-- ✅ Prometheus metrics collection
+- ✅ Prometheus metrics collection for both proxies
 - ✅ Grafana dashboards for monitoring
 - ✅ ELK stack for centralized logging
 - ✅ Jaeger for distributed tracing
@@ -56,19 +60,23 @@ open http://localhost:8000
 
 **Quick Configuration Test:**
 ```bash
-# Create a simple service mapping
-curl -X POST http://localhost:8000/api/services \
-  -H "Authorization: Bearer $(cat .cluster-api-key)" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "test-service",
-    "ip_fqdn": "httpbin.org",
-    "collection": "test",
-    "auth_type": "none"
-  }'
+# Generate mTLS certificates
+docker-compose --profile tools run --rm cert-generator
 
-# Test proxy connectivity
-curl -x http://localhost:8080 http://httpbin.org/ip
+# Test ingress proxy (reverse proxy)
+curl http://localhost:80/
+
+# Test ingress HTTPS with mTLS
+curl --cert certs/client-cert.pem \
+     --key certs/client-key.pem \
+     --cacert certs/ca.pem \
+     -k https://localhost:443/
+
+# Test egress proxy health
+curl http://localhost:8081/healthz
+
+# Test ingress proxy health
+curl http://localhost:8082/healthz
 ```
 
 ### Kubernetes with Helm
@@ -112,12 +120,14 @@ kubectl apply -f examples/simple-marchproxy.yaml
 ## ✨ Features
 
 ### Core Features
-- **High-Performance Proxy**: Multi-protocol support (TCP, UDP, ICMP, HTTP/HTTPS, WebSocket, QUIC/HTTP3)
-- **eBPF Acceleration**: Kernel-level packet processing for maximum performance
+- **Dual Proxy Architecture**: Both egress (forward) and ingress (reverse) proxy functionality
+- **High-Performance Proxies**: Multi-protocol support (TCP, UDP, ICMP, HTTP/HTTPS, WebSocket, QUIC/HTTP3)
+- **mTLS Authentication**: Mutual TLS with automated certificate management and ECC P-384 cryptography
+- **eBPF Acceleration**: Kernel-level packet processing for maximum performance on both proxies
 - **Service-to-Service Mapping**: Granular traffic routing and access control
 - **Multi-Cluster Support**: Enterprise-grade cluster management and isolation
 - **Real-time Configuration**: Hot-reload configuration without downtime
-- **Comprehensive Monitoring**: Prometheus metrics, health checks, and observability
+- **Comprehensive Monitoring**: Prometheus metrics, health checks, and observability for both proxies
 
 ### Performance Acceleration
 - **eBPF Fast-path**: Programmable kernel-level packet filtering
@@ -127,6 +137,8 @@ kubectl apply -f examples/simple-marchproxy.yaml
 - **Content Compression**: Gzip, Brotli, Zstandard, and Deflate support
 
 ### Security & Authentication
+- **mTLS Mutual Authentication**: Client certificate validation with ECC P-384 cryptography
+- **Certificate Management**: Automated CA generation or upload existing certificate chains
 - **Multiple Auth Methods**: Base64 tokens, JWT, 2FA/TOTP
 - **Enterprise Authentication**: SAML, SCIM, OAuth2 (Google, Microsoft, etc.)
 - **TLS Management**: Automatic certificate management via Infisical/Vault or manual upload
@@ -142,40 +154,51 @@ kubectl apply -f examples/simple-marchproxy.yaml
 
 ## 🏗️ Architecture
 
-MarchProxy features a distributed architecture optimized for high-performance egress traffic management:
+MarchProxy features a distributed dual proxy architecture optimized for both egress and ingress traffic management:
 
 ```
 ┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
-│   Data Center   │       │   Enterprise    │       │    Internet     │
-│    Services     │       │   Management    │       │   Destinations  │
+│   External      │       │   Enterprise    │       │   Data Center   │
+│    Clients      │       │   Management    │       │    Services     │
 └─────────┬───────┘       └─────────┬───────┘       └─────────┬───────┘
           │                         │                         │
+          │ HTTPS/mTLS              │                         │ Egress
           │                         │                         │
 ┌─────────▼─────────────────────────▼─────────────────────────▼─────────┐
-│                        MarchProxy Cluster                            │
-│  ┌─────────────────┐                    ┌─────────────────────────┐  │
-│  │     Manager     │◄──────────────────►│       Proxy Nodes       │  │
-│  │ (py4web/pydal)  │   Configuration    │    (Go/eBPF/XDP)        │  │
-│  │                 │      & Control     │                         │  │
-│  │ • Web Dashboard │                    │ ┌─────┐ ┌─────┐ ┌─────┐ │  │
-│  │ • API Server    │                    │ │ XDP │ │ XDP │ │ XDP │ │  │
-│  │ • User Mgmt     │                    │ │ P1  │ │ P2  │ │ P3  │ │  │
-│  │ • License Mgmt  │                    │ └─────┘ └─────┘ └─────┘ │  │
-│  │ • TLS CA        │                    │                         │  │
-│  └─────────────────┘                    └─────────────────────────┘  │
-│           │                                         │                │
-│           ▼                                         ▼                │
-│  ┌─────────────────┐                    ┌─────────────────────────┐  │
-│  │   PostgreSQL    │                    │    Observability        │  │
-│  │   Database      │                    │                         │  │
-│  │                 │                    │ • Prometheus/Grafana    │  │
-│  │ • Clusters      │                    │ • ELK Stack             │  │
-│  │ • Services      │                    │ • Jaeger Tracing        │  │
-│  │ • Mappings      │                    │ • AlertManager          │  │
-│  │ • Users         │                    │ • Health Checks         │  │
-│  │ • Certificates  │                    │                         │  │
-│  └─────────────────┘                    └─────────────────────────┘  │
-└───────────────────────────────────────────────────────────────────────┘
+│                     MarchProxy Dual Proxy Cluster                   │
+│                                                                      │
+│  ┌─────────────────┐          ┌─────────────────────────────────┐   │
+│  │     Manager     │◄────────►│        Proxy Architecture       │   │
+│  │ (py4web/pydal)  │          │                                 │   │
+│  │                 │          │  ┌─────────────┐ ┌─────────────┐│   │
+│  │ • Web Dashboard │          │  │   Ingress   │ │   Egress    ││   │
+│  │ • API Server    │          │  │  (Reverse)  │ │  (Forward)  ││   │
+│  │ • User Mgmt     │          │  │             │ │             ││   │
+│  │ • License Mgmt  │          │  │ :80 (HTTP)  │ │ :8080 (TCP) ││   │
+│  │ • mTLS CA Mgmt  │          │  │ :443 (TLS)  │ │ :8081 (ADM) ││   │
+│  │ • Cert Mgmt     │          │  │ :8082 (ADM) │ │             ││   │
+│  └─────────────────┘          │  │             │ │             ││   │
+│           │                   │  │ ┌─────────┐ │ │ ┌─────────┐ ││   │
+│           │                   │  │ │ mTLS    │ │ │ │ mTLS    │ ││   │
+│           │                   │  │ │ eBPF    │ │ │ │ eBPF    │ ││   │
+│           │                   │  │ │ XDP     │ │ │ │ XDP     │ ││   │
+│           │                   │  │ └─────────┘ │ │ └─────────┘ ││   │
+│           │                   │  └─────────────┘ └─────────────┘│   │
+│           │                   └─────────────────────────────────┘   │
+│           │                                     │                   │
+│           ▼                                     ▼                   │
+│  ┌─────────────────┐                    ┌─────────────────────────┐ │
+│  │   PostgreSQL    │                    │    Observability        │ │
+│  │   Database      │                    │                         │ │
+│  │                 │                    │ • Prometheus/Grafana    │ │
+│  │ • Clusters      │                    │ • ELK Stack             │ │
+│  │ • Services      │                    │ • Jaeger Tracing        │ │
+│  │ • Mappings      │                    │ • AlertManager          │ │
+│  │ • Users         │                    │ • mTLS Metrics          │ │
+│  │ • Certificates  │                    │ • Dual Proxy Dashboards│ │
+│  │ • Ingress Routes│                    │                         │ │
+│  └─────────────────┘                    └─────────────────────────┘ │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Component Architecture
@@ -206,7 +229,7 @@ MarchProxy features a distributed architecture optimized for high-performance eg
 
 | Feature | Community | Enterprise |
 |---------|-----------|------------|
-| **Proxy Instances** | Up to 3 | Unlimited* |
+| **Proxy Instances** | Up to 3 total (any combination of ingress/egress) | Unlimited* |
 | **Clusters** | Single default | Multiple with isolation |
 | **Performance Tier** | Standard + eBPF | + XDP/AF_XDP + DPDK |
 | **Rate Limiting** | Basic application-level | + XDP-based HW acceleration |
@@ -224,6 +247,22 @@ MarchProxy features a distributed architecture optimized for high-performance eg
 | **License** | AGPL v3 | Commercial license available |
 
 *Based on license entitlements from license.penguintech.io
+
+### Proxy Instance Limits
+
+**Community Edition:**
+- **3 total proxy instances maximum** across all types
+- Examples of valid configurations:
+  - 1 ingress + 2 egress proxies
+  - 2 ingress + 1 egress proxy
+  - 3 egress proxies (no ingress)
+  - 3 ingress proxies (no egress)
+- All proxies share the same default cluster
+
+**Enterprise Edition:**
+- **Unlimited proxy instances** of both types
+- Multiple clusters with separate quotas and isolation
+- License determines specific limits per deployment
 
 ## 🚀 Installation
 

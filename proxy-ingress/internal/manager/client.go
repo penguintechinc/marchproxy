@@ -10,7 +10,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/penguintech/marchproxy-ingress/internal/config"
+	"marchproxy-ingress/internal/config"
 )
 
 type Client struct {

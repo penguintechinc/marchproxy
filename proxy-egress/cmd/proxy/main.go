@@ -19,11 +19,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/penguintech/marchproxy-egress/internal/auth"
-	"github.com/penguintech/marchproxy-egress/internal/config"
-	"github.com/penguintech/marchproxy-egress/internal/ebpf"
-	"github.com/penguintech/marchproxy-egress/internal/manager"
-	mtls "github.com/penguintech/marchproxy-egress/internal/tls"
+	"marchproxy-egress/internal/auth"
+	"marchproxy-egress/internal/config"
+	"marchproxy-egress/internal/ebpf"
+	"marchproxy-egress/internal/manager"
+	mtls "marchproxy-egress/internal/tls"
 	"github.com/spf13/cobra"
 )
 

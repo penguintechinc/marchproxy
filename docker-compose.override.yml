@@ -24,26 +24,46 @@ services:
       - "8000:8000"   # Main application
       - "5678:5678"   # Python debugger (debugpy)
 
-  # Proxy - Development mode with hot reload
-  proxy:
+  # Proxy Egress - Development mode with hot reload
+  proxy-egress:
     build:
       target: development
     volumes:
       # Mount source code for hot reload
-      - ./proxy:/app
-      - proxy_logs:/app/logs
-      - ./certs:/app/certs:ro
+      - ./proxy-egress:/app
+      - proxy_egress_logs:/app/logs
+      - ./certs:/app/certs:rw
     environment:
       # Development-specific settings
-      - LOG_LEVEL=debug
+      - LOG_LEVEL=DEBUG
       - ENABLE_PROFILING=true
       - GO_ENV=development
+      - MTLS_ENABLED=true
     ports:
-      - "80:80"
-      - "443:443"
-      - "8080:8080"   # Health/Admin API
-      - "8081:8081"   # Metrics
+      - "8080:8080"   # Proxy port
+      - "8081:8081"   # Admin/Metrics port
       - "6060:6060"   # Go pprof profiling
+
+  # Proxy Ingress - Development mode with hot reload
+  proxy-ingress:
+    build:
+      target: development
+    volumes:
+      # Mount source code for hot reload
+      - ./proxy-ingress:/app
+      - proxy_ingress_logs:/app/logs
+      - ./certs:/app/certs:rw
+    environment:
+      # Development-specific settings
+      - LOG_LEVEL=DEBUG
+      - ENABLE_PROFILING=true
+      - GO_ENV=development
+      - MTLS_ENABLED=true
+    ports:
+      - "80:80"       # HTTP port
+      - "443:443"     # HTTPS/TLS port
+      - "8082:8082"   # Admin/Metrics port
+      - "6061:6060"   # Go pprof profiling (different port to avoid conflict)
 
   # Reduce resource requirements for development
   postgres:

@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"testing"
 
-	"github.com/penguintech/marchproxy-egress/internal/config"
+	"marchproxy-egress/internal/config"
 )
 
 func TestMTLSManagerCreation(t *testing.T) {

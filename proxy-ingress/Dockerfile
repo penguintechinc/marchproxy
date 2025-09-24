@@ -2,7 +2,7 @@
 # High-performance Go reverse proxy with eBPF/XDP acceleration and mTLS
 
 # Build stage
-FROM golang:1.21-bookworm AS builder
+FROM golang:1.24-bookworm AS builder
 
 # Install build dependencies for eBPF and networking
 RUN apt-get update && apt-get install -y \

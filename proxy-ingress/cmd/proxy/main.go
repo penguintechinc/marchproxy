@@ -21,16 +21,16 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/penguintech/marchproxy-ingress/internal/auth"
-	"github.com/penguintech/marchproxy-ingress/internal/config"
-	"github.com/penguintech/marchproxy-ingress/internal/ebpf"
-	"github.com/penguintech/marchproxy-ingress/internal/manager"
-	"github.com/penguintech/marchproxy-ingress/internal/tls"
+	"marchproxy-ingress/internal/auth"
+	"marchproxy-ingress/internal/config"
+	"marchproxy-ingress/internal/ebpf"
+	"marchproxy-ingress/internal/manager"
+	"marchproxy-ingress/internal/tls"
 	"github.com/spf13/cobra"
 )
 
 var (
-	version   = "v0.1.0.1757706677" // Updated from .version file
+	version   = "v1.0.0" // MarchProxy Ingress - Production Release
 	buildTime = "unknown"
 	gitHash   = "unknown"
 )

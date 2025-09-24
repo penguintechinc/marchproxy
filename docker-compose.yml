@@ -143,64 +143,62 @@ services:
       retries: 3
       start_period: 40s
 
-  # MarchProxy Proxy (Go)
-  proxy:
+  # MarchProxy Egress Proxy (Go)
+  proxy-egress:
     build:
-      context: ./proxy
+      context: ./proxy-egress
       dockerfile: Dockerfile
       target: production
-    container_name: marchproxy-proxy
+    container_name: marchproxy-proxy-egress
     environment:
       # Manager connection
       - MANAGER_URL=http://manager:8000
-      - MANAGER_HOST=manager
-      - MANAGER_PORT=8000
       - CLUSTER_API_KEY=${CLUSTER_API_KEY:-default-api-key}
 
       # Proxy configuration
-      - PROXY_ID=${PROXY_ID:-proxy-1}
-      - CLUSTER_ID=${CLUSTER_ID:-default}
-      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - PROXY_NAME=${PROXY_EGRESS_NAME:-proxy-egress-1}
+      - PROXY_TYPE=egress
+      - LISTEN_PORT=8080
+      - ADMIN_PORT=8081
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
 
-      # Database and cache
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis123}@redis:6379/1
-
-      # Monitoring and tracing
-      - METRICS_ENABLED=true
-      - METRICS_PORT=8081
-      - HEALTH_PORT=8080
-      - TRACING_ENABLED=true
-      - JAEGER_ENDPOINT=${JAEGER_ENDPOINT:-http://jaeger:14268/api/traces}
-
-      # Syslog configuration for ELK integration
-      - SYSLOG_ENABLED=${SYSLOG_ENABLED:-true}
-      - SYSLOG_HOST=${SYSLOG_HOST:-logstash}
-      - SYSLOG_PORT=${SYSLOG_PORT:-5514}
-      - SYSLOG_PROTOCOL=${SYSLOG_PROTOCOL:-udp}
-      - SYSLOG_FACILITY=${SYSLOG_FACILITY:-local1}
-      - SYSLOG_TAG=${SYSLOG_TAG:-marchproxy-proxy}
+      # mTLS configuration
+      - MTLS_ENABLED=${MTLS_ENABLED:-false}
+      - MTLS_SERVER_CERT_PATH=/app/certs/server-cert.pem
+      - MTLS_SERVER_KEY_PATH=/app/certs/server-key.pem
+      - MTLS_CLIENT_CA_PATH=/app/certs/ca.pem
+      - MTLS_CLIENT_CERT_PATH=/app/certs/client-cert.pem
+      - MTLS_CLIENT_KEY_PATH=/app/certs/client-key.pem
+      - MTLS_REQUIRE_CLIENT_CERT=${MTLS_REQUIRE_CLIENT_CERT:-true}
+      - MTLS_VERIFY_CLIENT_CERT=${MTLS_VERIFY_CLIENT_CERT:-true}
 
       # Network acceleration
-      - ENABLE_XDP=${ENABLE_XDP:-true}
       - ENABLE_EBPF=${ENABLE_EBPF:-true}
+      - ENABLE_METRICS=${ENABLE_METRICS:-true}
+      - ENABLE_XDP=${ENABLE_XDP:-false}
       - ENABLE_DPDK=${ENABLE_DPDK:-false}
       - ENABLE_AF_XDP=${ENABLE_AF_XDP:-false}
       - ENABLE_SR_IOV=${ENABLE_SR_IOV:-false}
+
+      # Rate limiting
+      - RATE_LIMIT_ENABLED=${RATE_LIMIT_ENABLED:-false}
+      - RATE_LIMIT_RPS=${RATE_LIMIT_RPS:-1000}
+
+      # Syslog configuration
+      - SYSLOG_ENDPOINT=${SYSLOG_ENDPOINT:-logstash:5514}
+
+      # License configuration
+      - LICENSE_KEY=${LICENSE_KEY:-}
     volumes:
-      - ./proxy/configs:/app/configs:ro
       - ./certs:/app/certs:ro
-      - proxy_logs:/app/logs
+      - proxy_egress_logs:/app/logs
     ports:
-      - "80:80"
-      - "443:443"
-      - "8080:8080"   # Health/Admin API
-      - "8081:8081"   # Metrics
+      - "8080:8080"   # Proxy port
+      - "8081:8081"   # Admin/Metrics port
     networks:
       - marchproxy-network
     depends_on:
       manager:
-        condition: service_healthy
-      redis:
         condition: service_healthy
       logstash:
         condition: service_started
@@ -210,12 +208,94 @@ services:
       options:
         syslog-address: "udp://logstash:5514"
         syslog-facility: "local1"
-        tag: "marchproxy-proxy"
+        tag: "marchproxy-proxy-egress"
     labels:
-      - "service=marchproxy-proxy"
+      - "service=marchproxy-proxy-egress"
       - "component=proxy"
+      - "proxy-type=egress"
     healthcheck:
-      test: ["CMD", "./marchproxy-health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8081/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # MarchProxy Ingress Proxy (Go)
+  proxy-ingress:
+    build:
+      context: ./proxy-ingress
+      dockerfile: Dockerfile
+      target: production
+    container_name: marchproxy-proxy-ingress
+    environment:
+      # Manager connection
+      - MANAGER_URL=http://manager:8000
+      - CLUSTER_API_KEY=${CLUSTER_API_KEY:-default-api-key}
+
+      # Proxy configuration
+      - PROXY_NAME=${PROXY_INGRESS_NAME:-proxy-ingress-1}
+      - PROXY_TYPE=ingress
+      - LISTEN_PORT=80
+      - TLS_PORT=443
+      - ADMIN_PORT=8082
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+
+      # mTLS configuration
+      - MTLS_ENABLED=${MTLS_ENABLED:-false}
+      - MTLS_SERVER_CERT_PATH=/app/certs/server-cert.pem
+      - MTLS_SERVER_KEY_PATH=/app/certs/server-key.pem
+      - MTLS_CLIENT_CA_PATH=/app/certs/ca.pem
+      - MTLS_REQUIRE_CLIENT_CERT=${MTLS_REQUIRE_CLIENT_CERT:-false}
+      - MTLS_VERIFY_CLIENT_CERT=${MTLS_VERIFY_CLIENT_CERT:-true}
+
+      # Load balancing and routing
+      - LOAD_BALANCER_ALGORITHM=${LOAD_BALANCER_ALGORITHM:-round_robin}
+      - HEALTH_CHECK_ENABLED=${HEALTH_CHECK_ENABLED:-true}
+      - HEALTH_CHECK_INTERVAL=${HEALTH_CHECK_INTERVAL:-30}
+      - HEALTH_CHECK_TIMEOUT=${HEALTH_CHECK_TIMEOUT:-5}
+
+      # Network acceleration
+      - ENABLE_EBPF=${ENABLE_EBPF:-true}
+      - ENABLE_METRICS=${ENABLE_METRICS:-true}
+      - ENABLE_XDP=${ENABLE_XDP:-false}
+
+      # Rate limiting and DDoS protection
+      - RATE_LIMIT_ENABLED=${RATE_LIMIT_ENABLED:-true}
+      - RATE_LIMIT_RPS=${RATE_LIMIT_RPS:-10000}
+      - DDOS_PROTECTION_ENABLED=${DDOS_PROTECTION_ENABLED:-true}
+
+      # Syslog configuration
+      - SYSLOG_ENDPOINT=${SYSLOG_ENDPOINT:-logstash:5514}
+
+      # License configuration
+      - LICENSE_KEY=${LICENSE_KEY:-}
+    volumes:
+      - ./certs:/app/certs:ro
+      - proxy_ingress_logs:/app/logs
+    ports:
+      - "80:80"       # HTTP port
+      - "443:443"     # HTTPS/TLS port
+      - "8082:8082"   # Admin/Metrics port
+    networks:
+      - marchproxy-network
+    depends_on:
+      manager:
+        condition: service_healthy
+      logstash:
+        condition: service_started
+    restart: unless-stopped
+    logging:
+      driver: syslog
+      options:
+        syslog-address: "udp://logstash:5514"
+        syslog-facility: "local2"
+        tag: "marchproxy-proxy-ingress"
+    labels:
+      - "service=marchproxy-proxy-ingress"
+      - "component=proxy"
+      - "proxy-type=ingress"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -462,5 +542,7 @@ volumes:
     driver: local
   manager_logs:
     driver: local
-  proxy_logs:
+  proxy_egress_logs:
+    driver: local
+  proxy_ingress_logs:
     driver: local
