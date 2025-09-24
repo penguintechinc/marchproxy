@@ -9,6 +9,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"marchproxy-egress/internal/killkrill"
 )
 
 type PrometheusMetrics struct {
@@ -73,15 +74,17 @@ type MetricsConfig struct {
 	CollectionInterval time.Duration
 	ExposeGoMetrics    bool
 	ExposeProcessMetrics bool
+	KillKrillConfig *killkrill.Config
 }
 
 type MetricsCollector struct {
-	prometheus *PrometheusMetrics
-	config     MetricsConfig
-	collectors []Collector
-	server     *http.Server
-	enabled    bool
-	mutex      sync.RWMutex
+	prometheus      *PrometheusMetrics
+	config          MetricsConfig
+	collectors      []Collector
+	server          *http.Server
+	enabled         bool
+	mutex           sync.RWMutex
+	killKrillClient *killkrill.Client
 }
 
 type Collector interface {
@@ -615,15 +618,26 @@ func NewMetricsCollector(config MetricsConfig) *MetricsCollector {
 		collectors: make([]Collector, 0),
 		enabled:    true,
 	}
-	
+
+	// Initialize KillKrill client if config provided
+	if config.KillKrillConfig != nil {
+		killKrillClient, err := killkrill.NewClient(*config.KillKrillConfig)
+		if err != nil {
+			// Log error but don't fail initialization
+			// TODO: Use proper logging here
+		} else {
+			mc.killKrillClient = killKrillClient
+		}
+	}
+
 	if config.ExposeGoMetrics {
 		mc.prometheus.registry.MustRegister(prometheus.NewGoCollector())
 	}
-	
+
 	if config.ExposeProcessMetrics {
 		mc.prometheus.registry.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
 	}
-	
+
 	mc.addDefaultCollectors()
 	return mc
 }
@@ -653,11 +667,33 @@ func (mc *MetricsCollector) collectMetrics() {
 	if !mc.enabled {
 		return
 	}
-	
+
 	for _, collector := range mc.collectors {
 		if collector.Enabled() {
 			collector.Collect()
 		}
+	}
+
+	// Export metrics to KillKrill if configured
+	mc.exportToKillKrill()
+}
+
+// exportToKillKrill exports metrics to KillKrill
+func (mc *MetricsCollector) exportToKillKrill() {
+	if mc.killKrillClient == nil || !mc.config.KillKrillConfig.Enabled {
+		return
+	}
+
+	// Gather all metrics from the Prometheus registry
+	metrics, err := killkrill.GatherMetricsFromRegistry(mc.prometheus.registry)
+	if err != nil {
+		// TODO: Use proper logging
+		return
+	}
+
+	// Send each metric to KillKrill
+	for _, metric := range metrics {
+		mc.killKrillClient.SendMetric(metric)
 	}
 }
 
@@ -682,6 +718,14 @@ func (mc *MetricsCollector) StartServer(addr string) error {
 func (mc *MetricsCollector) StopServer(ctx context.Context) error {
 	if mc.server != nil {
 		return mc.server.Shutdown(ctx)
+	}
+	return nil
+}
+
+// Close shuts down the metrics collector and its KillKrill client
+func (mc *MetricsCollector) Close() error {
+	if mc.killKrillClient != nil {
+		return mc.killKrillClient.Close()
 	}
 	return nil
 }

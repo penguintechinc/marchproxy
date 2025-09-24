@@ -179,6 +179,24 @@ class ConfigManager:
             'pool_size': int(self.get_config('redis_pool_size', os.getenv('REDIS_POOL_SIZE', 10), 'redis')),
         }
 
+    def get_killkrill_config(self) -> Dict[str, Any]:
+        """Get KillKrill configuration with fallbacks"""
+        import socket
+        hostname = socket.gethostname()
+
+        return {
+            'enabled': bool(self.get_config('killkrill_enabled', os.getenv('KILLKRILL_ENABLED', 'false').lower() == 'true', 'killkrill')),
+            'log_endpoint': self.get_config('killkrill_log_endpoint', os.getenv('KILLKRILL_LOG_ENDPOINT', ''), 'killkrill'),
+            'metrics_endpoint': self.get_config('killkrill_metrics_endpoint', os.getenv('KILLKRILL_METRICS_ENDPOINT', ''), 'killkrill'),
+            'api_key': self.get_config('killkrill_api_key', os.getenv('KILLKRILL_API_KEY', ''), 'killkrill'),
+            'source_name': self.get_config('killkrill_source_name', os.getenv('KILLKRILL_SOURCE_NAME', f'marchproxy-manager-{hostname}'), 'killkrill'),
+            'application': self.get_config('killkrill_application', os.getenv('KILLKRILL_APPLICATION', 'manager'), 'killkrill'),
+            'batch_size': int(self.get_config('killkrill_batch_size', os.getenv('KILLKRILL_BATCH_SIZE', 50), 'killkrill')),
+            'flush_interval': int(self.get_config('killkrill_flush_interval', os.getenv('KILLKRILL_FLUSH_INTERVAL', 10), 'killkrill')),
+            'timeout': int(self.get_config('killkrill_timeout', os.getenv('KILLKRILL_TIMEOUT', 30), 'killkrill')),
+            'use_http3': bool(self.get_config('killkrill_use_http3', os.getenv('KILLKRILL_USE_HTTP3', 'true').lower() == 'true', 'killkrill')),
+        }
+
     def get_license_config(self) -> Dict[str, Any]:
         """Get license configuration"""
         return {

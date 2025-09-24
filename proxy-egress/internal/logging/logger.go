@@ -7,54 +7,82 @@ import (
 	"strings"
 
 	"github.com/sirupsen/logrus"
+	"marchproxy-egress/internal/killkrill"
 )
 
 // Logger is a structured logger interface
 type Logger struct {
 	*logrus.Entry
+	killKrillClient *killkrill.Client
 }
 
 // NewLogger creates a new structured logger
 func NewLogger(level string, syslogEndpoint string) (*Logger, error) {
+	return NewLoggerWithKillKrill(level, syslogEndpoint, nil)
+}
+
+// NewLoggerWithKillKrill creates a new structured logger with KillKrill integration
+func NewLoggerWithKillKrill(level string, syslogEndpoint string, killKrillConfig *killkrill.Config) (*Logger, error) {
 	logger := logrus.New()
-	
+
 	// Set log level
 	logLevel, err := logrus.ParseLevel(strings.ToLower(level))
 	if err != nil {
 		logLevel = logrus.InfoLevel
 	}
 	logger.SetLevel(logLevel)
-	
+
 	// Set JSON formatter for structured logging
 	logger.SetFormatter(&logrus.JSONFormatter{
 		TimestampFormat: "2006-01-02T15:04:05.000Z07:00",
 	})
-	
+
 	// Set output to stdout by default
 	logger.SetOutput(os.Stdout)
-	
+
+	// Initialize KillKrill client if config provided
+	var killKrillClient *killkrill.Client
+	if killKrillConfig != nil {
+		killKrillClient, err = killkrill.NewClient(*killKrillConfig)
+		if err != nil {
+			logger.WithError(err).Warn("Failed to initialize KillKrill client")
+		} else if killKrillConfig.Enabled {
+			// Add KillKrill hook to logrus
+			hook := killkrill.NewHook(killKrillClient)
+			logger.AddHook(hook)
+		}
+	}
+
 	// TODO: Add syslog hook if syslogEndpoint is provided
 	if syslogEndpoint != "" {
 		// This would require additional syslog integration
 		logger.WithField("syslog_endpoint", syslogEndpoint).Warn("Syslog integration not yet implemented")
 	}
-	
+
 	entry := logger.WithFields(logrus.Fields{
 		"service": "marchproxy",
 		"version": "1.0.0",
 	})
-	
-	return &Logger{Entry: entry}, nil
+
+	return &Logger{Entry: entry, killKrillClient: killKrillClient}, nil
 }
 
 // WithField adds a field to the logger
 func (l *Logger) WithField(key string, value interface{}) *Logger {
-	return &Logger{Entry: l.Entry.WithField(key, value)}
+	return &Logger{Entry: l.Entry.WithField(key, value), killKrillClient: l.killKrillClient}
 }
 
 // WithFields adds multiple fields to the logger
 func (l *Logger) WithFields(fields map[string]interface{}) *Logger {
-	return &Logger{Entry: l.Entry.WithFields(fields)}
+	return &Logger{Entry: l.Entry.WithFields(fields), killKrillClient: l.killKrillClient}
+}
+
+// Close shuts down the logger and its KillKrill client
+func (l *Logger) Close() error {
+	if l.killKrillClient != nil {
+		return l.killKrillClient.Close()
+	}
+	return nil
 }
 
 // Info logs an info message with optional key-value pairs

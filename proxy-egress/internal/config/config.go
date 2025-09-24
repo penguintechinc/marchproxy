@@ -64,6 +64,19 @@ type Config struct {
 	// Rate limiting
 	RateLimitEnabled bool `mapstructure:"rate_limit_enabled"`
 	RateLimitRPS     int  `mapstructure:"rate_limit_rps"`
+
+	// KillKrill integration
+	KillKrillEnabled         bool   `mapstructure:"killkrill_enabled"`
+	KillKrillLogEndpoint     string `mapstructure:"killkrill_log_endpoint"`
+	KillKrillMetricsEndpoint string `mapstructure:"killkrill_metrics_endpoint"`
+	KillKrillAPIKey          string `mapstructure:"killkrill_api_key"`
+	KillKrillSourceName      string `mapstructure:"killkrill_source_name"`
+	KillKrillApplication     string `mapstructure:"killkrill_application"`
+	KillKrillBatchSize       int    `mapstructure:"killkrill_batch_size"`
+	KillKrillFlushInterval   int    `mapstructure:"killkrill_flush_interval"`
+	KillKrillTimeout         int    `mapstructure:"killkrill_timeout"`
+	KillKrillUseHTTP3        bool   `mapstructure:"killkrill_use_http3"`
+	KillKrillTLSInsecure     bool   `mapstructure:"killkrill_tls_insecure"`
 }
 
 // Load creates a new configuration from command line flags, environment variables, and config file
@@ -158,6 +171,19 @@ func setDefaults(v *viper.Viper) {
 	// Rate limiting
 	v.SetDefault("rate_limit_enabled", false)
 	v.SetDefault("rate_limit_rps", 1000)
+
+	// KillKrill integration
+	v.SetDefault("killkrill_enabled", getBoolEnv("KILLKRILL_ENABLED", false))
+	v.SetDefault("killkrill_log_endpoint", os.Getenv("KILLKRILL_LOG_ENDPOINT"))
+	v.SetDefault("killkrill_metrics_endpoint", os.Getenv("KILLKRILL_METRICS_ENDPOINT"))
+	v.SetDefault("killkrill_api_key", os.Getenv("KILLKRILL_API_KEY"))
+	v.SetDefault("killkrill_source_name", getEnvOrDefault("KILLKRILL_SOURCE_NAME", "marchproxy-"+getHostname()))
+	v.SetDefault("killkrill_application", "proxy")
+	v.SetDefault("killkrill_batch_size", getIntEnv("KILLKRILL_BATCH_SIZE", 100))
+	v.SetDefault("killkrill_flush_interval", getIntEnv("KILLKRILL_FLUSH_INTERVAL", 10))
+	v.SetDefault("killkrill_timeout", getIntEnv("KILLKRILL_TIMEOUT", 30))
+	v.SetDefault("killkrill_use_http3", getBoolEnv("KILLKRILL_USE_HTTP3", true))
+	v.SetDefault("killkrill_tls_insecure", getBoolEnv("KILLKRILL_TLS_INSECURE", false))
 }
 
 func bindFlags(v *viper.Viper, cmd *cobra.Command) error {
@@ -299,6 +325,27 @@ func getBoolEnv(key string, defaultValue bool) bool {
 	}
 }
 
+func getIntEnv(key string, defaultValue int) int {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+
+	intValue, err := strconv.Atoi(value)
+	if err != nil {
+		return defaultValue
+	}
+	return intValue
+}
+
+func getEnvOrDefault(key, defaultValue string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	return value
+}
+
 // GetListenAddress returns the full listen address for the proxy
 func (c *Config) GetListenAddress() string {
 	return fmt.Sprintf(":%d", c.ListenPort)
@@ -363,4 +410,25 @@ func (c *Config) RequiresClientCert() bool {
 // ShouldVerifyClientCert returns true if client certificates should be verified
 func (c *Config) ShouldVerifyClientCert() bool {
 	return c.EnableMTLS && c.MTLSVerifyClientCert
+}
+
+// GetKillKrillConfig returns a KillKrill client configuration based on the proxy config
+func (c *Config) GetKillKrillConfig() *map[string]interface{} {
+	if !c.KillKrillEnabled {
+		return nil
+	}
+
+	return &map[string]interface{}{
+		"enabled":           c.KillKrillEnabled,
+		"log_endpoint":      c.KillKrillLogEndpoint,
+		"metrics_endpoint":  c.KillKrillMetricsEndpoint,
+		"api_key":          c.KillKrillAPIKey,
+		"source_name":      c.KillKrillSourceName,
+		"application":      c.KillKrillApplication,
+		"batch_size":       c.KillKrillBatchSize,
+		"flush_interval":   c.KillKrillFlushInterval,
+		"timeout":          c.KillKrillTimeout,
+		"use_http3":        c.KillKrillUseHTTP3,
+		"tls_insecure":     c.KillKrillTLSInsecure,
+	}
 }
