@@ -1,0 +1,268 @@
+"""
+Service Management API Routes
+
+Handles CRUD operations for services and triggers xDS updates
+"""
+
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from pydantic import BaseModel, Field
+
+from app.core.database import get_db
+from app.services.xds_bridge import (
+    get_xds_bridge,
+    update_envoy_config_for_cluster,
+    ServiceConfiguration,
+)
+
+router = APIRouter(prefix="/services", tags=["services"])
+
+
+# Pydantic schemas
+class ServiceCreate(BaseModel):
+    """Schema for creating a new service"""
+
+    name: str = Field(..., min_length=1, max_length=255)
+    cluster_id: int
+    listener_port: int = Field(..., ge=1, le=65535)
+    upstream_host: str
+    upstream_port: int = Field(..., ge=1, le=65535)
+    protocol: str = Field(default="http", pattern="^(http|https|grpc|tcp)$")
+    health_check_path: Optional[str] = "/health"
+
+
+class ServiceUpdate(BaseModel):
+    """Schema for updating a service"""
+
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    listener_port: Optional[int] = Field(None, ge=1, le=65535)
+    upstream_host: Optional[str] = None
+    upstream_port: Optional[int] = Field(None, ge=1, le=65535)
+    protocol: Optional[str] = Field(None, pattern="^(http|https|grpc|tcp)$")
+    health_check_path: Optional[str] = None
+
+
+class ServiceResponse(BaseModel):
+    """Schema for service response"""
+
+    id: int
+    name: str
+    cluster_id: int
+    listener_port: int
+    upstream_host: str
+    upstream_port: int
+    protocol: str
+    health_check_path: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+
+@router.post("/", response_model=ServiceResponse, status_code=status.HTTP_201_CREATED)
+async def create_service(
+    service_data: ServiceCreate,
+    db: Session = Depends(get_db),
+):
+    """
+    Create a new service and trigger xDS update
+
+    This endpoint:
+    1. Creates a service in the database
+    2. Triggers an xDS snapshot update for the cluster
+    3. Returns the created service
+    """
+    # TODO: Implement actual database creation
+    # For now, return a mock response
+    # from app.models.sqlalchemy.service import Service
+    # db_service = Service(**service_data.dict())
+    # db.add(db_service)
+    # db.commit()
+    # db.refresh(db_service)
+
+    # Mock service response
+    mock_service = {
+        "id": 1,
+        **service_data.dict(),
+    }
+
+    # Trigger xDS update for the cluster
+    try:
+        await update_envoy_config_for_cluster(service_data.cluster_id, db)
+    except Exception as e:
+        # Log error but don't fail the request
+        # The service is created, xDS update will be retried
+        print(f"Warning: xDS update failed: {e}")
+
+    return mock_service
+
+
+@router.put("/{service_id}", response_model=ServiceResponse)
+async def update_service(
+    service_id: int,
+    service_data: ServiceUpdate,
+    db: Session = Depends(get_db),
+):
+    """
+    Update an existing service and trigger xDS update
+
+    This endpoint:
+    1. Updates the service in the database
+    2. Triggers an xDS snapshot update for the cluster
+    3. Returns the updated service
+    """
+    # TODO: Implement actual database update
+    # For now, return a mock response
+    # from app.models.sqlalchemy.service import Service
+    # db_service = db.query(Service).filter(Service.id == service_id).first()
+    # if not db_service:
+    #     raise HTTPException(status_code=404, detail="Service not found")
+    #
+    # for key, value in service_data.dict(exclude_unset=True).items():
+    #     setattr(db_service, key, value)
+    #
+    # db.commit()
+    # db.refresh(db_service)
+
+    # Mock service response
+    mock_service = {
+        "id": service_id,
+        "name": service_data.name or "example-service",
+        "cluster_id": 1,
+        "listener_port": service_data.listener_port or 10000,
+        "upstream_host": service_data.upstream_host or "127.0.0.1",
+        "upstream_port": service_data.upstream_port or 8080,
+        "protocol": service_data.protocol or "http",
+        "health_check_path": service_data.health_check_path,
+    }
+
+    # Trigger xDS update for the cluster
+    cluster_id = 1  # mock_service["cluster_id"]
+    try:
+        await update_envoy_config_for_cluster(cluster_id, db)
+    except Exception as e:
+        print(f"Warning: xDS update failed: {e}")
+
+    return mock_service
+
+
+@router.delete("/{service_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_service(
+    service_id: int,
+    db: Session = Depends(get_db),
+):
+    """
+    Delete a service and trigger xDS update
+
+    This endpoint:
+    1. Deletes the service from the database
+    2. Triggers an xDS snapshot update for the cluster
+    3. Returns 204 No Content
+    """
+    # TODO: Implement actual database deletion
+    # from app.models.sqlalchemy.service import Service
+    # db_service = db.query(Service).filter(Service.id == service_id).first()
+    # if not db_service:
+    #     raise HTTPException(status_code=404, detail="Service not found")
+    #
+    # cluster_id = db_service.cluster_id
+    # db.delete(db_service)
+    # db.commit()
+
+    # Mock cluster ID
+    cluster_id = 1
+
+    # Trigger xDS update for the cluster
+    try:
+        await update_envoy_config_for_cluster(cluster_id, db)
+    except Exception as e:
+        print(f"Warning: xDS update failed: {e}")
+
+    return None
+
+
+@router.get("/{service_id}", response_model=ServiceResponse)
+async def get_service(
+    service_id: int,
+    db: Session = Depends(get_db),
+):
+    """Get a service by ID"""
+    # TODO: Implement actual database query
+    # from app.models.sqlalchemy.service import Service
+    # db_service = db.query(Service).filter(Service.id == service_id).first()
+    # if not db_service:
+    #     raise HTTPException(status_code=404, detail="Service not found")
+    # return db_service
+
+    # Mock response
+    return {
+        "id": service_id,
+        "name": "example-service",
+        "cluster_id": 1,
+        "listener_port": 10000,
+        "upstream_host": "127.0.0.1",
+        "upstream_port": 8080,
+        "protocol": "http",
+        "health_check_path": "/health",
+    }
+
+
+@router.get("/", response_model=List[ServiceResponse])
+async def list_services(
+    cluster_id: Optional[int] = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+):
+    """List all services, optionally filtered by cluster"""
+    # TODO: Implement actual database query
+    # from app.models.sqlalchemy.service import Service
+    # query = db.query(Service)
+    # if cluster_id:
+    #     query = query.filter(Service.cluster_id == cluster_id)
+    # services = query.offset(skip).limit(limit).all()
+    # return services
+
+    # Mock response
+    return [
+        {
+            "id": 1,
+            "name": "example-service",
+            "cluster_id": cluster_id or 1,
+            "listener_port": 10000,
+            "upstream_host": "127.0.0.1",
+            "upstream_port": 8080,
+            "protocol": "http",
+            "health_check_path": "/health",
+        }
+    ]
+
+
+@router.post("/{service_id}/reload-xds", status_code=status.HTTP_200_OK)
+async def reload_service_xds(
+    service_id: int,
+    db: Session = Depends(get_db),
+):
+    """
+    Manually trigger xDS reload for a service's cluster
+
+    This is useful for debugging or forcing configuration updates
+    """
+    # TODO: Get actual cluster ID from database
+    # from app.models.sqlalchemy.service import Service
+    # db_service = db.query(Service).filter(Service.id == service_id).first()
+    # if not db_service:
+    #     raise HTTPException(status_code=404, detail="Service not found")
+    # cluster_id = db_service.cluster_id
+
+    cluster_id = 1
+
+    success = await update_envoy_config_for_cluster(cluster_id, db)
+
+    if success:
+        return {"status": "success", "message": "xDS configuration reloaded"}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to reload xDS configuration",
+        )

@@ -497,24 +497,244 @@ services:
       timeout: 10s
       retries: 5
 
+  # API Server (FastAPI) - New hybrid architecture
+  api-server:
+    build:
+      context: ./api-server
+      dockerfile: Dockerfile
+    container_name: marchproxy-api-server
+    environment:
+      # Database configuration
+      - DATABASE_URL=postgresql+asyncpg://marchproxy:${POSTGRES_PASSWORD:-marchproxy123}@postgres:5432/marchproxy
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis123}@redis:6379/0
+
+      # Application settings
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-this}
+      - DEBUG=${DEBUG:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+
+      # License and xDS configuration
+      - LICENSE_KEY=${LICENSE_KEY:-}
+      - LICENSE_SERVER_URL=${LICENSE_SERVER_URL:-https://license.penguintech.io}
+      - XDS_GRPC_PORT=18000
+      - XDS_GRPC_BIND=0.0.0.0:18000
+
+      # CORS and token configuration
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://webui:3000,http://localhost:8000}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+      - REFRESH_TOKEN_EXPIRE_DAYS=${REFRESH_TOKEN_EXPIRE_DAYS:-7}
+
+      # Observability
+      - JAEGER_ENABLED=${JAEGER_ENABLED:-true}
+      - JAEGER_HOST=jaeger
+      - JAEGER_PORT=6831
+    ports:
+      - "8000:8000"   # REST API
+      - "18000:18000" # xDS gRPC
+    networks:
+      - marchproxy-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    labels:
+      - "service=marchproxy-api-server"
+      - "component=api"
+
+  # Web UI (React + Vite)
+  webui:
+    build:
+      context: ./webui
+      dockerfile: Dockerfile
+    container_name: marchproxy-webui
+    environment:
+      - VITE_API_URL=http://api-server:8000
+      - VITE_JAEGER_URL=http://jaeger:16686
+      - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=3000
+    ports:
+      - "3000:3000"
+    networks:
+      - marchproxy-network
+    depends_on:
+      - api-server
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    labels:
+      - "service=marchproxy-webui"
+      - "component=ui"
+
+  # Proxy L7 (Envoy) - Application Layer
+  proxy-l7:
+    build:
+      context: ./proxy-l7
+      dockerfile: Dockerfile
+    container_name: marchproxy-proxy-l7
+    environment:
+      # Envoy configuration
+      - XDS_SERVER=api-server:18000
+      - ENVOY_LOG_LEVEL=${ENVOY_LOG_LEVEL:-info}
+      - CLUSTER_API_KEY=${CLUSTER_API_KEY:-default-api-key}
+
+      # Performance tuning
+      - NUM_WORKERS=${NUM_WORKERS:-4}
+      - BUFFER_SIZE=${BUFFER_SIZE:-1024}
+
+      # Observability
+      - JAEGER_ENABLED=${JAEGER_ENABLED:-true}
+      - JAEGER_HOST=jaeger
+      - JAEGER_PORT=6831
+    ports:
+      - "80:80"       # HTTP
+      - "443:443"     # HTTPS
+      - "8080:8080"   # HTTP/2
+      - "9901:9901"   # Envoy admin
+    networks:
+      - marchproxy-network
+    cap_add:
+      - NET_ADMIN     # For XDP programs
+      - SYS_RESOURCE  # For performance tuning
+    depends_on:
+      - api-server
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9901/stats"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    labels:
+      - "service=marchproxy-proxy-l7"
+      - "component=proxy"
+      - "layer=application"
+
+  # Proxy L3/L4 (Go) - Transport Layer
+  proxy-l3l4:
+    build:
+      context: ./proxy-l3l4
+      dockerfile: Dockerfile
+    container_name: marchproxy-proxy-l3l4
+    environment:
+      # Manager connection
+      - MANAGER_URL=http://api-server:8000
+      - CLUSTER_API_KEY=${CLUSTER_API_KEY:-default-api-key}
+
+      # Proxy configuration
+      - PROXY_NAME=${PROXY_L3L4_NAME:-proxy-l3l4-1}
+      - PROXY_TYPE=l3l4
+      - LISTEN_PORT=8081
+      - ADMIN_PORT=8082
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+
+      # Network acceleration
+      - ENABLE_EBPF=${ENABLE_EBPF:-true}
+      - ENABLE_XDP=${ENABLE_XDP:-false}
+      - ENABLE_AF_XDP=${ENABLE_AF_XDP:-false}
+      - ENABLE_NUMA=${ENABLE_NUMA:-false}
+      - NUMA_NODE=${NUMA_NODE:-0}
+
+      # Performance tuning
+      - CONNECTION_POOL_SIZE=${CONNECTION_POOL_SIZE:-1000}
+      - BUFFER_SIZE=${BUFFER_SIZE:-1024}
+
+      # Traffic shaping (Enterprise)
+      - TRAFFIC_SHAPING_ENABLED=${TRAFFIC_SHAPING_ENABLED:-false}
+      - RATE_LIMIT_ENABLED=${RATE_LIMIT_ENABLED:-false}
+      - RATE_LIMIT_RPS=${RATE_LIMIT_RPS:-10000}
+
+      # Multi-cloud routing (Enterprise)
+      - MULTI_CLOUD_ENABLED=${MULTI_CLOUD_ENABLED:-false}
+      - HEALTH_CHECK_ENABLED=${HEALTH_CHECK_ENABLED:-false}
+      - HEALTH_CHECK_INTERVAL=${HEALTH_CHECK_INTERVAL:-30}
+
+      # Zero-trust security (Enterprise)
+      - ZERO_TRUST_ENABLED=${ZERO_TRUST_ENABLED:-false}
+
+      # Observability
+      - JAEGER_ENABLED=${JAEGER_ENABLED:-true}
+      - JAEGER_HOST=jaeger
+      - JAEGER_PORT=6831
+
+      # Syslog
+      - SYSLOG_ENABLED=${SYSLOG_ENABLED:-true}
+      - SYSLOG_HOST=${SYSLOG_HOST:-logstash}
+      - SYSLOG_PORT=${SYSLOG_PORT:-5514}
+    volumes:
+      - ./certs:/app/certs:ro
+      - proxy_l3l4_logs:/app/logs
+    ports:
+      - "8081:8081"   # Proxy port
+      - "8082:8082"   # Admin/Metrics port
+    networks:
+      - marchproxy-network
+    cap_add:
+      - NET_ADMIN     # For XDP/eBPF
+      - SYS_ADMIN     # For performance tuning
+      - SYS_RESOURCE  # For buffer management
+    depends_on:
+      - api-server
+      - logstash
+    restart: unless-stopped
+    logging:
+      driver: syslog
+      options:
+        syslog-address: "udp://logstash:5514"
+        syslog-facility: "local1"
+        tag: "marchproxy-proxy-l3l4"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    labels:
+      - "service=marchproxy-proxy-l3l4"
+      - "component=proxy"
+      - "layer=transport"
+
   # Jaeger for distributed tracing
   jaeger:
     image: jaegertracing/all-in-one:latest
     container_name: marchproxy-jaeger
     environment:
       - COLLECTOR_ZIPKIN_HTTP_PORT=9411
+      - MEMORY_MAX_TRACES=10000
     ports:
       - "5775:5775/udp"
       - "6831:6831/udp"
       - "6832:6832/udp"
       - "5778:5778"
-      - "16686:16686"
+      - "16686:16686"      # Jaeger UI
       - "14268:14268"
       - "14250:14250"
       - "9411:9411"
     networks:
       - marchproxy-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:16686/api/traces"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - "service=marchproxy-jaeger"
+      - "component=observability"
 
 networks:
   marchproxy-network:
@@ -545,4 +765,6 @@ volumes:
   proxy_egress_logs:
     driver: local
   proxy_ingress_logs:
+    driver: local
+  proxy_l3l4_logs:
     driver: local
