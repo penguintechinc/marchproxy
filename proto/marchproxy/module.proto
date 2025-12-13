@@ -1,0 +1,363 @@
+syntax = "proto3";
+
+package marchproxy;
+
+option go_package = "github.com/penguintech/marchproxy/proto/marchproxy;marchproxy";
+
+import "marchproxy/types.proto";
+import "google/protobuf/timestamp.proto";
+
+// ModuleService is the interface that all module containers (ALB, DBLB, AILB, RTMP) must implement.
+// This allows the NLB to uniformly manage and communicate with all modules.
+service ModuleService {
+  // Lifecycle Management
+
+  // GetStatus returns the current status of the module instance
+  rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
+
+  // Reload reloads the module configuration without restarting
+  rpc Reload(ReloadRequest) returns (ReloadResponse);
+
+  // Shutdown gracefully shuts down the module instance
+  rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);
+
+  // Traffic Routing
+
+  // CanHandle checks if this module can handle the given route
+  rpc CanHandle(CanHandleRequest) returns (CanHandleResponse);
+
+  // GetRoutes returns all routes this module is configured to handle
+  rpc GetRoutes(GetRoutesRequest) returns (GetRoutesResponse);
+
+  // UpdateRoutes updates the routing configuration for this module
+  rpc UpdateRoutes(UpdateRoutesRequest) returns (UpdateRoutesResponse);
+
+  // DeleteRoute removes a specific route from this module
+  rpc DeleteRoute(DeleteRouteRequest) returns (DeleteRouteResponse);
+
+  // Rate Limiting
+
+  // GetRateLimits returns current rate limiting configuration
+  rpc GetRateLimits(GetRateLimitsRequest) returns (GetRateLimitsResponse);
+
+  // SetRateLimit configures a rate limit for a target
+  rpc SetRateLimit(SetRateLimitRequest) returns (SetRateLimitResponse);
+
+  // RemoveRateLimit removes a rate limit configuration
+  rpc RemoveRateLimit(RemoveRateLimitRequest) returns (RemoveRateLimitResponse);
+
+  // Scaling and Instance Management
+
+  // GetMetrics returns current metrics for this module instance
+  rpc GetMetrics(GetMetricsRequest) returns (GetMetricsResponse);
+
+  // Scale adjusts the scaling configuration for this module
+  rpc Scale(ScaleRequest) returns (ScaleResponse);
+
+  // GetInstances returns information about all instances of this module
+  rpc GetInstances(GetInstancesRequest) returns (GetInstancesResponse);
+
+  // Blue/Green Deployment
+
+  // SetTrafficWeight sets the traffic weight for this instance (blue/green)
+  rpc SetTrafficWeight(SetTrafficWeightRequest) returns (SetTrafficWeightResponse);
+
+  // GetActiveVersion returns the currently active version
+  rpc GetActiveVersion(GetActiveVersionRequest) returns (GetActiveVersionResponse);
+
+  // Rollback rolls back to the previous version
+  rpc Rollback(RollbackRequest) returns (RollbackResponse);
+
+  // PromoteVersion promotes a version from canary to full production
+  rpc PromoteVersion(PromoteVersionRequest) returns (PromoteVersionResponse);
+
+  // Health and Monitoring
+
+  // HealthCheck performs a health check on this module instance
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+
+  // GetStats returns detailed statistics for this module instance
+  rpc GetStats(GetStatsRequest) returns (GetStatsResponse);
+
+  // StreamMetrics streams real-time metrics (server-side streaming)
+  rpc StreamMetrics(StreamMetricsRequest) returns (stream StreamMetricsResponse);
+
+  // Configuration Management
+
+  // GetConfig returns the current configuration
+  rpc GetConfig(GetConfigRequest) returns (GetConfigResponse);
+
+  // UpdateConfig updates the module configuration
+  rpc UpdateConfig(UpdateConfigRequest) returns (UpdateConfigResponse);
+}
+
+// Lifecycle Management Messages
+
+message GetStatusRequest {
+  string instance_id = 1;
+}
+
+message GetStatusResponse {
+  ModuleInstance instance = 1;
+  HealthStatus status = 2;
+  string message = 3;
+  google.protobuf.Timestamp last_updated = 4;
+  map<string, string> details = 5;
+}
+
+message ReloadRequest {
+  string instance_id = 1;
+  bool graceful = 2;              // Graceful reload (wait for connections)
+  int32 timeout_seconds = 3;      // Timeout for graceful reload
+}
+
+message ReloadResponse {
+  bool success = 1;
+  string message = 2;
+  Error error = 3;
+}
+
+message ShutdownRequest {
+  string instance_id = 1;
+  bool graceful = 2;              // Graceful shutdown
+  int32 timeout_seconds = 3;      // Timeout for graceful shutdown
+}
+
+message ShutdownResponse {
+  bool success = 1;
+  string message = 2;
+  Error error = 3;
+}
+
+// Traffic Routing Messages
+
+message CanHandleRequest {
+  Route route = 1;
+  map<string, string> context = 2; // Additional context for routing decision
+}
+
+message CanHandleResponse {
+  bool can_handle = 1;
+  int32 priority = 2;             // Priority score (higher = better match)
+  string reason = 3;              // Reason for decision
+  map<string, string> metadata = 4;
+}
+
+message GetRoutesRequest {
+  string instance_id = 1;
+  Query query = 2;                // Optional query filters
+}
+
+message GetRoutesResponse {
+  repeated Route routes = 1;
+  int32 total_routes = 2;
+  Pagination pagination = 3;
+}
+
+message UpdateRoutesRequest {
+  string instance_id = 1;
+  repeated Route routes = 2;      // Routes to add/update
+  bool replace_all = 3;           // Replace all existing routes
+}
+
+message UpdateRoutesResponse {
+  bool success = 1;
+  string message = 2;
+  int32 routes_updated = 3;
+  Error error = 4;
+}
+
+message DeleteRouteRequest {
+  string instance_id = 1;
+  string route_id = 2;
+}
+
+message DeleteRouteResponse {
+  bool success = 1;
+  string message = 2;
+  Error error = 3;
+}
+
+// Rate Limiting Messages
+
+message GetRateLimitsRequest {
+  string instance_id = 1;
+  string target = 2;              // Optional: filter by target
+}
+
+message GetRateLimitsResponse {
+  repeated RateLimit limits = 1;
+  int32 total_limits = 2;
+}
+
+message SetRateLimitRequest {
+  string instance_id = 1;
+  RateLimit limit = 2;
+}
+
+message SetRateLimitResponse {
+  bool success = 1;
+  string message = 2;
+  Error error = 3;
+}
+
+message RemoveRateLimitRequest {
+  string instance_id = 1;
+  string limit_id = 2;
+}
+
+message RemoveRateLimitResponse {
+  bool success = 1;
+  string message = 2;
+  Error error = 3;
+}
+
+// Scaling and Instance Management Messages
+
+message GetMetricsRequest {
+  string instance_id = 1;
+  repeated string metric_names = 2; // Optional: specific metrics to retrieve
+  google.protobuf.Timestamp start_time = 3;
+  google.protobuf.Timestamp end_time = 4;
+}
+
+message GetMetricsResponse {
+  ModuleMetrics metrics = 1;
+  google.protobuf.Timestamp collected_at = 2;
+}
+
+message ScaleRequest {
+  string instance_id = 1;
+  ScalingConfig config = 2;
+  bool immediate = 3;             // Apply immediately vs. next cycle
+}
+
+message ScaleResponse {
+  bool success = 1;
+  string message = 2;
+  int32 current_instances = 3;
+  int32 desired_instances = 4;
+  Error error = 5;
+}
+
+message GetInstancesRequest {
+  ModuleType module_type = 1;
+  HealthStatus status_filter = 2; // Optional: filter by health status
+}
+
+message GetInstancesResponse {
+  repeated ModuleInstance instances = 1;
+  int32 total_instances = 2;
+}
+
+// Blue/Green Deployment Messages
+
+message SetTrafficWeightRequest {
+  string instance_id = 1;
+  string version = 2;
+  int32 weight = 3;               // Weight percentage (0-100)
+}
+
+message SetTrafficWeightResponse {
+  bool success = 1;
+  string message = 2;
+  BlueGreenConfig current_config = 3;
+  Error error = 4;
+}
+
+message GetActiveVersionRequest {
+  string instance_id = 1;
+}
+
+message GetActiveVersionResponse {
+  string active_version = 1;
+  BlueGreenConfig config = 2;
+  map<string, int32> version_weights = 3; // Version -> weight mapping
+}
+
+message RollbackRequest {
+  string instance_id = 1;
+  string target_version = 2;      // Optional: specific version to rollback to
+}
+
+message RollbackResponse {
+  bool success = 1;
+  string message = 2;
+  string previous_version = 3;
+  string current_version = 4;
+  Error error = 5;
+}
+
+message PromoteVersionRequest {
+  string instance_id = 1;
+  string version = 2;
+  bool immediate = 3;             // Immediate promotion vs. gradual
+  int32 promotion_rate = 4;       // Percentage per step for gradual
+}
+
+message PromoteVersionResponse {
+  bool success = 1;
+  string message = 2;
+  string promoted_version = 3;
+  Error error = 4;
+}
+
+// Health and Monitoring Messages
+
+message HealthCheckRequest {
+  string instance_id = 1;
+  bool deep_check = 2;            // Perform deep health check
+}
+
+message HealthCheckResponse {
+  HealthStatus status = 1;
+  string message = 2;
+  map<string, string> checks = 3; // Individual check results
+  google.protobuf.Timestamp checked_at = 4;
+}
+
+message GetStatsRequest {
+  string instance_id = 1;
+  bool reset_counters = 2;        // Reset counters after retrieval
+}
+
+message GetStatsResponse {
+  ModuleStats stats = 1;
+}
+
+message StreamMetricsRequest {
+  string instance_id = 1;
+  int32 interval_seconds = 2;     // Streaming interval
+  repeated string metric_names = 3; // Metrics to stream
+}
+
+message StreamMetricsResponse {
+  ModuleMetrics metrics = 1;
+  google.protobuf.Timestamp timestamp = 2;
+}
+
+// Configuration Management Messages
+
+message GetConfigRequest {
+  string instance_id = 1;
+  string config_type = 2;         // Optional: specific config type
+}
+
+message GetConfigResponse {
+  repeated ConfigUpdate configs = 1;
+  google.protobuf.Timestamp last_updated = 2;
+}
+
+message UpdateConfigRequest {
+  string instance_id = 1;
+  ConfigUpdate config = 2;
+  bool validate_only = 3;         // Only validate, don't apply
+}
+
+message UpdateConfigResponse {
+  bool success = 1;
+  string message = 2;
+  bool validation_passed = 3;
+  repeated string validation_errors = 4;
+  Error error = 5;
+}

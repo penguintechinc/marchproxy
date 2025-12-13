@@ -1,82 +1,141 @@
-# Docker Compose Override for Development
-# This file is automatically loaded by docker-compose and overrides settings in docker-compose.yml
-# Use for local development with hot-reload and debugging features
+# MarchProxy Development Override Configuration
+# This file automatically applies when running `docker-compose up` in development
+# It provides development-friendly settings like volume mounts, debug modes, etc.
+
+version: '3.8'
 
 services:
-  # Manager - Development mode with hot reload
-  manager:
+  # API Server - Development overrides
+  api-server:
     build:
       target: development
-    volumes:
-      # Mount source code for hot reload
-      - ./manager:/app
-      - manager_logs:/app/logs
-      - ./certs:/app/certs:ro
     environment:
-      # Development-specific settings
       - DEBUG=true
       - LOG_LEVEL=debug
-      - MARCHPROXY_ENV=development
-    ports:
-      # Expose additional debugging ports
-      - "8000:8000"   # Main application
-      - "5678:5678"   # Python debugger (debugpy)
+      - RELOAD=true
+      - RELEASE_MODE=false  # Disable license enforcement in dev
+    volumes:
+      - ./api-server:/app:delegated
+      - /app/.venv  # Prevent overwriting virtual environment
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
-  # Proxy Egress - Development mode with hot reload
-  proxy-egress:
+  # Web UI - Development overrides
+  webui:
     build:
       target: development
-    volumes:
-      # Mount source code for hot reload
-      - ./proxy-egress:/app
-      - proxy_egress_logs:/app/logs
-      - ./certs:/app/certs:rw
     environment:
-      # Development-specific settings
-      - LOG_LEVEL=DEBUG
-      - ENABLE_PROFILING=true
-      - GO_ENV=development
-      - MTLS_ENABLED=true
-    ports:
-      - "8080:8080"   # Proxy port
-      - "8081:8081"   # Admin/Metrics port
-      - "6060:6060"   # Go pprof profiling
+      - NODE_ENV=development
+    volumes:
+      - ./webui:/app:delegated
+      - /app/node_modules  # Prevent overwriting node_modules
+      - /app/dist  # Prevent overwriting build artifacts
+    command: npm run dev -- --host 0.0.0.0
 
-  # Proxy Ingress - Development mode with hot reload
-  proxy-ingress:
+  # NLB - Development overrides
+  proxy-nlb:
     build:
       target: development
-    volumes:
-      # Mount source code for hot reload
-      - ./proxy-ingress:/app
-      - proxy_ingress_logs:/app/logs
-      - ./certs:/app/certs:rw
     environment:
-      # Development-specific settings
-      - LOG_LEVEL=DEBUG
-      - ENABLE_PROFILING=true
-      - GO_ENV=development
-      - MTLS_ENABLED=true
+      - LOG_LEVEL=debug
+      - ENABLE_PPROF=true  # Enable Go profiling
+    volumes:
+      - ./proxy-nlb:/app:delegated
     ports:
-      - "80:80"       # HTTP port
-      - "443:443"     # HTTPS/TLS port
-      - "8082:8082"   # Admin/Metrics port
-      - "6061:6060"   # Go pprof profiling (different port to avoid conflict)
+      - "6060:6060"  # pprof debug port
 
-  # Reduce resource requirements for development
+  # ALB - Development overrides
+  proxy-alb:
+    build:
+      target: development
+    environment:
+      - ENVOY_LOG_LEVEL=debug
+      - ENABLE_PPROF=true
+    volumes:
+      - ./proxy-l7:/app:delegated
+    ports:
+      - "6061:6060"  # pprof debug port
+
+  # DBLB - Development overrides
+  proxy-dblb:
+    profiles:
+      - dev
+      - dblb
+    build:
+      target: development
+    environment:
+      - LOG_LEVEL=debug
+      - ENABLE_PPROF=true
+      - ENABLE_QUERY_LOGGING=true  # Log all database queries
+    volumes:
+      - ./proxy-dblb:/app:delegated
+    ports:
+      - "6062:6060"  # pprof debug port
+
+  # AILB - Development overrides
+  proxy-ailb:
+    profiles:
+      - dev
+      - ailb
+    build:
+      target: development
+    environment:
+      - LOG_LEVEL=debug
+      - DEBUG=true
+      - RELOAD=true
+    volumes:
+      - ./proxy-ailb:/app:delegated
+      - /app/.venv  # Prevent overwriting virtual environment
+    ports:
+      - "5678:5678"  # debugpy port for Python debugging
+
+  # RTMP - Development overrides
+  proxy-rtmp:
+    profiles:
+      - dev
+      - rtmp
+    build:
+      target: development
+    environment:
+      - LOG_LEVEL=debug
+      - ENABLE_PPROF=true
+      - FFMPEG_LOG_LEVEL=verbose
+    volumes:
+      - ./proxy-rtmp:/app:delegated
+      - rtmp_streams_dev:/streams  # Separate dev volume
+    ports:
+      - "6064:6060"  # pprof debug port
+
+  # Postgres - Development overrides
   postgres:
-    command: postgres -c shared_buffers=64MB -c max_connections=20
+    command: postgres -c shared_buffers=64MB -c max_connections=20 -c log_statement=all
+    environment:
+      - POSTGRES_LOG_STATEMENT=all  # Log all SQL statements
 
+  # Redis - Development overrides
   redis:
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis123} --maxmemory 64mb
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis123} --maxmemory 64mb --loglevel debug
 
-  # Disable some monitoring services in development to save resources
-  # Uncomment these lines if you want to disable services for faster startup
-  # elasticsearch:
-  #   profiles: ["monitoring"]
-  #
-  # logstash:
-  #   profiles: ["monitoring"]
-  #
-  # kibana:
-  #   profiles: ["monitoring"]
+  # Jaeger - Development overrides
+  jaeger:
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - LOG_LEVEL=debug
+
+  # Prometheus - Development overrides
+  prometheus:
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+      - '--log.level=debug'
+
+  # Grafana - Development overrides
+  grafana:
+    environment:
+      - GF_LOG_LEVEL=debug
+      - GF_AUTH_ANONYMOUS_ENABLED=true  # Allow anonymous access in dev
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+
+volumes:
+  rtmp_streams_dev:
+    driver: local

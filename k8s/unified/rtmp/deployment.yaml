@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: proxy-rtmp
+  namespace: marchproxy
+  labels:
+    app.kubernetes.io/name: marchproxy
+    app.kubernetes.io/component: proxy-rtmp
+    app.kubernetes.io/part-of: marchproxy
+    app.kubernetes.io/version: v1.0.0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: marchproxy
+      app.kubernetes.io/component: proxy-rtmp
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: marchproxy
+        app.kubernetes.io/component: proxy-rtmp
+        app.kubernetes.io/version: v1.0.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "7005"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: marchproxy-rtmp
+      containers:
+      - name: rtmp
+        image: marchproxy/rtmp:v1.0.0-cpu
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: rtmp
+          containerPort: 1935
+        - name: hls-http
+          containerPort: 8081
+        - name: admin
+          containerPort: 7005
+        - name: grpc
+          containerPort: 50054
+        envFrom:
+        - configMapRef:
+            name: marchproxy-config
+        - configMapRef:
+            name: marchproxy-rtmp-config
+        env:
+        - name: MODULE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: CLUSTER_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: marchproxy-secrets
+              key: cluster-api-key
+        volumeMounts:
+        - name: streams
+          mountPath: /streams
+        resources:
+          requests:
+            cpu: 2000m
+            memory: 2Gi
+          limits:
+            cpu: 8000m
+            memory: 8Gi
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 7005
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 7005
+          initialDelaySeconds: 15
+          periodSeconds: 5
+      volumes:
+      - name: streams
+        emptyDir:
+          sizeLimit: 50Gi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: marchproxy-rtmp
+  namespace: marchproxy

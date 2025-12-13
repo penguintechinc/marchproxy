@@ -1,0 +1,118 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: proxy-alb
+  namespace: marchproxy
+  labels:
+    app.kubernetes.io/name: marchproxy
+    app.kubernetes.io/component: proxy-alb
+    app.kubernetes.io/part-of: marchproxy
+    app.kubernetes.io/version: v1.0.0
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: marchproxy
+      app.kubernetes.io/component: proxy-alb
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: marchproxy
+        app.kubernetes.io/component: proxy-alb
+        app.kubernetes.io/version: v1.0.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9901"
+        prometheus.io/path: "/stats/prometheus"
+    spec:
+      serviceAccountName: marchproxy-alb
+      containers:
+      - name: alb
+        image: marchproxy/alb:v1.0.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 80
+          protocol: TCP
+        - name: https
+          containerPort: 443
+          protocol: TCP
+        - name: http2
+          containerPort: 8080
+          protocol: TCP
+        - name: envoy-admin
+          containerPort: 9901
+          protocol: TCP
+        - name: grpc
+          containerPort: 50051
+          protocol: TCP
+        env:
+        - name: MODULE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: XDS_SERVER
+          valueFrom:
+            configMapKeyRef:
+              name: marchproxy-config
+              key: XDS_SERVER
+        - name: CLUSTER_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: marchproxy-secrets
+              key: cluster-api-key
+        - name: ENVOY_LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: marchproxy-alb-config
+              key: ENVOY_LOG_LEVEL
+        - name: NUM_WORKERS
+          valueFrom:
+            configMapKeyRef:
+              name: marchproxy-alb-config
+              key: NUM_WORKERS
+        - name: GRPC_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: marchproxy-alb-config
+              key: GRPC_PORT
+        - name: MODULE_TYPE
+          valueFrom:
+            configMapKeyRef:
+              name: marchproxy-alb-config
+              key: MODULE_TYPE
+        - name: JAEGER_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: marchproxy-config
+              key: JAEGER_ENABLED
+        - name: JAEGER_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: marchproxy-config
+              key: JAEGER_HOST
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: 2000m
+            memory: 2Gi
+        livenessProbe:
+          httpGet:
+            path: /ready
+            port: 9901
+          initialDelaySeconds: 20
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9901
+          initialDelaySeconds: 10
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: marchproxy-alb
+  namespace: marchproxy

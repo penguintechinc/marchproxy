@@ -1,0 +1,121 @@
+version: '3.8'
+
+services:
+  # CPU version (default)
+  rtmp-cpu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: marchproxy-rtmp:cpu
+    container_name: marchproxy-rtmp-cpu
+    ports:
+      - "1935:1935"    # RTMP
+      - "50053:50053"  # gRPC
+    volumes:
+      - ./streams:/var/lib/marchproxy/streams
+      - ./config/rtmp.yaml:/etc/marchproxy/rtmp.yaml:ro
+    environment:
+      RTMP_HOST: 0.0.0.0
+      RTMP_PORT: 1935
+      RTMP_GRPC_PORT: 50053
+      RTMP_LOG_LEVEL: info
+      RTMP_ENCODER: x264
+      RTMP_PRESET: medium
+      RTMP_OUTPUT_DIR: /var/lib/marchproxy/streams
+      RTMP_ENABLE_HLS: "true"
+      RTMP_ENABLE_DASH: "true"
+      RTMP_SEGMENT_DURATION: 6
+      RTMP_MAX_BITRATE: 10
+      RTMP_MAX_STREAMS: 100
+      RTMP_MAX_RESOLUTION: 1080
+    restart: unless-stopped
+    networks:
+      - marchproxy
+
+  # NVIDIA GPU version
+  rtmp-nvidia:
+    build:
+      context: .
+      dockerfile: Dockerfile.nvidia
+    image: marchproxy-rtmp:nvidia
+    container_name: marchproxy-rtmp-nvidia
+    runtime: nvidia
+    ports:
+      - "1935:1935"
+      - "50053:50053"
+    volumes:
+      - ./streams:/var/lib/marchproxy/streams
+      - ./config/rtmp.yaml:/etc/marchproxy/rtmp.yaml:ro
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,video,utility
+      RTMP_HOST: 0.0.0.0
+      RTMP_PORT: 1935
+      RTMP_GRPC_PORT: 50053
+      RTMP_LOG_LEVEL: info
+      RTMP_ENCODER: nvenc_h264
+      RTMP_PRESET: medium
+      RTMP_OUTPUT_DIR: /var/lib/marchproxy/streams
+      RTMP_ENABLE_HLS: "true"
+      RTMP_ENABLE_DASH: "true"
+      RTMP_SEGMENT_DURATION: 6
+      RTMP_MAX_BITRATE: 10
+      RTMP_MAX_STREAMS: 100
+      RTMP_MAX_RESOLUTION: 1080
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    networks:
+      - marchproxy
+    profiles:
+      - nvidia
+
+  # AMD GPU version
+  rtmp-amd:
+    build:
+      context: .
+      dockerfile: Dockerfile.amd
+    image: marchproxy-rtmp:amd
+    container_name: marchproxy-rtmp-amd
+    ports:
+      - "1935:1935"
+      - "50053:50053"
+    volumes:
+      - ./streams:/var/lib/marchproxy/streams
+      - ./config/rtmp.yaml:/etc/marchproxy/rtmp.yaml:ro
+    devices:
+      - /dev/kfd:/dev/kfd
+      - /dev/dri:/dev/dri
+    group_add:
+      - video
+      - render
+    environment:
+      HSA_OVERRIDE_GFX_VERSION: "10.3.0"
+      RTMP_HOST: 0.0.0.0
+      RTMP_PORT: 1935
+      RTMP_GRPC_PORT: 50053
+      RTMP_LOG_LEVEL: info
+      RTMP_ENCODER: amf_h264
+      RTMP_PRESET: medium
+      RTMP_OUTPUT_DIR: /var/lib/marchproxy/streams
+      RTMP_ENABLE_HLS: "true"
+      RTMP_ENABLE_DASH: "true"
+      RTMP_SEGMENT_DURATION: 6
+      RTMP_MAX_BITRATE: 10
+      RTMP_MAX_STREAMS: 100
+      RTMP_MAX_RESOLUTION: 1080
+    restart: unless-stopped
+    networks:
+      - marchproxy
+    profiles:
+      - amd
+
+networks:
+  marchproxy:
+    name: marchproxy-network
+    driver: bridge

@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: proxy-ailb
+  namespace: marchproxy
+  labels:
+    app.kubernetes.io/name: marchproxy
+    app.kubernetes.io/component: proxy-ailb
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: marchproxy
+    app.kubernetes.io/component: proxy-ailb
+  ports:
+  - name: http
+    port: 7003
+    targetPort: 7003
+  - name: admin
+    port: 7004
+    targetPort: 7004
+  - name: grpc
+    port: 50053
+    targetPort: 50053

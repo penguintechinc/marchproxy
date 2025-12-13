@@ -3,6 +3,7 @@ API v1 routes
 
 Phase 2: Core CRUD operations for clusters, services, proxies, and users.
 Phase 3+: Enterprise features (traffic shaping, multi-cloud, observability, xDS).
+Phase 7: Unified NLB architecture (modules, routes, scaling, deployments).
 """
 
 from fastapi import APIRouter
@@ -44,5 +45,18 @@ try:
 except ImportError:
     # Phase 3 routes not yet implemented
     pass
+
+# Phase 7: Unified NLB architecture (module management)
+try:
+    from app.api.v1.routes import modules, module_routes, scaling, deployments
+
+    api_router.include_router(modules.router, tags=["Phase 7 - Modules"])
+    api_router.include_router(module_routes.router, tags=["Phase 7 - Module Routes"])
+    api_router.include_router(scaling.router, tags=["Phase 7 - Auto-Scaling"])
+    api_router.include_router(deployments.router, tags=["Phase 7 - Deployments"])
+except ImportError as e:
+    # Phase 7 routes not yet available
+    import logging
+    logging.getLogger(__name__).info(f"Phase 7 routes not loaded: {e}")
 
 __all__ = ["api_router"]

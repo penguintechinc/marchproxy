@@ -1,0 +1,186 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: proxy-nlb
+  namespace: marchproxy
+  labels:
+    app.kubernetes.io/name: marchproxy
+    app.kubernetes.io/component: proxy-nlb
+    app.kubernetes.io/part-of: marchproxy
+    app.kubernetes.io/version: v1.0.0
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: marchproxy
+      app.kubernetes.io/component: proxy-nlb
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: marchproxy
+        app.kubernetes.io/component: proxy-nlb
+        app.kubernetes.io/version: v1.0.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "7001"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: marchproxy-nlb
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: nlb
+        image: marchproxy/nlb:v1.0.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: proxy
+          containerPort: 7000
+          protocol: TCP
+        - name: admin
+          containerPort: 7001
+          protocol: TCP
+        env:
+        - name: PROXY_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: API_SERVER_URL
+          valueFrom:
+            configMapKeyRef:
+              name: marchproxy-config
+              key: API_SERVER_URL
+        - name: XDS_SERVER
+          valueFrom:
+            configMapKeyRef:
+              name: marchproxy-config
+              key: XDS_SERVER
+        - name: CLUSTER_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: marchproxy-secrets
+              key: cluster-api-key
+        - name: NLB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: marchproxy-nlb-config
+              key: NLB_PORT
+        - name: ADMIN_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: marchproxy-nlb-config
+              key: ADMIN_PORT
+        - name: ALB_GRPC
+          valueFrom:
+            configMapKeyRef:
+              name: marchproxy-config
+              key: ALB_GRPC
+        - name: DBLB_GRPC
+          valueFrom:
+            configMapKeyRef:
+              name: marchproxy-config
+              key: DBLB_GRPC
+        - name: AILB_GRPC
+          valueFrom:
+            configMapKeyRef:
+              name: marchproxy-config
+              key: AILB_GRPC
+        - name: RTMP_GRPC
+          valueFrom:
+            configMapKeyRef:
+              name: marchproxy-config
+              key: RTMP_GRPC
+        - name: ENABLE_EBPF
+          valueFrom:
+            configMapKeyRef:
+              name: marchproxy-nlb-config
+              key: ENABLE_EBPF
+        - name: RATE_LIMIT_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: marchproxy-nlb-config
+              key: RATE_LIMIT_ENABLED
+        - name: RATE_LIMIT_RPS
+          valueFrom:
+            configMapKeyRef:
+              name: marchproxy-nlb-config
+              key: RATE_LIMIT_RPS
+        - name: AUTO_SCALING_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: marchproxy-nlb-config
+              key: AUTO_SCALING_ENABLED
+        - name: JAEGER_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: marchproxy-config
+              key: JAEGER_ENABLED
+        - name: JAEGER_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: marchproxy-config
+              key: JAEGER_HOST
+        - name: JAEGER_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: marchproxy-config
+              key: JAEGER_PORT
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: marchproxy-config
+              key: LOG_LEVEL
+        resources:
+          requests:
+            cpu: 1000m
+            memory: 1Gi
+          limits:
+            cpu: 4000m
+            memory: 4Gi
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 7001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 7001
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            add:
+            - NET_ADMIN
+            - SYS_RESOURCE
+            drop:
+            - ALL
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/component
+                  operator: In
+                  values:
+                  - proxy-nlb
+              topologyKey: kubernetes.io/hostname
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: marchproxy-nlb
+  namespace: marchproxy
+  labels:
+    app.kubernetes.io/name: marchproxy
+    app.kubernetes.io/component: proxy-nlb

@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: marchproxy
+  labels:
+    name: marchproxy
+    app.kubernetes.io/name: marchproxy
+    app.kubernetes.io/part-of: marchproxy
+    app.kubernetes.io/version: v1.0.0
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: marchproxy-quota
+  namespace: marchproxy
+spec:
+  hard:
+    requests.cpu: "100"
+    requests.memory: 200Gi
+    requests.storage: 1Ti
+    persistentvolumeclaims: "50"
+    pods: "100"
+    services: "50"
+    services.loadbalancers: "10"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: marchproxy-limits
+  namespace: marchproxy
+spec:
+  limits:
+  - max:
+      cpu: "16"
+      memory: 32Gi
+    min:
+      cpu: 100m
+      memory: 128Mi
+    default:
+      cpu: "2"
+      memory: 2Gi
+    defaultRequest:
+      cpu: 500m
+      memory: 512Mi
+    type: Container
+  - max:
+      cpu: "32"
+      memory: 64Gi
+    min:
+      cpu: 100m
+      memory: 128Mi
+    type: Pod

@@ -1,0 +1,109 @@
+# MarchProxy NVIDIA GPU Override Configuration
+# Use with: docker-compose -f docker-compose.yml -f docker-compose.gpu-nvidia.yml up
+# Requires: NVIDIA Container Toolkit installed on host
+
+version: '3.8'
+
+services:
+  # RTMP Container with NVIDIA GPU acceleration
+  proxy-rtmp-nvidia:
+    build:
+      context: ./proxy-rtmp
+      dockerfile: Dockerfile
+      target: nvidia
+    container_name: marchproxy-proxy-rtmp-nvidia
+    profiles:
+      - gpu-nvidia
+      - rtmp-nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu, video, compute]
+    environment:
+      # API Server connection
+      - API_SERVER_URL=http://api-server:8000
+      - CLUSTER_API_KEY=${CLUSTER_API_KEY:-default-api-key}
+
+      # gRPC server (ModuleService)
+      - GRPC_PORT=50054
+      - GRPC_BIND=0.0.0.0:50054
+
+      # Module configuration
+      - MODULE_TYPE=rtmp
+      - MODULE_NAME=${RTMP_NVIDIA_NAME:-proxy-rtmp-nvidia-1}
+      - RTMP_PORT=1935
+      - ADMIN_PORT=7005
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+
+      # NVIDIA GPU configuration
+      - GPU_ENABLED=true
+      - GPU_TYPE=nvidia
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=video,compute,utility
+
+      # FFmpeg NVIDIA configuration
+      - FFMPEG_THREADS=${FFMPEG_THREADS:-8}
+      - TRANSCODE_PRESET=${TRANSCODE_PRESET:-p4}  # NVIDIA preset (p1-p7)
+      - VIDEO_CODEC=h264_nvenc  # NVIDIA hardware encoder
+      - VIDEO_CODEC_HEVC=hevc_nvenc  # NVIDIA HEVC encoder
+      - HWACCEL=cuda
+      - HWACCEL_DEVICE=0
+
+      # Encoding settings
+      - NVENC_PRESET=${NVENC_PRESET:-p4}  # p1 (fastest) to p7 (slowest/best quality)
+      - NVENC_TUNE=${NVENC_TUNE:-hq}  # hq (high quality), ll (low latency), ull (ultra low latency)
+      - NVENC_PROFILE=${NVENC_PROFILE:-main}  # baseline, main, high
+      - NVENC_RC=${NVENC_RC:-vbr}  # cbr, vbr, cqp
+      - NVENC_BITRATE=${NVENC_BITRATE:-5M}
+
+      # Output formats
+      - HLS_ENABLED=${HLS_ENABLED:-true}
+      - HLS_SEGMENT_DURATION=${HLS_SEGMENT_DURATION:-6}
+      - DASH_ENABLED=${DASH_ENABLED:-true}
+      - DASH_SEGMENT_DURATION=${DASH_SEGMENT_DURATION:-6}
+
+      # Multi-bitrate support
+      - MULTI_BITRATE_ENABLED=${MULTI_BITRATE_ENABLED:-true}
+      - BITRATES=${BITRATES:-1M,2M,5M,10M}
+      - RESOLUTIONS=${RESOLUTIONS:-640x360,1280x720,1920x1080,3840x2160}
+
+      # Rate limiting per stream
+      - RATE_LIMIT_ENABLED=${RTMP_RATE_LIMIT:-true}
+      - MAX_STREAMS=${MAX_STREAMS:-10}
+
+      # Observability
+      - JAEGER_ENABLED=${JAEGER_ENABLED:-true}
+      - JAEGER_HOST=jaeger
+      - JAEGER_PORT=6831
+    ports:
+      - "1935:1935"   # RTMP
+      - "8081:8081"   # HLS/DASH HTTP
+      - "7005:7005"   # Admin/Metrics
+      - "50054:50054" # gRPC ModuleService
+    volumes:
+      - rtmp_streams:/streams
+    networks:
+      - marchproxy-internal
+    depends_on:
+      - api-server
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7005/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "service=marchproxy-proxy-rtmp"
+      - "component=proxy"
+      - "layer=video"
+      - "module=rtmp"
+      - "variant=nvidia"
+      - "gpu=true"
+
+volumes:
+  rtmp_streams:
+    driver: local

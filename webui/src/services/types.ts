@@ -304,3 +304,82 @@ export interface NUMAMetrics {
   remote_memory_access_percent: number;
   throughput_mbps: number;
 }
+
+// Module Management Types (Unified NLB Architecture)
+export interface Module {
+  id: number;
+  name: string;
+  type: 'NLB' | 'ALB' | 'DBLB' | 'AILB' | 'RTMP';
+  description: string;
+  is_enabled: boolean;
+  container_image: string;
+  grpc_address: string;
+  health_status: 'healthy' | 'unhealthy' | 'degraded';
+  version: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ModuleRoute {
+  id: number;
+  module_id: number;
+  name: string;
+  protocol: string;
+  backend_url: string;
+  backend_port: number;
+  is_active: boolean;
+  rate_limit_rps?: number;
+  rate_limit_connections?: number;
+  rate_limit_bandwidth_mbps?: number;
+  priority: 'P0' | 'P1' | 'P2' | 'P3';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AutoScalingPolicy {
+  id: number;
+  module_id: number;
+  metric_type: 'cpu' | 'memory' | 'connections' | 'latency';
+  scale_up_threshold: number;
+  scale_down_threshold: number;
+  min_instances: number;
+  max_instances: number;
+  cooldown_seconds: number;
+  is_enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BlueGreenDeployment {
+  id: number;
+  module_id: number;
+  blue_version: string;
+  green_version: string;
+  traffic_weight_blue: number;
+  traffic_weight_green: number;
+  health_check_url: string;
+  auto_rollback_enabled: boolean;
+  status: 'active' | 'transitioning' | 'rolled_back';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ModuleMetrics {
+  module_id: number;
+  cpu_percent: number;
+  memory_percent: number;
+  active_connections: number;
+  requests_per_second: number;
+  average_latency_ms: number;
+  error_rate: number;
+  timestamp: string;
+}
+
+export interface ModuleInstance {
+  id: string;
+  module_id: number;
+  container_id: string;
+  status: 'running' | 'stopped' | 'starting' | 'stopping';
+  version: string;
+  started_at: string;
+}

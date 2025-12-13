@@ -1,0 +1,232 @@
+syntax = "proto3";
+
+package marchproxy;
+
+option go_package = "github.com/penguintech/marchproxy/proto/marchproxy;marchproxy";
+
+import "google/protobuf/timestamp.proto";
+
+// Empty message for RPCs that don't need request/response data
+message Empty {}
+
+// Common status codes for module operations
+enum StatusCode {
+  STATUS_CODE_UNSPECIFIED = 0;
+  STATUS_CODE_OK = 1;
+  STATUS_CODE_ERROR = 2;
+  STATUS_CODE_NOT_FOUND = 3;
+  STATUS_CODE_UNAVAILABLE = 4;
+  STATUS_CODE_INVALID_ARGUMENT = 5;
+  STATUS_CODE_PERMISSION_DENIED = 6;
+  STATUS_CODE_ALREADY_EXISTS = 7;
+  STATUS_CODE_RESOURCE_EXHAUSTED = 8;
+}
+
+// Module type enumeration
+enum ModuleType {
+  MODULE_TYPE_UNSPECIFIED = 0;
+  MODULE_TYPE_ALB = 1;   // Application Load Balancer (L7 HTTP/HTTPS)
+  MODULE_TYPE_DBLB = 2;  // Database Load Balancer (L7 DB protocols)
+  MODULE_TYPE_AILB = 3;  // AI Load Balancer (L7 AI/ML inference)
+  MODULE_TYPE_RTMP = 4;  // RTMP Streaming (L7 media)
+  MODULE_TYPE_NLB = 5;   // Network Load Balancer (L4 TCP/UDP)
+}
+
+// Protocol enumeration
+enum Protocol {
+  PROTOCOL_UNSPECIFIED = 0;
+  PROTOCOL_TCP = 1;
+  PROTOCOL_UDP = 2;
+  PROTOCOL_HTTP = 3;
+  PROTOCOL_HTTPS = 4;
+  PROTOCOL_HTTP2 = 5;
+  PROTOCOL_HTTP3 = 6;
+  PROTOCOL_GRPC = 7;
+  PROTOCOL_WEBSOCKET = 8;
+  PROTOCOL_MYSQL = 9;
+  PROTOCOL_POSTGRES = 10;
+  PROTOCOL_MONGODB = 11;
+  PROTOCOL_REDIS = 12;
+  PROTOCOL_RTMP = 13;
+  PROTOCOL_RTMPS = 14;
+  PROTOCOL_HLS = 15;
+  PROTOCOL_DASH = 16;
+}
+
+// Health status enumeration
+enum HealthStatus {
+  HEALTH_STATUS_UNSPECIFIED = 0;
+  HEALTH_STATUS_HEALTHY = 1;
+  HEALTH_STATUS_DEGRADED = 2;
+  HEALTH_STATUS_UNHEALTHY = 3;
+  HEALTH_STATUS_STARTING = 4;
+  HEALTH_STATUS_STOPPING = 5;
+  HEALTH_STATUS_STOPPED = 6;
+}
+
+// Timestamp wrapper
+message Timestamp {
+  google.protobuf.Timestamp time = 1;
+}
+
+// Module instance information
+message ModuleInstance {
+  string instance_id = 1;           // Unique instance identifier
+  ModuleType module_type = 2;       // Type of module
+  string address = 3;               // gRPC address (host:port)
+  HealthStatus health_status = 4;   // Current health status
+  map<string, string> metadata = 5; // Additional metadata
+  google.protobuf.Timestamp started_at = 6;
+  int32 current_connections = 7;    // Current active connections
+  int32 max_connections = 8;        // Maximum connections capacity
+  string version = 9;               // Module version (for blue/green)
+  int32 traffic_weight = 10;        // Traffic weight (0-100)
+}
+
+// Traffic route configuration
+message Route {
+  string route_id = 1;              // Unique route identifier
+  Protocol protocol = 2;            // Protocol to route
+  string source_pattern = 3;        // Source pattern (IP, CIDR, domain)
+  string destination_pattern = 4;   // Destination pattern
+  int32 source_port = 5;            // Source port (0 for any)
+  int32 destination_port = 6;       // Destination port
+  map<string, string> headers = 7;  // HTTP headers for L7 routing
+  string path_pattern = 8;          // URL path pattern for L7
+  int32 priority = 9;               // Route priority (higher = first)
+  map<string, string> metadata = 10;
+}
+
+// Rate limiting configuration
+message RateLimit {
+  string limit_id = 1;              // Unique limit identifier
+  string target = 2;                // Target (IP, user, service, etc.)
+  int64 requests_per_second = 3;    // Requests per second limit
+  int64 requests_per_minute = 4;    // Requests per minute limit
+  int64 requests_per_hour = 5;      // Requests per hour limit
+  int64 burst_size = 6;             // Burst allowance
+  bool enabled = 7;                 // Enable/disable this limit
+  map<string, string> metadata = 8;
+}
+
+// Metrics data point
+message MetricDataPoint {
+  string name = 1;                  // Metric name
+  double value = 2;                 // Metric value
+  map<string, string> labels = 3;   // Metric labels
+  google.protobuf.Timestamp timestamp = 4;
+}
+
+// Module metrics collection
+message ModuleMetrics {
+  string instance_id = 1;
+  ModuleType module_type = 2;
+  repeated MetricDataPoint metrics = 3;
+  google.protobuf.Timestamp collected_at = 4;
+}
+
+// Module statistics
+message ModuleStats {
+  string instance_id = 1;
+  int64 total_requests = 2;         // Total requests processed
+  int64 successful_requests = 3;    // Successful requests
+  int64 failed_requests = 4;        // Failed requests
+  int64 active_connections = 5;     // Currently active connections
+  int64 total_connections = 6;      // Total connections (lifetime)
+  double avg_latency_ms = 7;        // Average latency in milliseconds
+  double p50_latency_ms = 8;        // 50th percentile latency
+  double p95_latency_ms = 9;        // 95th percentile latency
+  double p99_latency_ms = 10;       // 99th percentile latency
+  int64 bytes_received = 11;        // Total bytes received
+  int64 bytes_sent = 12;            // Total bytes sent
+  double cpu_usage_percent = 13;    // CPU usage percentage
+  double memory_usage_mb = 14;      // Memory usage in MB
+  google.protobuf.Timestamp since = 15; // Stats collection start time
+  map<string, string> custom_stats = 16; // Module-specific stats
+}
+
+// Configuration update message
+message ConfigUpdate {
+  string config_id = 1;             // Configuration identifier
+  string config_type = 2;           // Type of configuration
+  bytes config_data = 3;            // Configuration data (JSON/YAML)
+  string checksum = 4;              // Config checksum for verification
+  google.protobuf.Timestamp updated_at = 5;
+  map<string, string> metadata = 6;
+}
+
+// Scaling configuration
+message ScalingConfig {
+  int32 min_instances = 1;          // Minimum instances
+  int32 max_instances = 2;          // Maximum instances
+  int32 target_cpu_percent = 3;     // Target CPU percentage
+  int32 target_memory_percent = 4;  // Target memory percentage
+  int32 target_connections = 5;     // Target connections per instance
+  int32 scale_up_threshold = 6;     // Scale up threshold percentage
+  int32 scale_down_threshold = 7;   // Scale down threshold percentage
+  int32 cooldown_seconds = 8;       // Cooldown period between scaling
+  bool auto_scaling_enabled = 9;    // Enable auto-scaling
+}
+
+// Blue/Green deployment configuration
+message BlueGreenConfig {
+  string blue_version = 1;          // Blue version identifier
+  string green_version = 2;         // Green version identifier
+  int32 blue_weight = 3;            // Traffic weight for blue (0-100)
+  int32 green_weight = 4;           // Traffic weight for green (0-100)
+  string active_version = 5;        // Currently active version
+  bool canary_enabled = 6;          // Enable canary deployment
+  int32 canary_percent = 7;         // Canary traffic percentage
+  google.protobuf.Timestamp deployment_started = 8;
+}
+
+// Health check configuration
+message HealthCheckConfig {
+  int32 interval_seconds = 1;       // Health check interval
+  int32 timeout_seconds = 2;        // Health check timeout
+  int32 unhealthy_threshold = 3;    // Failures before unhealthy
+  int32 healthy_threshold = 4;      // Successes before healthy
+  string health_check_path = 5;     // HTTP path for health check
+  int32 health_check_port = 6;      // Port for health check
+  Protocol health_check_protocol = 7; // Protocol for health check
+  map<string, string> metadata = 8;
+}
+
+// Error information
+message Error {
+  StatusCode code = 1;              // Error status code
+  string message = 2;               // Error message
+  map<string, string> details = 3;  // Additional error details
+  google.protobuf.Timestamp occurred_at = 4;
+}
+
+// Generic response wrapper
+message Response {
+  bool success = 1;                 // Operation success flag
+  string message = 2;               // Response message
+  Error error = 3;                  // Error details (if failed)
+  map<string, string> metadata = 4; // Additional metadata
+}
+
+// Pagination parameters
+message Pagination {
+  int32 page = 1;                   // Page number (1-based)
+  int32 page_size = 2;              // Items per page
+  int32 total_items = 3;            // Total items available
+  int32 total_pages = 4;            // Total pages available
+}
+
+// Filter criteria
+message Filter {
+  string field = 1;                 // Field to filter on
+  string operator = 2;              // Operator (eq, ne, gt, lt, in, etc.)
+  string value = 3;                 // Filter value
+}
+
+// Query parameters
+message Query {
+  repeated Filter filters = 1;      // Filter criteria
+  string sort_by = 2;               // Sort field
+  bool sort_desc = 3;               // Sort descending
+  Pagination pagination = 4;        // Pagination parameters
+}
