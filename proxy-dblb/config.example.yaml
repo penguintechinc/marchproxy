@@ -1,0 +1,99 @@
+# MarchProxy DBLB Configuration Example
+
+# gRPC server settings
+grpc_addr: "0.0.0.0"
+grpc_port: 50052
+
+# Metrics and health endpoint
+metrics_addr: ":7002"
+
+# Manager connection
+manager_url: "http://api-server:8000"
+cluster_api_key: "${CLUSTER_API_KEY}"
+registration_url: "http://api-server:8000/api/proxy/register"
+
+# Connection pooling configuration
+max_connections_per_route: 100
+connection_idle_timeout: 5m
+connection_max_lifetime: 30m
+
+# Rate limiting
+enable_rate_limiting: true
+default_connection_rate: 100.0  # connections per second
+default_query_rate: 1000.0      # queries per second
+
+# Security settings
+enable_sql_injection_detection: true
+block_suspicious_queries: true
+
+# Observability
+enable_tracing: false
+jaeger_endpoint: "http://jaeger:14268/api/traces"
+trace_sample_rate: 0.1
+metrics_namespace: "marchproxy_dblb"
+
+# Licensing (Enterprise)
+license_key: "${LICENSE_KEY}"
+license_server: "https://license.penguintech.io"
+release_mode: false
+
+# Database routes
+routes:
+  - name: "mysql-primary"
+    protocol: "mysql"
+    listen_port: 3306
+    backend_host: "mysql-server"
+    backend_port: 3306
+    max_connections: 100
+    connection_rate: 50.0
+    query_rate: 500.0
+    enable_auth: false
+    enable_ssl: false
+    health_check_sql: "SELECT 1"
+
+  - name: "postgres-main"
+    protocol: "postgresql"
+    listen_port: 5432
+    backend_host: "postgres-server"
+    backend_port: 5432
+    max_connections: 200
+    connection_rate: 100.0
+    query_rate: 1000.0
+    enable_auth: false
+    enable_ssl: true
+
+  - name: "mongodb-cluster"
+    protocol: "mongodb"
+    listen_port: 27017
+    backend_host: "mongodb-server"
+    backend_port: 27017
+    max_connections: 150
+    connection_rate: 75.0
+    query_rate: 750.0
+    enable_auth: true
+    username: "dbuser"
+    password: "${MONGODB_PASSWORD}"
+
+  - name: "redis-cache"
+    protocol: "redis"
+    listen_port: 6379
+    backend_host: "redis-server"
+    backend_port: 6379
+    max_connections: 500
+    connection_rate: 200.0
+    query_rate: 5000.0
+    enable_auth: true
+    password: "${REDIS_PASSWORD}"
+
+  - name: "mssql-enterprise"
+    protocol: "mssql"
+    listen_port: 1433
+    backend_host: "mssql-server"
+    backend_port: 1433
+    max_connections: 100
+    connection_rate: 50.0
+    query_rate: 500.0
+    enable_auth: true
+    username: "sa"
+    password: "${MSSQL_PASSWORD}"
+    enable_ssl: true

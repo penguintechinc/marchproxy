@@ -19,10 +19,10 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the NLB
+# Build the NLB (supports both cmd/main.go and cmd/nlb/main.go)
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo \
     -ldflags="-w -s" \
-    -o proxy-nlb ./cmd/nlb/main.go
+    -o proxy-nlb ./cmd/main.go
 
 # Production stage
 FROM debian:12-slim AS production

@@ -69,8 +69,9 @@ Supports automatic detection of:
 ```
 proxy-nlb/
 ├── cmd/
+│   ├── main.go               # Simplified entry point
 │   └── nlb/
-│       └── main.go           # Main application entry point
+│       └── main.go           # Alternative entry point (CLI)
 ├── internal/
 │   ├── nlb/
 │   │   ├── inspector.go      # Protocol detection
@@ -195,11 +196,16 @@ docker build --target debug -t marchproxy-nlb:debug .
 # Download dependencies
 go mod download
 
-# Build binary
+# Build binary (simplified entry point)
+go build ./cmd/main.go
+
+# Or build from cmd/nlb/main.go (with CLI flags)
 go build -o proxy-nlb ./cmd/nlb/main.go
 
 # Run
-./proxy-nlb --config config.yaml
+./main  # Uses config.example.yaml by default
+# Or with custom config
+CONFIG_PATH=/path/to/config.yaml ./main
 ```
 
 ## Running

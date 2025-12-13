@@ -66,9 +66,6 @@ func runNLB(configPath string, logger *logrus.Logger) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	// Initialize router
 	router := nlb.NewRouter(logger)
 	logger.Info("Traffic router initialized")
