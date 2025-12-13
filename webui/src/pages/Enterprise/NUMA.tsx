@@ -59,8 +59,11 @@ import type {
   WorkerAllocation,
   NUMANode,
 } from '../../services/types';
+import { useLicense } from '../../hooks/useLicense';
 
 const NUMA: React.FC = () => {
+  const { isEnterprise, hasFeature, loading: licenseLoading } = useLicense();
+  const hasEnterpriseAccess = isEnterprise || hasFeature('numa_optimization');
   const [selectedProxyId, setSelectedProxyId] = useState<number>(1);
   const [topology, setTopology] = useState<NUMATopology | null>(null);
   const [config, setConfig] = useState<NUMAConfig | null>(null);
@@ -70,7 +73,6 @@ const NUMA: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingNode, setEditingNode] = useState<number | null>(null);
   const [workerCount, setWorkerCount] = useState<number>(0);
-  const hasEnterpriseAccess = true;
 
   useEffect(() => {
     loadNUMAData();
@@ -179,7 +181,7 @@ const NUMA: React.FC = () => {
     <LicenseGate
       featureName="NUMA Performance Optimization"
       hasAccess={hasEnterpriseAccess}
-      isLoading={false}
+      isLoading={licenseLoading}
     >
       <Container maxWidth="xl">
         <Box py={4}>

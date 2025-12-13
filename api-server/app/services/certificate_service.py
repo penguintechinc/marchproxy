@@ -392,23 +392,111 @@ class CertificateService:
         common_name: str
     ) -> tuple[str, str, Optional[str]]:
         """
-        Fetch certificate from HashiCorp Vault
+        Fetch certificate from HashiCorp Vault PKI secrets engine
+
+        Issues a new certificate using the PKI secrets engine.
+
+        Args:
+            vault_path: PKI secrets engine path (e.g., "pki" or "pki_int")
+            vault_role: PKI role name configured in Vault
+            common_name: Certificate common name (e.g., "example.com")
 
         Returns:
             Tuple of (cert_data, key_data, ca_chain)
+
+        Raises:
+            ExternalServiceError: If Vault API call fails
         """
-        # TODO: Implement actual Vault API integration
-        vault_token = None  # Would come from settings
-        if not vault_token:
+        if not settings.VAULT_TOKEN:
             raise ExternalServiceError(
                 "Vault integration not configured. "
                 "Set VAULT_TOKEN environment variable."
             )
 
-        # Placeholder for actual implementation
-        raise NotImplementedError(
-            "Vault integration pending - Phase 2.2"
-        )
+        vault_addr = getattr(settings, 'VAULT_ADDR', 'http://127.0.0.1:8200')
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                headers = {
+                    "X-Vault-Token": settings.VAULT_TOKEN,
+                    "Content-Type": "application/json"
+                }
+
+                # Issue certificate using PKI secrets engine
+                url = f"{vault_addr}/v1/{vault_path}/issue/{vault_role}"
+                payload = {
+                    "common_name": common_name,
+                    "ttl": "8760h",  # 1 year default
+                    "format": "pem"
+                }
+
+                logger.info(f"Issuing certificate from Vault PKI: {vault_path}/issue/{vault_role}")
+                response = await client.post(url, headers=headers, json=payload)
+
+                if response.status_code == 404:
+                    raise ExternalServiceError(
+                        f"Vault PKI path or role not found: {vault_path}/issue/{vault_role}"
+                    )
+                elif response.status_code == 403:
+                    raise ExternalServiceError(
+                        "Vault authentication failed or insufficient permissions. "
+                        "Check VAULT_TOKEN and PKI role policies."
+                    )
+                elif response.status_code == 400:
+                    error_data = response.json()
+                    errors = error_data.get("errors", ["Unknown error"])
+                    raise ExternalServiceError(
+                        f"Vault PKI error: {'; '.join(errors)}"
+                    )
+                elif response.status_code != 200:
+                    raise ExternalServiceError(
+                        f"Vault API error: HTTP {response.status_code} - {response.text}"
+                    )
+
+                data = response.json()
+                vault_data = data.get("data", {})
+
+                cert_data = vault_data.get("certificate")
+                key_data = vault_data.get("private_key")
+                ca_chain = vault_data.get("ca_chain")
+
+                # ca_chain can be a list - join into single PEM
+                if isinstance(ca_chain, list):
+                    ca_chain = "\n".join(ca_chain)
+
+                # Vault may also return issuing_ca separately
+                issuing_ca = vault_data.get("issuing_ca")
+                if issuing_ca and not ca_chain:
+                    ca_chain = issuing_ca
+
+                if not cert_data:
+                    raise ExternalServiceError(
+                        "Certificate not returned by Vault PKI"
+                    )
+
+                if not key_data:
+                    raise ExternalServiceError(
+                        "Private key not returned by Vault PKI"
+                    )
+
+                logger.info(f"Successfully issued certificate from Vault: {common_name}")
+                return cert_data, key_data, ca_chain
+
+        except httpx.TimeoutException as e:
+            raise ExternalServiceError(
+                f"Timeout connecting to Vault: {e}"
+            )
+        except httpx.HTTPError as e:
+            raise ExternalServiceError(
+                f"HTTP error connecting to Vault: {e}"
+            )
+        except ExternalServiceError:
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error fetching from Vault: {e}", exc_info=True)
+            raise ExternalServiceError(
+                f"Failed to issue certificate from Vault: {e}"
+            )
 
     async def get_expiring_certificates(
         self,

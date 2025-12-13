@@ -119,7 +119,21 @@ async def list_proxies(
     if cluster_id:
         query = query.where(ProxyServer.cluster_id == cluster_id)
 
-    # TODO: Add cluster access control for non-admin users
+    # Apply cluster access control for non-admin users
+    if not current_user.is_admin:
+        # Get clusters the user has access to via their cluster assignments
+        from app.models.sqlalchemy.cluster import UserClusterAccess
+        user_clusters_query = select(UserClusterAccess.cluster_id).where(
+            UserClusterAccess.user_id == current_user.id
+        )
+        user_clusters_result = await db.execute(user_clusters_query)
+        allowed_cluster_ids = [row[0] for row in user_clusters_result.fetchall()]
+
+        if allowed_cluster_ids:
+            query = query.where(ProxyServer.cluster_id.in_(allowed_cluster_ids))
+        else:
+            # User has no cluster access - return empty list
+            return ProxyListResponse(total=0, proxies=[])
 
     count_query = select(func.count()).select_from(query.subquery())
     total = (await db.execute(count_query)).scalar() or 0

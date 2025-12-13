@@ -46,6 +46,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import LicenseGate from '../../components/Common/LicenseGate';
 import { getQoSPolicies, createQoSPolicy, updateQoSPolicy, deleteQoSPolicy } from '../../services/enterpriseApi';
 import type { QoSPolicy, BandwidthAllocation } from '../../services/types';
+import { useLicense } from '../../hooks/useLicense';
 
 const PRIORITY_COLORS: Record<string, string> = {
   P0: '#f44336',
@@ -66,12 +67,13 @@ const DSCP_VALUES = [
 ];
 
 const TrafficShaping: React.FC = () => {
+  const { isEnterprise, hasFeature, loading: licenseLoading } = useLicense();
+  const hasEnterpriseAccess = isEnterprise || hasFeature('traffic_shaping');
   const [policies, setPolicies] = useState<QoSPolicy[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPolicy, setEditingPolicy] = useState<Partial<QoSPolicy> | null>(null);
-  const hasEnterpriseAccess = true; // TODO: Get from license check
 
   // Form state
   const [formData, setFormData] = useState<Partial<QoSPolicy>>({
@@ -184,7 +186,7 @@ const TrafficShaping: React.FC = () => {
     <LicenseGate
       featureName="Traffic Shaping & QoS"
       hasAccess={hasEnterpriseAccess}
-      isLoading={false}
+      isLoading={licenseLoading}
     >
       <Container maxWidth="xl">
         <Box py={4}>

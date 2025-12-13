@@ -62,6 +62,7 @@ import type {
   CostOptimization,
   CostBreakdown,
 } from '../../services/types';
+import { useLicense } from '../../hooks/useLicense';
 
 const PROVIDER_COLORS: Record<string, string> = {
   AWS: '#FF9900',
@@ -71,6 +72,8 @@ const PROVIDER_COLORS: Record<string, string> = {
 };
 
 const CostAnalyticsDashboard: React.FC = () => {
+  const { isEnterprise, hasFeature, loading: licenseLoading } = useLicense();
+  const hasEnterpriseAccess = isEnterprise || hasFeature('multi_cloud_routing');
   const [analytics, setAnalytics] = useState<CostAnalytics | null>(null);
   const [timeSeries, setTimeSeries] = useState<CostTimeSeries[]>([]);
   const [optimizations, setOptimizations] = useState<CostOptimization[]>([]);
@@ -78,7 +81,6 @@ const CostAnalyticsDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<'week' | 'month' | 'year'>('month');
   const [exportFormat, setExportFormat] = useState<'csv' | 'pdf'>('csv');
-  const hasEnterpriseAccess = true;
 
   useEffect(() => {
     loadCostData();
@@ -185,7 +187,7 @@ const CostAnalyticsDashboard: React.FC = () => {
     <LicenseGate
       featureName="Cost Analytics & Optimization"
       hasAccess={hasEnterpriseAccess}
-      isLoading={false}
+      isLoading={licenseLoading}
     >
       <Container maxWidth="xl">
         <Box py={4}>

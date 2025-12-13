@@ -56,6 +56,7 @@ import {
   testPolicy
 } from '../../services/securityApi';
 import LicenseGate from '../../components/Common/LicenseGate';
+import { useLicense } from '../../hooks/useLicense';
 
 interface TestCase {
   id: string;
@@ -66,7 +67,8 @@ interface TestCase {
 }
 
 const PolicyTester: React.FC = () => {
-  const hasEnterpriseAccess = true; // TODO: Get from license check
+  const { isEnterprise, hasFeature, loading: licenseLoading } = useLicense();
+  const hasEnterpriseAccess = isEnterprise || hasFeature('zero_trust');
   const [policies, setPolicies] = useState<OPAPolicy[]>([]);
   const [selectedPolicy, setSelectedPolicy] = useState<number | null>(null);
   const [customRegoCode, setCustomRegoCode] = useState<string>('');
@@ -260,7 +262,7 @@ const PolicyTester: React.FC = () => {
     <LicenseGate
       featureName="Zero-Trust Security"
       hasAccess={hasEnterpriseAccess}
-      isLoading={false}
+      isLoading={licenseLoading}
     >
       <Box sx={{ p: 3 }}>
         <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

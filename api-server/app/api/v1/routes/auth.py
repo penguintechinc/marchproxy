@@ -177,13 +177,69 @@ async def refresh_token(
     """
     Refresh access token using refresh token.
     """
-    # TODO: Implement refresh token validation
-    # For now, create new access token
-    # In production, validate refresh token and extract user_id
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Refresh token endpoint not yet implemented"
-    )
+    from jose import jwt, JWTError
+    from app.core.config import settings
+
+    try:
+        # Decode and validate refresh token
+        payload = jwt.decode(
+            request.refresh_token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM]
+        )
+
+        # Check token type
+        token_type = payload.get("type")
+        if token_type != "refresh":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token type"
+            )
+
+        # Extract user ID
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token payload"
+            )
+
+        # Verify user still exists and is active
+        stmt = select(User).where(User.id == int(user_id))
+        result = await db.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found"
+            )
+
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User account is deactivated"
+            )
+
+        # Generate new tokens
+        new_access_token = create_access_token(subject=str(user.id))
+        new_refresh_token = create_refresh_token(subject=str(user.id))
+
+        logger.info(f"Tokens refreshed for user {user.username}")
+
+        return TokenResponse(
+            access_token=new_access_token,
+            refresh_token=new_refresh_token,
+            token_type="bearer",
+            expires_in=3600
+        )
+
+    except JWTError as e:
+        logger.warning(f"Invalid refresh token: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token"
+        )
 
 
 @router.post("/2fa/enable", response_model=Enable2FAResponse)

@@ -64,6 +64,7 @@ import type {
   CloudBackendLocation,
   RoutingAlgorithm,
 } from '../../services/types';
+import { useLicense } from '../../hooks/useLicense';
 
 const CLOUD_PROVIDERS = [
   { value: 'AWS', label: 'Amazon Web Services', color: '#FF9900' },
@@ -73,6 +74,8 @@ const CLOUD_PROVIDERS = [
 ];
 
 const MultiCloud: React.FC = () => {
+  const { isEnterprise, hasFeature, loading: licenseLoading } = useLicense();
+  const hasEnterpriseAccess = isEnterprise || hasFeature('multi_cloud_routing');
   const [activeTab, setActiveTab] = useState(0);
   const [routes, setRoutes] = useState<CloudRoute[]>([]);
   const [backendHealth, setBackendHealth] = useState<BackendHealth[]>([]);
@@ -83,7 +86,6 @@ const MultiCloud: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRoute, setEditingRoute] = useState<Partial<CloudRoute> | null>(null);
-  const hasEnterpriseAccess = true;
 
   const [formData, setFormData] = useState<Partial<CloudRoute>>({
     cloud_provider: 'AWS',
@@ -207,7 +209,7 @@ const MultiCloud: React.FC = () => {
     <LicenseGate
       featureName="Multi-Cloud Intelligent Routing"
       hasAccess={hasEnterpriseAccess}
-      isLoading={false}
+      isLoading={licenseLoading}
     >
       <Container maxWidth="xl">
         <Box py={4}>

@@ -6,13 +6,16 @@ bandwidth limits, and DSCP marking.
 """
 
 import logging
-from typing import List
+from typing import List, Optional
+from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Depends, status
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.license import license_validator
+from app.models.sqlalchemy.enterprise import QoSPolicy
 from app.schemas.traffic_shaping import (
     QoSPolicyCreate,
     QoSPolicyUpdate,
@@ -22,17 +25,11 @@ from app.schemas.traffic_shaping import (
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# Feature name for license check
 FEATURE_NAME = "traffic_shaping"
 
 
 async def check_enterprise_license():
-    """
-    Dependency to check if traffic shaping is available
-
-    Raises:
-        HTTPException: 403 if feature not available
-    """
+    """Check if traffic shaping feature is available."""
     has_feature = await license_validator.check_feature(FEATURE_NAME)
     if not has_feature:
         raise HTTPException(
@@ -46,67 +43,86 @@ async def check_enterprise_license():
         )
 
 
+def policy_to_response(policy: QoSPolicy) -> QoSPolicyResponse:
+    """Convert database model to response schema."""
+    return QoSPolicyResponse(
+        id=policy.id,
+        name=policy.name,
+        description=policy.description,
+        service_id=policy.service_id,
+        cluster_id=policy.cluster_id,
+        bandwidth_config=policy.bandwidth_config,
+        priority_config=policy.priority_config,
+        enabled=policy.enabled,
+        created_at=policy.created_at,
+        updated_at=policy.updated_at
+    )
+
+
 @router.get("/policies", response_model=List[QoSPolicyResponse])
 async def list_qos_policies(
-    cluster_id: int = None,
-    service_id: int = None,
+    cluster_id: Optional[int] = None,
+    service_id: Optional[int] = None,
     enabled_only: bool = False,
     db: AsyncSession = Depends(get_db),
     _: None = Depends(check_enterprise_license)
 ):
-    """
-    List all QoS policies
+    """List all QoS policies with optional filters."""
+    query = select(QoSPolicy)
 
-    **Enterprise Feature**: Requires Enterprise license
+    conditions = []
+    if cluster_id is not None:
+        conditions.append(QoSPolicy.cluster_id == cluster_id)
+    if service_id is not None:
+        conditions.append(QoSPolicy.service_id == service_id)
+    if enabled_only:
+        conditions.append(QoSPolicy.enabled == True)
 
-    Args:
-        cluster_id: Filter by cluster ID
-        service_id: Filter by service ID
-        enabled_only: Only return enabled policies
-        db: Database session
-    """
-    # TODO: Implement database query
-    # For now, return empty list
-    logger.info(
-        f"Listing QoS policies: cluster_id={cluster_id}, "
-        f"service_id={service_id}, enabled_only={enabled_only}"
-    )
-    return []
+    if conditions:
+        query = query.where(and_(*conditions))
+
+    query = query.order_by(QoSPolicy.created_at.desc())
+
+    result = await db.execute(query)
+    policies = result.scalars().all()
+
+    return [policy_to_response(p) for p in policies]
 
 
-@router.post("/policies", response_model=QoSPolicyResponse,
-             status_code=status.HTTP_201_CREATED)
+@router.post("/policies", response_model=QoSPolicyResponse, status_code=status.HTTP_201_CREATED)
 async def create_qos_policy(
     policy: QoSPolicyCreate,
     db: AsyncSession = Depends(get_db),
     _: None = Depends(check_enterprise_license)
 ):
-    """
-    Create a new QoS policy
-
-    **Enterprise Feature**: Requires Enterprise license
-
-    Configure traffic shaping with:
-    - **Priority Queues**: P0 (interactive) to P3 (best effort)
-    - **Bandwidth Limits**: Ingress/egress rate limiting
-    - **DSCP Marking**: Network-level QoS marking
-    - **Token Bucket**: Burst handling algorithm
-
-    Args:
-        policy: QoS policy configuration
-        db: Database session
-
-    Returns:
-        Created QoS policy
-    """
-    logger.info(f"Creating QoS policy: {policy.name} for service {policy.service_id}")
-
-    # TODO: Implement database creation
-    # For now, return mock response
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Database models not yet implemented"
+    """Create a new QoS policy."""
+    db_policy = QoSPolicy(
+        name=policy.name,
+        description=policy.description,
+        service_id=policy.service_id,
+        cluster_id=policy.cluster_id,
+        bandwidth_config=policy.bandwidth_config.model_dump() if policy.bandwidth_config else {
+            "ingress_mbps": None,
+            "egress_mbps": None,
+            "burst_size_kb": 1024
+        },
+        priority_config=policy.priority_config.model_dump() if policy.priority_config else {
+            "priority": "P2",
+            "weight": 1,
+            "max_latency_ms": 100,
+            "dscp_marking": "BE"
+        },
+        enabled=policy.enabled if policy.enabled is not None else True,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
     )
+
+    db.add(db_policy)
+    await db.commit()
+    await db.refresh(db_policy)
+
+    logger.info(f"Created QoS policy: {db_policy.name} (ID: {db_policy.id})")
+    return policy_to_response(db_policy)
 
 
 @router.get("/policies/{policy_id}", response_model=QoSPolicyResponse)
@@ -115,54 +131,57 @@ async def get_qos_policy(
     db: AsyncSession = Depends(get_db),
     _: None = Depends(check_enterprise_license)
 ):
-    """
-    Get a specific QoS policy by ID
-
-    **Enterprise Feature**: Requires Enterprise license
-
-    Args:
-        policy_id: Policy ID
-        db: Database session
-
-    Returns:
-        QoS policy details
-    """
-    logger.info(f"Fetching QoS policy {policy_id}")
-
-    # TODO: Implement database query
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail=f"QoS policy {policy_id} not found"
+    """Get a specific QoS policy by ID."""
+    result = await db.execute(
+        select(QoSPolicy).where(QoSPolicy.id == policy_id)
     )
+    policy = result.scalar_one_or_none()
+
+    if not policy:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"QoS policy {policy_id} not found"
+        )
+
+    return policy_to_response(policy)
 
 
 @router.put("/policies/{policy_id}", response_model=QoSPolicyResponse)
 async def update_qos_policy(
     policy_id: int,
-    policy: QoSPolicyUpdate,
+    policy_update: QoSPolicyUpdate,
     db: AsyncSession = Depends(get_db),
     _: None = Depends(check_enterprise_license)
 ):
-    """
-    Update an existing QoS policy
-
-    **Enterprise Feature**: Requires Enterprise license
-
-    Args:
-        policy_id: Policy ID
-        policy: Updated policy configuration
-        db: Database session
-
-    Returns:
-        Updated QoS policy
-    """
-    logger.info(f"Updating QoS policy {policy_id}")
-
-    # TODO: Implement database update
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail=f"QoS policy {policy_id} not found"
+    """Update an existing QoS policy."""
+    result = await db.execute(
+        select(QoSPolicy).where(QoSPolicy.id == policy_id)
     )
+    policy = result.scalar_one_or_none()
+
+    if not policy:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"QoS policy {policy_id} not found"
+        )
+
+    update_data = policy_update.model_dump(exclude_unset=True)
+
+    for field, value in update_data.items():
+        if field == "bandwidth_config" and value is not None:
+            setattr(policy, field, value.model_dump() if hasattr(value, 'model_dump') else value)
+        elif field == "priority_config" and value is not None:
+            setattr(policy, field, value.model_dump() if hasattr(value, 'model_dump') else value)
+        else:
+            setattr(policy, field, value)
+
+    policy.updated_at = datetime.utcnow()
+
+    await db.commit()
+    await db.refresh(policy)
+
+    logger.info(f"Updated QoS policy: {policy.name} (ID: {policy.id})")
+    return policy_to_response(policy)
 
 
 @router.delete("/policies/{policy_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -171,22 +190,22 @@ async def delete_qos_policy(
     db: AsyncSession = Depends(get_db),
     _: None = Depends(check_enterprise_license)
 ):
-    """
-    Delete a QoS policy
-
-    **Enterprise Feature**: Requires Enterprise license
-
-    Args:
-        policy_id: Policy ID
-        db: Database session
-    """
-    logger.info(f"Deleting QoS policy {policy_id}")
-
-    # TODO: Implement database deletion
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail=f"QoS policy {policy_id} not found"
+    """Delete a QoS policy."""
+    result = await db.execute(
+        select(QoSPolicy).where(QoSPolicy.id == policy_id)
     )
+    policy = result.scalar_one_or_none()
+
+    if not policy:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"QoS policy {policy_id} not found"
+        )
+
+    await db.delete(policy)
+    await db.commit()
+
+    logger.info(f"Deleted QoS policy: {policy_id}")
 
 
 @router.post("/policies/{policy_id}/enable", response_model=QoSPolicyResponse)
@@ -195,25 +214,26 @@ async def enable_qos_policy(
     db: AsyncSession = Depends(get_db),
     _: None = Depends(check_enterprise_license)
 ):
-    """
-    Enable a QoS policy
-
-    **Enterprise Feature**: Requires Enterprise license
-
-    Args:
-        policy_id: Policy ID
-        db: Database session
-
-    Returns:
-        Updated QoS policy
-    """
-    logger.info(f"Enabling QoS policy {policy_id}")
-
-    # TODO: Implement enable logic
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail=f"QoS policy {policy_id} not found"
+    """Enable a QoS policy."""
+    result = await db.execute(
+        select(QoSPolicy).where(QoSPolicy.id == policy_id)
     )
+    policy = result.scalar_one_or_none()
+
+    if not policy:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"QoS policy {policy_id} not found"
+        )
+
+    policy.enabled = True
+    policy.updated_at = datetime.utcnow()
+
+    await db.commit()
+    await db.refresh(policy)
+
+    logger.info(f"Enabled QoS policy: {policy.name} (ID: {policy.id})")
+    return policy_to_response(policy)
 
 
 @router.post("/policies/{policy_id}/disable", response_model=QoSPolicyResponse)
@@ -222,22 +242,23 @@ async def disable_qos_policy(
     db: AsyncSession = Depends(get_db),
     _: None = Depends(check_enterprise_license)
 ):
-    """
-    Disable a QoS policy
-
-    **Enterprise Feature**: Requires Enterprise license
-
-    Args:
-        policy_id: Policy ID
-        db: Database session
-
-    Returns:
-        Updated QoS policy
-    """
-    logger.info(f"Disabling QoS policy {policy_id}")
-
-    # TODO: Implement disable logic
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail=f"QoS policy {policy_id} not found"
+    """Disable a QoS policy."""
+    result = await db.execute(
+        select(QoSPolicy).where(QoSPolicy.id == policy_id)
     )
+    policy = result.scalar_one_or_none()
+
+    if not policy:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"QoS policy {policy_id} not found"
+        )
+
+    policy.enabled = False
+    policy.updated_at = datetime.utcnow()
+
+    await db.commit()
+    await db.refresh(policy)
+
+    logger.info(f"Disabled QoS policy: {policy.name} (ID: {policy.id})")
+    return policy_to_response(policy)

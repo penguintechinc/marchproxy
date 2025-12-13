@@ -51,9 +51,11 @@ import {
   verifyAuditLogIntegrity
 } from '../../services/securityApi';
 import LicenseGate from '../../components/Common/LicenseGate';
+import { useLicense } from '../../hooks/useLicense';
 
 const AuditLogs: React.FC = () => {
-  const hasEnterpriseAccess = true; // TODO: Get from license check
+  const { isEnterprise, hasFeature, loading: licenseLoading } = useLicense();
+  const hasEnterpriseAccess = isEnterprise || hasFeature('zero_trust');
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [totalLogs, setTotalLogs] = useState(0);
   const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
@@ -253,7 +255,7 @@ const AuditLogs: React.FC = () => {
     <LicenseGate
       featureName="Zero-Trust Security"
       hasAccess={hasEnterpriseAccess}
-      isLoading={false}
+      isLoading={licenseLoading}
     >
       <Box sx={{ p: 3 }}>
         <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

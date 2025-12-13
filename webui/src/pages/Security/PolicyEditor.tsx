@@ -55,9 +55,11 @@ import {
   getPolicyTemplates
 } from '../../services/securityApi';
 import LicenseGate from '../../components/Common/LicenseGate';
+import { useLicense } from '../../hooks/useLicense';
 
 const PolicyEditor: React.FC = () => {
-  const hasEnterpriseAccess = true; // TODO: Get from license check
+  const { isEnterprise, hasFeature, loading: licenseLoading } = useLicense();
+  const hasEnterpriseAccess = isEnterprise || hasFeature('zero_trust');
   const [policies, setPolicies] = useState<OPAPolicy[]>([]);
   const [currentPolicy, setCurrentPolicy] = useState<Partial<OPAPolicy>>({
     name: '',
@@ -243,7 +245,7 @@ const PolicyEditor: React.FC = () => {
     <LicenseGate
       featureName="Zero-Trust Security"
       hasAccess={hasEnterpriseAccess}
-      isLoading={false}
+      isLoading={licenseLoading}
     >
       <Box sx={{ p: 3 }}>
         <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

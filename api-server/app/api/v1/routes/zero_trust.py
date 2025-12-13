@@ -477,8 +477,44 @@ async def export_compliance_report(
         )
 
     else:  # PDF
-        # In production: Generate actual PDF
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="PDF export not yet implemented",
-        )
+        # Generate PDF using HTML to PDF conversion
+        try:
+            from weasyprint import HTML
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body {{ font-family: Arial, sans-serif; margin: 40px; }}
+                    h1 {{ color: #1a237e; }}
+                    table {{ border-collapse: collapse; width: 100%; margin-top: 20px; }}
+                    th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
+                    th {{ background-color: #1a237e; color: white; }}
+                    .compliant {{ color: green; }}
+                    .non-compliant {{ color: red; }}
+                </style>
+            </head>
+            <body>
+                <h1>Compliance Report: {request.report_id}</h1>
+                <p>Generated: {datetime.utcnow().isoformat()}</p>
+                <p>Framework: {request.framework}</p>
+                <p>Period: {request.start_date} to {request.end_date}</p>
+                <h2>Summary</h2>
+                <p>Total Requirements: {report_data.get('total_requirements', 0)}</p>
+                <p>Compliant: {report_data.get('compliant', 0)}</p>
+                <p>Non-Compliant: {report_data.get('non_compliant', 0)}</p>
+            </body>
+            </html>
+            """
+            pdf_bytes = HTML(string=html_content).write_pdf()
+            return StreamingResponse(
+                io.BytesIO(pdf_bytes),
+                media_type="application/pdf",
+                headers={"Content-Disposition": f"attachment; filename={request.report_id}.pdf"},
+            )
+        except ImportError:
+            # Fallback if weasyprint is not installed
+            raise HTTPException(
+                status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                detail="PDF export requires weasyprint library. Install with: pip install weasyprint",
+            )
