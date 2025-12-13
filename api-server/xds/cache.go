@@ -70,8 +70,13 @@ func (c *SnapshotCache) ClearSnapshot(nodeID string) {
 	c.SnapshotCache.ClearSnapshot(nodeID)
 }
 
-// GetSnapshot returns the current snapshot for a node
-func (c *SnapshotCache) GetSnapshot(nodeID string) (*cache.Snapshot, error) {
+// GetSnapshot returns the current snapshot for a node (implements cache.SnapshotCache interface)
+func (c *SnapshotCache) GetSnapshot(nodeID string) (cache.ResourceSnapshot, error) {
+	return c.SnapshotCache.GetSnapshot(nodeID)
+}
+
+// GetConcreteSnapshot returns a concrete snapshot (for internal use)
+func (c *SnapshotCache) GetConcreteSnapshot(nodeID string) (*cache.Snapshot, error) {
 	snap, err := c.SnapshotCache.GetSnapshot(nodeID)
 	if err != nil {
 		return nil, err
@@ -87,7 +92,7 @@ func (c *SnapshotCache) GetSnapshot(nodeID string) (*cache.Snapshot, error) {
 
 // GetResourceNames returns the names of all resources of a given type
 func (c *SnapshotCache) GetResourceNames(nodeID string, typeURL string) ([]string, error) {
-	snapshot, err := c.GetSnapshot(nodeID)
+	snapshot, err := c.GetConcreteSnapshot(nodeID)
 	if err != nil {
 		return nil, err
 	}

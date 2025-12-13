@@ -56,19 +56,22 @@ impl RootContext for LicenseFilterRoot {
             match serde_json::from_slice::<FilterConfig>(&config_bytes) {
                 Ok(config) => {
                     self.config = config;
-                    log::info!("License filter configured - Edition: {}",
-                              if self.config.is_enterprise { "Enterprise" } else { "Community" });
-                    log::info!("License: {}", self.config.license_key);
-                    log::info!("Max proxies: {}", self.config.max_proxies);
+                    proxy_wasm::hostcalls::log(
+                        LogLevel::Info,
+                        &format!("License filter configured - Edition: {}",
+                                if self.config.is_enterprise { "Enterprise" } else { "Community" })
+                    ).ok();
+                    proxy_wasm::hostcalls::log(LogLevel::Info, &format!("License: {}", self.config.license_key)).ok();
+                    proxy_wasm::hostcalls::log(LogLevel::Info, &format!("Max proxies: {}", self.config.max_proxies)).ok();
                     true
                 }
                 Err(e) => {
-                    log::error!("Failed to parse license configuration: {}", e);
+                    proxy_wasm::hostcalls::log(LogLevel::Error, &format!("Failed to parse license configuration: {}", e)).ok();
                     false
                 }
             }
         } else {
-            log::info!("No license configuration provided, using Community defaults");
+            proxy_wasm::hostcalls::log(LogLevel::Info, "No license configuration provided, using Community defaults").ok();
             true
         }
     }
@@ -100,7 +103,7 @@ impl HttpContext for LicenseFilter {
 
         if let Some(feature) = required_feature {
             if !self.is_feature_enabled(&feature) {
-                log::warn!("Feature '{}' not available in current license", feature);
+                proxy_wasm::hostcalls::log(LogLevel::Warn, &format!("Feature '{}' not available in current license", feature)).ok();
                 self.send_http_response(
                     402,
                     vec![
@@ -118,8 +121,11 @@ impl HttpContext for LicenseFilter {
 
         // Check proxy count limit
         if self.config.current_proxies > self.config.max_proxies {
-            log::error!("Proxy count ({}) exceeds license limit ({})",
-                       self.config.current_proxies, self.config.max_proxies);
+            proxy_wasm::hostcalls::log(
+                LogLevel::Error,
+                &format!("Proxy count ({}) exceeds license limit ({})",
+                        self.config.current_proxies, self.config.max_proxies)
+            ).ok();
             self.send_http_response(
                 429,
                 vec![
@@ -136,8 +142,8 @@ impl HttpContext for LicenseFilter {
 
         // Add license information to request headers
         self.set_http_request_header("x-license-edition",
-                                    if self.config.is_enterprise { "enterprise" } else { "community" });
-        self.set_http_request_header("x-license-key", &self.config.license_key);
+                                    Some(if self.config.is_enterprise { "enterprise" } else { "community" }));
+        self.set_http_request_header("x-license-key", Some(&self.config.license_key));
 
         Action::Continue
     }
@@ -145,7 +151,7 @@ impl HttpContext for LicenseFilter {
     fn on_http_response_headers(&mut self, _num_headers: usize, _end_of_stream: bool) -> Action {
         // Add license information to response headers
         self.set_http_response_header("x-marchproxy-edition",
-                                     if self.config.is_enterprise { "enterprise" } else { "community" });
+                                     Some(if self.config.is_enterprise { "enterprise" } else { "community" }));
 
         Action::Continue
     }

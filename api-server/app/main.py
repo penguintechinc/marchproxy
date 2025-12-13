@@ -11,10 +11,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app
 
-from app.config import get_settings
-from app.core.database import engine, Base
-
-settings = get_settings()
+from app.core.config import settings
+from app.core.database import engine, Base, close_db
 
 # Configure logging
 logging.basicConfig(
@@ -56,7 +54,7 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down MarchProxy API Server")
     if xds_bridge:
         await xds_bridge.close()
-    await engine.dispose()
+    await close_db()
 
 
 # Create FastAPI application

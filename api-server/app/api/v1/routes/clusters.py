@@ -4,14 +4,11 @@ Cluster management API routes
 Handles CRUD operations for clusters, API key management, and cluster assignments.
 """
 
-import hashlib
 import logging
-import secrets
-from datetime import datetime
-from typing import Annotated, List
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy import select, update, delete, func
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -25,19 +22,10 @@ from app.schemas.cluster import (
     ClusterListResponse,
     ClusterAPIKeyRotateResponse,
 )
+from app.services.cluster_service import ClusterService
 
 router = APIRouter(prefix="/clusters", tags=["clusters"])
 logger = logging.getLogger(__name__)
-
-
-def generate_api_key() -> str:
-    """Generate a secure API key"""
-    return secrets.token_urlsafe(48)
-
-
-def hash_api_key(api_key: str) -> str:
-    """Hash API key for storage"""
-    return hashlib.sha256(api_key.encode()).hexdigest()
 
 
 @router.get("", response_model=ClusterListResponse)
@@ -92,41 +80,11 @@ async def create_cluster(
 
     Generates a unique API key for cluster authentication.
     Returns the API key only once - it cannot be retrieved later.
+    License validation ensures Community tier is limited to 1 cluster,
+    Enterprise tier requires multi_cluster feature for additional clusters.
     """
-    # Check if cluster name already exists
-    stmt = select(Cluster).where(Cluster.name == cluster_data.name)
-    existing = await db.execute(stmt)
-    if existing.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Cluster with name '{cluster_data.name}' already exists"
-        )
-
-    # Generate API key
-    api_key = generate_api_key()
-    api_key_hash = hash_api_key(api_key)
-
-    # Create cluster
-    new_cluster = Cluster(
-        name=cluster_data.name,
-        description=cluster_data.description,
-        api_key_hash=api_key_hash,
-        syslog_endpoint=cluster_data.syslog_endpoint,
-        log_auth=cluster_data.log_auth,
-        log_netflow=cluster_data.log_netflow,
-        log_debug=cluster_data.log_debug,
-        max_proxies=cluster_data.max_proxies,
-        is_active=True,
-        is_default=False,
-        created_by=current_user.id,
-        created_at=datetime.utcnow()
-    )
-
-    db.add(new_cluster)
-    await db.commit()
-    await db.refresh(new_cluster)
-
-    logger.info(f"Cluster created: {new_cluster.name} (ID: {new_cluster.id}) by user {current_user.username}")
+    service = ClusterService(db)
+    new_cluster, api_key = await service.create_cluster(cluster_data, current_user)
 
     # Return response with API key (only shown once)
     response = ClusterResponse.model_validate(new_cluster)
@@ -179,28 +137,10 @@ async def update_cluster(
     Update cluster details (Admin only).
 
     Does not update API key - use rotate_api_key endpoint for that.
+    Max proxies will be automatically capped by license limits.
     """
-    stmt = select(Cluster).where(Cluster.id == cluster_id)
-    result = await db.execute(stmt)
-    cluster = result.scalar_one_or_none()
-
-    if not cluster:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Cluster not found"
-        )
-
-    # Update fields
-    update_data = cluster_data.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(cluster, field, value)
-
-    cluster.updated_at = datetime.utcnow()
-    await db.commit()
-    await db.refresh(cluster)
-
-    logger.info(f"Cluster updated: {cluster.name} (ID: {cluster.id}) by user {current_user.username}")
-
+    service = ClusterService(db)
+    cluster = await service.update_cluster(cluster_id, cluster_data, current_user)
     return ClusterResponse.model_validate(cluster)
 
 
@@ -216,33 +156,10 @@ async def delete_cluster(
 
     By default, clusters are soft-deleted (deactivated).
     Use permanent=true for hard delete.
+    Cannot delete the default cluster.
     """
-    stmt = select(Cluster).where(Cluster.id == cluster_id)
-    result = await db.execute(stmt)
-    cluster = result.scalar_one_or_none()
-
-    if not cluster:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Cluster not found"
-        )
-
-    # Cannot delete default cluster
-    if cluster.is_default:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete the default cluster"
-        )
-
-    if permanent:
-        await db.delete(cluster)
-        logger.warning(f"Cluster permanently deleted: {cluster.name} (ID: {cluster.id}) by user {current_user.username}")
-    else:
-        cluster.is_active = False
-        cluster.updated_at = datetime.utcnow()
-        logger.info(f"Cluster deactivated: {cluster.name} (ID: {cluster.id}) by user {current_user.username}")
-
-    await db.commit()
+    service = ClusterService(db)
+    await service.delete_cluster(cluster_id, current_user, permanent)
 
 
 @router.post("/{cluster_id}/rotate-api-key", response_model=ClusterAPIKeyRotateResponse)
@@ -256,28 +173,10 @@ async def rotate_cluster_api_key(
 
     Generates a new API key and returns it (only shown once).
     Old API key becomes invalid immediately.
+    All proxies must be reconfigured with the new key.
     """
-    stmt = select(Cluster).where(Cluster.id == cluster_id)
-    result = await db.execute(stmt)
-    cluster = result.scalar_one_or_none()
-
-    if not cluster:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Cluster not found"
-        )
-
-    # Generate new API key
-    new_api_key = generate_api_key()
-    new_api_key_hash = hash_api_key(new_api_key)
-
-    # Update cluster
-    cluster.api_key_hash = new_api_key_hash
-    cluster.updated_at = datetime.utcnow()
-
-    await db.commit()
-
-    logger.warning(f"API key rotated for cluster: {cluster.name} (ID: {cluster.id}) by user {current_user.username}")
+    service = ClusterService(db)
+    cluster, new_api_key = await service.rotate_api_key(cluster_id, current_user)
 
     return ClusterAPIKeyRotateResponse(
         cluster_id=cluster.id,

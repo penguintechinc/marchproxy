@@ -23,7 +23,7 @@ class Cluster(Base):
     created_by = Column(Integer, ForeignKey("auth_user.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    metadata = Column(JSON)
+    extra_metadata = Column(JSON)  # Renamed from 'metadata' (reserved in SQLAlchemy)
 
     creator = relationship("User", back_populates="created_clusters", foreign_keys=[created_by])
     services = relationship("Service", back_populates="cluster")

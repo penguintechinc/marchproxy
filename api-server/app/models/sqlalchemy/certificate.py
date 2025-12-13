@@ -69,8 +69,8 @@ class Certificate(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Metadata
-    metadata = Column(Text)  # JSON field for additional data
+    # Extra metadata (renamed from 'metadata' which is reserved in SQLAlchemy)
+    extra_metadata = Column(Text)  # JSON field for additional data
 
     def __repr__(self):
         return f"<Certificate(id={self.id}, name={self.name}, source={self.source_type})>"

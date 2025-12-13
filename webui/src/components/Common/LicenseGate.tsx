@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { Alert, AlertTitle, Button, Box, Typography, Paper } from '@mui/material';
+import { Button, Box, Typography, Paper } from '@mui/material';
 import LockIcon from '@mui/icons-material/Lock';
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
 

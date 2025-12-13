@@ -13,15 +13,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     clang \
     llvm \
     libbpf-dev \
-    linux-headers-generic \
+    linux-headers-amd64 \
     make \
     gcc \
+    file \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build/xdp
 
 # Copy XDP source and Makefile
 COPY xdp/envoy_xdp.c xdp/Makefile ./
+
+# Create symlinks for architecture-specific headers
+RUN KERNEL_VER=$(ls /usr/src | grep linux-headers | grep -v common | head -n1 | sed 's/linux-headers-//') && \
+    ln -sf /usr/src/linux-headers-${KERNEL_VER} /lib/modules/${KERNEL_VER}/build 2>/dev/null || true
 
 # Build XDP program
 RUN make
@@ -30,9 +35,15 @@ RUN make
 RUN ls -lh envoy_xdp.o && file envoy_xdp.o
 
 # ==================== Stage 2: WASM Build ====================
-FROM rust:1.75-slim AS wasm-builder
+FROM rust:1.83-slim AS wasm-builder
 
 LABEL stage=wasm-builder
+
+# Install build dependencies for WASM (ring crate needs clang)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    clang \
+    llvm \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install wasm32 target
 RUN rustup target add wasm32-unknown-unknown
@@ -102,7 +113,8 @@ COPY envoy/bootstrap.yaml /etc/envoy/envoy.yaml
 
 # Copy startup script
 COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh && \
+    chown envoy:envoy /usr/local/bin/entrypoint.sh
 
 # Set permissions
 RUN chown -R envoy:envoy /var/lib/envoy /var/log/envoy /etc/envoy
@@ -117,11 +129,12 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:9901/ready || exit 1
 
 # Environment variables
-ENV ENVOY_UID=0
+ENV ENVOY_UID=101
 ENV LOGLEVEL=info
 
-# Switch to envoy user
-USER envoy
+# Run as root initially (entrypoint may need privileges for XDP)
+# The entrypoint script will drop to envoy user after setup
+USER root
 
 # Run Envoy
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

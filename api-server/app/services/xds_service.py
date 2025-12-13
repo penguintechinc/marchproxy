@@ -125,6 +125,7 @@ class XDSService:
             # Import models here to avoid circular dependencies
             from app.models.sqlalchemy.service import Service
             from app.models.sqlalchemy.mapping import Mapping
+            from app.models.sqlalchemy.certificate import Certificate
             from sqlalchemy import select
 
             # Handle both sync and async sessions
@@ -148,17 +149,46 @@ class XDSService:
 
             # Query mappings for this cluster
             mappings = db.query(Mapping).filter(
-                Mapping.cluster_id == cluster_id
+                Mapping.cluster_id == cluster_id,
+                Mapping.is_active == True
             ).all()
 
-            # Build service configurations
+            # Query certificates (active and not expired)
+            certificates = db.query(Certificate).filter(
+                Certificate.is_active == True,
+                Certificate.valid_until > datetime.utcnow()
+            ).all()
+
+            # Build service configurations with enhanced TLS/protocol support
             service_configs = []
+            cert_mapping = {cert.name: cert for cert in certificates}
+
             for svc in services:
+                # Determine TLS configuration
+                tls_enabled = svc.tls_enabled if hasattr(svc, 'tls_enabled') else False
+                tls_cert_name = None
+
+                # Check if service has an associated certificate
+                if tls_enabled and hasattr(svc, 'extra_metadata') and svc.extra_metadata:
+                    import json
+                    try:
+                        metadata = json.loads(svc.extra_metadata) if isinstance(svc.extra_metadata, str) else svc.extra_metadata
+                        tls_cert_name = metadata.get('tls_cert_name')
+                    except:
+                        pass
+
                 service_configs.append({
                     "name": f"cluster_{cluster_id}_service_{svc.id}",
                     "hosts": [svc.ip_fqdn] if svc.ip_fqdn else [],
                     "port": self._extract_port(svc),
                     "protocol": self._determine_protocol(svc, mappings),
+                    "tls_enabled": tls_enabled,
+                    "tls_cert_name": tls_cert_name,
+                    "tls_verify": svc.tls_verify if hasattr(svc, 'tls_verify') else True,
+                    "health_check_path": svc.health_check_path if hasattr(svc, 'health_check_path') else "/healthz",
+                    "timeout_seconds": 30,  # Default timeout
+                    "http2_enabled": self._is_http2_enabled(svc),
+                    "websocket_upgrade": self._is_websocket_enabled(svc),
                 })
 
             # Build route configurations
@@ -178,16 +208,29 @@ class XDSService:
                             "timeout": 30,  # Default timeout in seconds
                         })
 
+            # Build certificate configurations
+            cert_configs = []
+            for cert in certificates:
+                cert_configs.append({
+                    "name": cert.name,
+                    "cert_chain": cert.cert_data,
+                    "private_key": cert.key_data,
+                    "ca_cert": cert.ca_chain if hasattr(cert, 'ca_chain') else "",
+                    "require_client": False,  # Can be enhanced based on metadata
+                })
+
             # Build complete configuration
             config = {
                 "version": str(int(datetime.utcnow().timestamp())),
                 "services": service_configs,
                 "routes": route_configs,
+                "certificates": cert_configs,
             }
 
             logger.debug(
                 f"Built config for cluster {cluster_id}: "
-                f"{len(service_configs)} services, {len(route_configs)} routes"
+                f"{len(service_configs)} services, {len(route_configs)} routes, "
+                f"{len(cert_configs)} certificates"
             )
 
             return config
@@ -204,15 +247,55 @@ class XDSService:
 
     def _determine_protocol(self, service: Any, mappings: List[Any]) -> str:
         """Determine protocol for a service"""
+        # Check service protocol field first
+        if hasattr(service, 'protocol') and service.protocol:
+            return service.protocol.lower()
+
         # Check if any mapping for this service uses HTTP/HTTPS
         for mapping in mappings:
-            protocols = mapping.protocols.lower() if mapping.protocols else ""
-            if "http" in protocols:
-                return "https" if "https" in protocols else "http"
+            protocols = mapping.protocols.lower() if hasattr(mapping, 'protocols') and mapping.protocols else ""
             if "grpc" in protocols:
                 return "grpc"
+            if "http2" in protocols:
+                return "http2"
+            if "https" in protocols:
+                return "https"
+            if "http" in protocols:
+                return "http"
 
         return "http"  # Default
+
+    def _is_http2_enabled(self, service: Any) -> bool:
+        """Check if HTTP/2 is enabled for a service"""
+        # Check protocol
+        if hasattr(service, 'protocol') and service.protocol:
+            proto = service.protocol.lower()
+            if proto in ["http2", "grpc"]:
+                return True
+
+        # Check metadata for explicit HTTP/2 setting
+        if hasattr(service, 'extra_metadata') and service.extra_metadata:
+            import json
+            try:
+                metadata = json.loads(service.extra_metadata) if isinstance(service.extra_metadata, str) else service.extra_metadata
+                return metadata.get('http2_enabled', False)
+            except:
+                pass
+
+        return False
+
+    def _is_websocket_enabled(self, service: Any) -> bool:
+        """Check if WebSocket upgrade is enabled for a service"""
+        # Check metadata for WebSocket setting
+        if hasattr(service, 'extra_metadata') and service.extra_metadata:
+            import json
+            try:
+                metadata = json.loads(service.extra_metadata) if isinstance(service.extra_metadata, str) else service.extra_metadata
+                return metadata.get('websocket_upgrade', False)
+            except:
+                pass
+
+        return False
 
     def _parse_service_list(
         self,

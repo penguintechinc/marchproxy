@@ -4,7 +4,6 @@
 use proxy_wasm::traits::*;
 use proxy_wasm::types::*;
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 
 proxy_wasm::main! {{
     proxy_wasm::set_log_level(LogLevel::Info);
@@ -52,16 +51,16 @@ impl RootContext for AuthFilterRoot {
             match serde_json::from_slice::<FilterConfig>(&config_bytes) {
                 Ok(config) => {
                     self.config = config;
-                    log::info!("Auth filter configured successfully");
+                    proxy_wasm::hostcalls::log(LogLevel::Info, "Auth filter configured successfully").ok();
                     true
                 }
                 Err(e) => {
-                    log::error!("Failed to parse configuration: {}", e);
+                    proxy_wasm::hostcalls::log(LogLevel::Error, &format!("Failed to parse configuration: {}", e)).ok();
                     false
                 }
             }
         } else {
-            log::info!("No configuration provided, using defaults");
+            proxy_wasm::hostcalls::log(LogLevel::Info, "No configuration provided, using defaults").ok();
             true
         }
     }
@@ -91,7 +90,7 @@ impl HttpContext for AuthFilter {
         // Check if path is exempt from authentication
         for exempt_path in &self.config.exempt_paths {
             if path.starts_with(exempt_path) {
-                log::debug!("Path {} is exempt from authentication", path);
+                proxy_wasm::hostcalls::log(LogLevel::Debug, &format!("Path {} is exempt from authentication", path)).ok();
                 return Action::Continue;
             }
         }
@@ -105,7 +104,7 @@ impl HttpContext for AuthFilter {
         let auth_header = match self.get_http_request_header("authorization") {
             Some(header) => header,
             None => {
-                log::warn!("Missing Authorization header for path: {}", path);
+                proxy_wasm::hostcalls::log(LogLevel::Warn, &format!("Missing Authorization header for path: {}", path)).ok();
                 self.send_http_response(
                     401,
                     vec![("content-type", "application/json")],
@@ -121,17 +120,17 @@ impl HttpContext for AuthFilter {
 
             // Try JWT validation first
             if self.validate_jwt(token) {
-                log::debug!("JWT token validated successfully");
+                proxy_wasm::hostcalls::log(LogLevel::Debug, "JWT token validated successfully").ok();
                 return Action::Continue;
             }
 
             // Try Base64 token validation
             if self.validate_base64(token) {
-                log::debug!("Base64 token validated successfully");
+                proxy_wasm::hostcalls::log(LogLevel::Debug, "Base64 token validated successfully").ok();
                 return Action::Continue;
             }
 
-            log::warn!("Invalid token for path: {}", path);
+            proxy_wasm::hostcalls::log(LogLevel::Warn, &format!("Invalid token for path: {}", path)).ok();
             self.send_http_response(
                 403,
                 vec![("content-type", "application/json")],
@@ -139,7 +138,7 @@ impl HttpContext for AuthFilter {
             );
             Action::Pause
         } else {
-            log::warn!("Invalid Authorization header format for path: {}", path);
+            proxy_wasm::hostcalls::log(LogLevel::Warn, &format!("Invalid Authorization header format for path: {}", path)).ok();
             self.send_http_response(
                 401,
                 vec![("content-type", "application/json")],
@@ -175,11 +174,11 @@ impl AuthFilter {
             &validation,
         ) {
             Ok(_) => {
-                log::debug!("JWT token validation successful");
+                proxy_wasm::hostcalls::log(LogLevel::Debug, "JWT token validation successful").ok();
                 true
             }
             Err(e) => {
-                log::debug!("JWT token validation failed: {}", e);
+                proxy_wasm::hostcalls::log(LogLevel::Debug, &format!("JWT token validation failed: {}", e)).ok();
                 false
             }
         }

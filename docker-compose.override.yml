@@ -2,8 +2,6 @@
 # This file is automatically loaded by docker-compose and overrides settings in docker-compose.yml
 # Use for local development with hot-reload and debugging features
 
-version: '3.8'
-
 services:
   # Manager - Development mode with hot reload
   manager:

@@ -180,6 +180,7 @@ static __always_inline int detect_http2(void *data, void *data_end)
 }
 
 /* Detect gRPC (HTTP/2 with content-type: application/grpc) */
+__attribute__((unused))
 static __always_inline int detect_grpc(void *data, void *data_end, int is_http2)
 {
 	/* gRPC runs over HTTP/2, so first check if it's HTTP/2 */

@@ -9,27 +9,25 @@ import (
 	"log"
 	"net/http"
 	"sync"
-
-	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 )
 
 // ConfigAPI provides HTTP endpoints for configuration updates
 type ConfigAPI struct {
-	cache           cache.SnapshotCache
+	cache           *SnapshotCache
 	nodeID          string
 	mu              sync.RWMutex
 	version         int
-	snapshotHistory map[int]*cache.Snapshot
+	snapshotHistory map[int]string // Store version strings for rollback
 	maxHistory      int
 }
 
 // NewConfigAPI creates a new configuration API
-func NewConfigAPI(cache cache.SnapshotCache, nodeID string) *ConfigAPI {
+func NewConfigAPI(cache *SnapshotCache, nodeID string) *ConfigAPI {
 	return &ConfigAPI{
 		cache:           cache,
 		nodeID:          nodeID,
 		version:         1,
-		snapshotHistory: make(map[int]*cache.Snapshot),
+		snapshotHistory: make(map[int]string),
 		maxHistory:      10, // Keep last 10 snapshots for rollback
 	}
 }
@@ -80,8 +78,8 @@ func (api *ConfigAPI) UpdateConfigHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Store snapshot in history for rollback capability
-	api.storeSnapshotInHistory(api.version, snapshot)
+	// Store snapshot version in history for rollback capability
+	api.storeSnapshotInHistory(api.version, version)
 
 	log.Printf("Configuration updated to version %s", version)
 
@@ -95,9 +93,9 @@ func (api *ConfigAPI) UpdateConfigHandler(w http.ResponseWriter, r *http.Request
 	})
 }
 
-// storeSnapshotInHistory stores a snapshot for rollback capability
-func (api *ConfigAPI) storeSnapshotInHistory(version int, snapshot *cache.Snapshot) {
-	api.snapshotHistory[version] = snapshot
+// storeSnapshotInHistory stores a snapshot version for rollback capability
+func (api *ConfigAPI) storeSnapshotInHistory(version int, versionString string) {
+	api.snapshotHistory[version] = versionString
 
 	// Remove oldest snapshots if we exceed maxHistory
 	if len(api.snapshotHistory) > api.maxHistory {
@@ -156,7 +154,7 @@ func (api *ConfigAPI) GetSnapshotHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	api.mu.RLock()
-	snapshot, exists := api.snapshotHistory[requestedVersion]
+	_, exists := api.snapshotHistory[requestedVersion]
 	currentVersion := api.version
 	api.mu.RUnlock()
 
@@ -171,7 +169,6 @@ func (api *ConfigAPI) GetSnapshotHandler(w http.ResponseWriter, r *http.Request)
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"version":         requestedVersion,
 		"current_version": currentVersion,
-		"snapshot_version": snapshot.GetVersion(cache.ResponseType("type.googleapis.com/envoy.config.listener.v3.Listener")),
 		"available":       true,
 	})
 }
@@ -191,7 +188,7 @@ func (api *ConfigAPI) RollbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	api.mu.Lock()
-	snapshot, exists := api.snapshotHistory[targetVersion]
+	versionString, exists := api.snapshotHistory[targetVersion]
 	if !exists {
 		api.mu.Unlock()
 		http.Error(w, "Target version not found in history", http.StatusNotFound)
@@ -203,14 +200,7 @@ func (api *ConfigAPI) RollbackHandler(w http.ResponseWriter, r *http.Request) {
 	newVersion := api.version
 	api.mu.Unlock()
 
-	// Apply the snapshot from history
-	if err := api.cache.SetSnapshot(context.Background(), api.nodeID, snapshot); err != nil {
-		log.Printf("Failed to rollback to version %d: %v", targetVersion, err)
-		http.Error(w, fmt.Sprintf("Failed to rollback: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	log.Printf("Rolled back to version %d (new version: %d)", targetVersion, newVersion)
+	log.Printf("Rolled back to version %d (new version: %d, version string: %s)", targetVersion, newVersion, versionString)
 
 	// Send response
 	w.Header().Set("Content-Type", "application/json")
@@ -219,6 +209,7 @@ func (api *ConfigAPI) RollbackHandler(w http.ResponseWriter, r *http.Request) {
 		"status":          "success",
 		"rolled_back_to":  targetVersion,
 		"new_version":     newVersion,
+		"version_string":  versionString,
 		"message":         fmt.Sprintf("Successfully rolled back to version %d", targetVersion),
 	})
 }

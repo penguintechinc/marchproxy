@@ -14,9 +14,11 @@ psycopg2-binary==2.9.9  # PostgreSQL sync driver (for Alembic)
 
 # Authentication & Security
 python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
+passlib==1.7.4
+bcrypt==4.0.1
 python-multipart==0.0.6
 pyotp==2.9.0  # 2FA/TOTP
+cryptography==42.0.0  # Certificate parsing and validation
 
 # Pydantic
 pydantic==2.5.3

@@ -4,7 +4,6 @@ Proxy registration and heartbeat API routes
 Handles proxy server registration, heartbeat, configuration fetch, and metrics reporting.
 """
 
-import hashlib
 import logging
 from datetime import datetime
 from typing import Annotated
@@ -17,36 +16,21 @@ from app.core.database import get_db
 from app.dependencies import get_current_user
 from app.models.sqlalchemy.user import User
 from app.models.sqlalchemy.proxy import ProxyServer, ProxyMetrics
-from app.models.sqlalchemy.cluster import Cluster
 from app.schemas.proxy import (
     ProxyRegisterRequest,
     ProxyHeartbeatRequest,
     ProxyResponse,
     ProxyListResponse,
-    ProxyConfigResponse,
     ProxyMetricsRequest,
+)
+from app.services.proxy_service import (
+    ProxyService,
+    InvalidAPIKeyError,
+    ProxyLimitExceededError,
 )
 
 router = APIRouter(prefix="/proxies", tags=["proxies"])
 logger = logging.getLogger(__name__)
-
-
-def hash_api_key(api_key: str) -> str:
-    """Hash API key for verification"""
-    return hashlib.sha256(api_key.encode()).hexdigest()
-
-
-async def verify_cluster_api_key(api_key: str, db: AsyncSession) -> Cluster:
-    """Verify cluster API key and return cluster"""
-    api_key_hash = hash_api_key(api_key)
-    stmt = select(Cluster).where(
-        Cluster.api_key_hash == api_key_hash,
-        Cluster.is_active == True
-    )
-    cluster = (await db.execute(stmt)).scalar_one_or_none()
-    if not cluster:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid cluster API key")
-    return cluster
 
 
 @router.post("/register", response_model=ProxyResponse, status_code=status.HTTP_201_CREATED)
@@ -58,63 +42,32 @@ async def register_proxy(
     Register a new proxy server with cluster API key authentication.
     Used by proxy containers on startup.
     """
-    # Verify cluster API key
-    cluster = await verify_cluster_api_key(proxy_data.cluster_api_key, db)
+    service = ProxyService(db)
 
-    # Check proxy count limit
-    proxy_count_stmt = select(func.count()).select_from(ProxyServer).where(
-        ProxyServer.cluster_id == cluster.id,
-        ProxyServer.status != "offline"
-    )
-    proxy_count = (await db.execute(proxy_count_stmt)).scalar() or 0
+    try:
+        # Verify cluster API key
+        cluster = await service.verify_cluster_api_key(proxy_data.cluster_api_key)
 
-    if proxy_count >= cluster.max_proxies:
-        raise HTTPException(
-            status.HTTP_429_TOO_MANY_REQUESTS,
-            f"Cluster proxy limit reached ({cluster.max_proxies}). Upgrade license for more proxies."
-        )
-
-    # Check if proxy name already exists in this cluster
-    existing_stmt = select(ProxyServer).where(
-        ProxyServer.name == proxy_data.name,
-        ProxyServer.cluster_id == cluster.id
-    )
-    existing = (await db.execute(existing_stmt)).scalar_one_or_none()
-
-    if existing:
-        # Update existing proxy registration
-        existing.hostname = proxy_data.hostname
-        existing.ip_address = proxy_data.ip_address
-        existing.port = proxy_data.port
-        existing.version = proxy_data.version
-        existing.capabilities = proxy_data.capabilities
-        existing.status = "active"
-        existing.last_seen = datetime.utcnow()
-        await db.commit()
-        await db.refresh(existing)
-        proxy = existing
-        logger.info(f"Proxy re-registered: {proxy.name} in cluster {cluster.name}")
-    else:
-        # Create new proxy
-        new_proxy = ProxyServer(
+        # Register proxy (handles limit checks and re-registration)
+        proxy = await service.register_proxy(
+            cluster=cluster,
             name=proxy_data.name,
             hostname=proxy_data.hostname,
             ip_address=proxy_data.ip_address,
             port=proxy_data.port,
-            cluster_id=cluster.id,
             version=proxy_data.version,
-            capabilities=proxy_data.capabilities,
-            status="active",
-            registered_at=datetime.utcnow(),
-            last_seen=datetime.utcnow()
+            capabilities=proxy_data.capabilities
         )
-        db.add(new_proxy)
-        await db.commit()
-        await db.refresh(new_proxy)
-        proxy = new_proxy
-        logger.info(f"Proxy registered: {proxy.name} in cluster {cluster.name}")
 
-    return ProxyResponse.model_validate(proxy)
+        return ProxyResponse.model_validate(proxy)
+
+    except InvalidAPIKeyError:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            "Invalid cluster API key"
+        )
+    except ProxyLimitExceededError as e:
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, str(e))
 
 
 @router.post("/heartbeat")
@@ -126,69 +79,31 @@ async def proxy_heartbeat(
     Proxy heartbeat to report status and optionally metrics.
     Should be called every 30-60 seconds by proxies.
     """
-    # Verify cluster API key
-    await verify_cluster_api_key(heartbeat.cluster_api_key, db)
+    service = ProxyService(db)
 
-    # Get proxy
-    stmt = select(ProxyServer).where(ProxyServer.id == heartbeat.proxy_id)
-    proxy = (await db.execute(stmt)).scalar_one_or_none()
-    if not proxy:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Proxy not found")
+    try:
+        # Verify cluster API key
+        await service.verify_cluster_api_key(heartbeat.cluster_api_key)
 
-    # Update heartbeat
-    proxy.status = heartbeat.status
-    proxy.last_seen = datetime.utcnow()
-    if heartbeat.config_version:
-        proxy.config_version = heartbeat.config_version
-
-    # Store metrics if provided
-    if heartbeat.metrics:
-        metrics = ProxyMetrics(
-            proxy_id=proxy.id,
-            timestamp=datetime.utcnow(),
-            **heartbeat.metrics
+        # Update heartbeat
+        await service.update_heartbeat(
+            proxy_id=heartbeat.proxy_id,
+            status=heartbeat.status,
+            config_version=heartbeat.config_version,
+            metrics=heartbeat.metrics
         )
-        db.add(metrics)
 
-    await db.commit()
-    return {"status": "ok", "message": "Heartbeat received"}
+        return {"status": "ok", "message": "Heartbeat received"}
+
+    except InvalidAPIKeyError:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            "Invalid cluster API key"
+        )
+    except ValueError as e:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(e))
 
 
-@router.get("/config", response_model=ProxyConfigResponse)
-async def get_proxy_config(
-    cluster_api_key: Annotated[str, Header()],
-    db: Annotated[AsyncSession, Depends(get_db)]
-):
-    """
-    Get configuration for all proxies in a cluster.
-    Returns services, mappings, logging config, etc.
-    """
-    cluster = await verify_cluster_api_key(cluster_api_key, db)
-
-    # TODO: Implement full config generation (Phase 2.1)
-    # For now, return basic structure
-    config = {
-        "config_version": hashlib.md5(str(datetime.utcnow()).encode()).hexdigest(),
-        "cluster": {
-            "id": cluster.id,
-            "name": cluster.name,
-            "syslog_endpoint": cluster.syslog_endpoint,
-            "log_auth": cluster.log_auth,
-            "log_netflow": cluster.log_netflow,
-            "log_debug": cluster.log_debug,
-        },
-        "services": [],  # TODO: Fetch from database
-        "mappings": [],  # TODO: Fetch from database
-        "certificates": None,  # TODO: Fetch if needed
-        "logging": {
-            "endpoint": cluster.syslog_endpoint,
-            "auth": cluster.log_auth,
-            "netflow": cluster.log_netflow,
-            "debug": cluster.log_debug,
-        }
-    }
-
-    return config
 
 
 @router.get("", response_model=ProxyListResponse)
@@ -225,10 +140,81 @@ async def get_proxy(
     current_user: Annotated[User, Depends(get_current_user)]
 ):
     """Get proxy details"""
-    proxy = (await db.execute(select(ProxyServer).where(ProxyServer.id == proxy_id))).scalar_one_or_none()
+    stmt = select(ProxyServer).where(ProxyServer.id == proxy_id)
+    proxy = (await db.execute(stmt)).scalar_one_or_none()
     if not proxy:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Proxy not found")
     return ProxyResponse.model_validate(proxy)
+
+
+@router.delete("/{proxy_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def deregister_proxy(
+    proxy_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)]
+):
+    """
+    Deregister a proxy server
+
+    Sets proxy status to offline. Does not delete the record
+    to preserve history and metrics.
+    """
+    service = ProxyService(db)
+
+    success = await service.deregister_proxy(proxy_id)
+    if not success:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Proxy not found")
+
+    return None
+
+
+@router.get("/{proxy_id}/metrics")
+async def get_proxy_metrics(
+    proxy_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    limit: int = Query(100, ge=1, le=1000, description="Number of metrics to return")
+):
+    """
+    Get recent metrics for a proxy
+
+    Returns the most recent metrics entries.
+    """
+    stmt = select(ProxyServer).where(ProxyServer.id == proxy_id)
+    proxy = (await db.execute(stmt)).scalar_one_or_none()
+    if not proxy:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Proxy not found")
+
+    # Get recent metrics
+    metrics_stmt = (
+        select(ProxyMetrics)
+        .where(ProxyMetrics.proxy_id == proxy_id)
+        .order_by(ProxyMetrics.timestamp.desc())
+        .limit(limit)
+    )
+    metrics = (await db.execute(metrics_stmt)).scalars().all()
+
+    return {
+        "proxy_id": proxy_id,
+        "proxy_name": proxy.name,
+        "metrics_count": len(metrics),
+        "metrics": [
+            {
+                "timestamp": m.timestamp.isoformat(),
+                "cpu_usage": m.cpu_usage,
+                "memory_usage": m.memory_usage,
+                "connections_active": m.connections_active,
+                "connections_total": m.connections_total,
+                "bytes_sent": m.bytes_sent,
+                "bytes_received": m.bytes_received,
+                "requests_per_second": m.requests_per_second,
+                "latency_avg": m.latency_avg,
+                "latency_p95": m.latency_p95,
+                "errors_per_second": m.errors_per_second,
+            }
+            for m in metrics
+        ]
+    }
 
 
 @router.post("/{proxy_id}/metrics")

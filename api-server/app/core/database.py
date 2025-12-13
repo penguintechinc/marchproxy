@@ -1,7 +1,8 @@
 """
 Database engine and session management
 
-Provides async SQLAlchemy engine and session factory.
+Provides async SQLAlchemy engine and session factory with proper pooling,
+error handling, and lifecycle management.
 """
 
 from typing import AsyncGenerator
@@ -13,18 +14,31 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.pool import NullPool, QueuePool
 
-from app.config import get_settings
+from app.core.config import settings
 
-settings = get_settings()
+# Create async engine with appropriate pooling
+engine_kwargs = {
+    "echo": settings.DEBUG,
+    "future": True,
+}
+
+# Production: use connection pooling
+if not settings.DEBUG:
+    engine_kwargs["poolclass"] = QueuePool
+    engine_kwargs["pool_size"] = settings.DATABASE_POOL_SIZE
+    engine_kwargs["max_overflow"] = settings.DATABASE_MAX_OVERFLOW
+    engine_kwargs["pool_pre_ping"] = True
+    engine_kwargs["pool_recycle"] = 3600
+else:
+    # Development: simpler pooling
+    engine_kwargs["poolclass"] = NullPool
 
 # Create async engine
 engine: AsyncEngine = create_async_engine(
     str(settings.DATABASE_URL),
-    pool_size=settings.DATABASE_POOL_SIZE,
-    max_overflow=settings.DATABASE_MAX_OVERFLOW,
-    echo=settings.DEBUG,
-    future=True,
+    **engine_kwargs
 )
 
 # Create async session factory
@@ -48,6 +62,9 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         @router.get("/items")
         async def get_items(db: AsyncSession = Depends(get_db)):
             ...
+
+    Yields:
+        AsyncSession: Database session with automatic commit/rollback handling.
     """
     async with AsyncSessionLocal() as session:
         try:
@@ -58,3 +75,23 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             raise
         finally:
             await session.close()
+
+
+async def init_db() -> None:
+    """
+    Initialize database by creating all tables.
+
+    Should be called on application startup.
+    For production, use Alembic migrations instead.
+    """
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+
+async def close_db() -> None:
+    """
+    Close database connection pool.
+
+    Should be called on application shutdown.
+    """
+    await engine.dispose()

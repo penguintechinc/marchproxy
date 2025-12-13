@@ -53,7 +53,7 @@ func NewServer(debug bool, nodeID string) *Server {
 }
 
 // GetCache returns the snapshot cache
-func (s *Server) GetCache() cache.SnapshotCache {
+func (s *Server) GetCache() *SnapshotCache {
 	return s.cache
 }
 
@@ -116,8 +116,13 @@ func (s *Server) GetAllNodes() map[string]*NodeInfo {
 }
 
 // UpdateNodeSnapshot updates the snapshot for a specific node
-func (s *Server) UpdateNodeSnapshot(nodeID string, snapshot *cache.Snapshot) error {
-	if err := s.cache.SetSnapshot(context.Background(), nodeID, snapshot); err != nil {
+func (s *Server) UpdateNodeSnapshot(nodeID string, snapshot cache.ResourceSnapshot) error {
+	concreteSnapshot, ok := snapshot.(*cache.Snapshot)
+	if !ok {
+		return fmt.Errorf("invalid snapshot type")
+	}
+
+	if err := s.cache.SetSnapshot(context.Background(), nodeID, concreteSnapshot); err != nil {
 		return fmt.Errorf("failed to set snapshot for node %s: %w", nodeID, err)
 	}
 

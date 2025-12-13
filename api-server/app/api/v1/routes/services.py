@@ -1,13 +1,11 @@
 """
-Service management API routes (Phase 2 - Core CRUD, no xDS yet)
+Service management API routes
 
 Handles CRUD operations for services and authentication token management.
+Integrates with xDS service for configuration updates.
 """
 
-import base64
 import logging
-import secrets
-from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -18,7 +16,6 @@ from app.core.database import get_db
 from app.dependencies import get_current_user, require_admin
 from app.models.sqlalchemy.user import User
 from app.models.sqlalchemy.service import Service, UserServiceAssignment
-from app.models.sqlalchemy.cluster import Cluster, UserClusterAssignment
 from app.schemas.service import (
     ServiceCreate,
     ServiceUpdate,
@@ -27,20 +24,11 @@ from app.schemas.service import (
     ServiceTokenRotateRequest,
     ServiceTokenRotateResponse,
 )
+from app.services.service_service import ServiceService
 from app.services.xds_service import trigger_xds_update
 
 router = APIRouter(prefix="/services", tags=["services"])
 logger = logging.getLogger(__name__)
-
-
-def generate_base64_token() -> str:
-    """Generate a secure Base64 token"""
-    return base64.b64encode(secrets.token_bytes(32)).decode()
-
-
-def generate_jwt_secret() -> str:
-    """Generate a secure JWT secret"""
-    return secrets.token_urlsafe(64)
 
 
 @router.get("", response_model=ServiceListResponse)
@@ -85,57 +73,14 @@ async def create_service(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)]
 ):
-    """Create a new service with auto-generated auth tokens"""
-    # Verify cluster access
-    if not current_user.is_admin:
-        stmt = select(UserClusterAssignment).where(
-            UserClusterAssignment.user_id == current_user.id,
-            UserClusterAssignment.cluster_id == service_data.cluster_id,
-            UserClusterAssignment.is_active == True
-        )
-        if not (await db.execute(stmt)).scalar_one_or_none():
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "No access to this cluster")
+    """
+    Create a new service with auto-generated auth tokens.
 
-    # Verify cluster exists
-    if not (await db.execute(select(Cluster).where(Cluster.id == service_data.cluster_id))).scalar_one_or_none():
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Cluster not found")
-
-    # Check name uniqueness
-    if (await db.execute(select(Service).where(Service.name == service_data.name))).scalar_one_or_none():
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Service '{service_data.name}' already exists")
-
-    # Generate auth tokens
-    token_base64, jwt_secret = None, None
-    if service_data.auth_type == "base64":
-        token_base64 = generate_base64_token()
-    elif service_data.auth_type == "jwt":
-        jwt_secret = generate_jwt_secret()
-
-    new_service = Service(
-        **service_data.model_dump(exclude={'jwt_expiry', 'jwt_algorithm'}),
-        token_base64=token_base64,
-        jwt_secret=jwt_secret,
-        jwt_expiry=service_data.jwt_expiry or 3600,
-        jwt_algorithm=service_data.jwt_algorithm or "HS256",
-        is_active=True,
-        created_by=current_user.id,
-        created_at=datetime.utcnow()
-    )
-
-    db.add(new_service)
-    await db.commit()
-    await db.refresh(new_service)
-
-    # Auto-assign to creator if not admin
-    if not current_user.is_admin:
-        db.add(UserServiceAssignment(
-            user_id=current_user.id,
-            service_id=new_service.id,
-            assigned_by=current_user.id
-        ))
-        await db.commit()
-
-    logger.info(f"Service created: {new_service.name} by {current_user.username}")
+    Validates cluster access, generates auth tokens based on auth_type,
+    and triggers xDS configuration update.
+    """
+    service = ServiceService(db)
+    new_service = await service.create_service(service_data, current_user)
 
     # Trigger xDS update for the cluster
     try:
@@ -154,17 +99,13 @@ async def get_service(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)]
 ):
-    """Get service details"""
-    stmt = select(Service).where(Service.id == service_id)
-    if not current_user.is_admin:
-        stmt = stmt.join(UserServiceAssignment).where(
-            UserServiceAssignment.user_id == current_user.id,
-            UserServiceAssignment.is_active == True
-        )
+    """
+    Get service details by ID.
 
-    service = (await db.execute(stmt)).scalar_one_or_none()
-    if not service:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Service not found")
+    Admins can access any service. Regular users only see assigned services.
+    """
+    svc_service = ServiceService(db)
+    service = await svc_service.get_service(service_id, current_user)
     return ServiceResponse.model_validate(service)
 
 
@@ -175,17 +116,13 @@ async def update_service(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)]
 ):
-    """Update service (excludes auth tokens - use rotate endpoint)"""
-    service = await get_service(service_id, db, current_user)  # Reuse access check
+    """
+    Update service details (excludes auth tokens - use rotate endpoint).
 
-    for field, value in service_data.model_dump(exclude_unset=True).items():
-        setattr(service, field, value)
-
-    service.updated_at = datetime.utcnow()
-    await db.commit()
-    await db.refresh(service)
-
-    logger.info(f"Service updated: {service.name} by {current_user.username}")
+    Triggers xDS configuration update for the cluster.
+    """
+    svc_service = ServiceService(db)
+    service = await svc_service.update_service(service_id, service_data, current_user)
 
     # Trigger xDS update for the cluster
     try:
@@ -202,22 +139,17 @@ async def delete_service(
     service_id: int,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
-    permanent: bool = Query(False)
+    permanent: bool = Query(False, description="Permanently delete instead of deactivate")
 ):
-    """Delete or deactivate service"""
-    service = await get_service(service_id, db, current_user)  # Reuse access check
+    """
+    Delete or deactivate a service.
 
-    cluster_id = service.cluster_id
-
-    if permanent:
-        await db.delete(service)
-        logger.warning(f"Service deleted: {service.name} by {current_user.username}")
-    else:
-        service.is_active = False
-        service.updated_at = datetime.utcnow()
-        logger.info(f"Service deactivated: {service.name} by {current_user.username}")
-
-    await db.commit()
+    By default, services are soft-deleted (deactivated).
+    Use permanent=true for hard delete.
+    Triggers xDS configuration update for the cluster.
+    """
+    svc_service = ServiceService(db)
+    cluster_id = await svc_service.delete_service(service_id, current_user, permanent)
 
     # Trigger xDS update for the cluster
     try:
@@ -234,24 +166,23 @@ async def rotate_token(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)]
 ):
-    """Rotate service authentication token"""
-    service = await get_service(service_id, db, current_user)  # Reuse access check
+    """
+    Rotate service authentication token.
 
-    new_token, new_jwt_secret = None, None
-    if rotation.auth_type == "base64":
-        new_token = generate_base64_token()
-        service.token_base64, service.auth_type = new_token, "base64"
-    elif rotation.auth_type == "jwt":
-        new_jwt_secret = generate_jwt_secret()
-        service.jwt_secret, service.auth_type = new_jwt_secret, "jwt"
+    Generates a new Base64 token or JWT secret based on auth_type.
+    Old token becomes invalid immediately.
+    """
+    svc_service = ServiceService(db)
+    service, new_token, new_jwt_secret = await svc_service.rotate_token(
+        service_id,
+        rotation.auth_type,
+        current_user
+    )
 
-    service.updated_at = datetime.utcnow()
-    await db.commit()
-
-    logger.warning(f"Auth token rotated for {service.name} by {current_user.username}")
     return ServiceTokenRotateResponse(
         service_id=service.id,
         auth_type=rotation.auth_type,
         new_token=new_token,
-        new_jwt_secret=new_jwt_secret
+        new_jwt_secret=new_jwt_secret,
+        message="Authentication token rotated successfully"
     )

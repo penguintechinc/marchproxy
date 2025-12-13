@@ -4,7 +4,6 @@
 use proxy_wasm::traits::*;
 use proxy_wasm::types::*;
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 
 proxy_wasm::main! {{
     proxy_wasm::set_log_level(LogLevel::Info);
@@ -48,16 +47,16 @@ impl RootContext for MetricsFilterRoot {
             match serde_json::from_slice::<FilterConfig>(&config_bytes) {
                 Ok(config) => {
                     self.config = config;
-                    log::info!("Metrics filter configured - sample rate: {}", self.config.sample_rate);
+                    proxy_wasm::hostcalls::log(LogLevel::Info, &format!("Metrics filter configured - sample rate: {}", self.config.sample_rate)).ok();
                     true
                 }
                 Err(e) => {
-                    log::error!("Failed to parse metrics configuration: {}", e);
+                    proxy_wasm::hostcalls::log(LogLevel::Error, &format!("Failed to parse metrics configuration: {}", e)).ok();
                     false
                 }
             }
         } else {
-            log::info!("No metrics configuration provided, using defaults");
+            proxy_wasm::hostcalls::log(LogLevel::Info, &format!("No metrics configuration provided, using defaults")).ok();
             true
         }
     }
@@ -86,9 +85,10 @@ struct MetricsFilter {
 impl Context for MetricsFilter {}
 
 impl HttpContext for MetricsFilter {
-    fn on_http_request_headers(&mut self, num_headers: usize, _end_of_stream: bool) -> Action {
+    fn on_http_request_headers(&mut self, _num_headers: usize, _end_of_stream: bool) -> Action {
         // Record request start time
-        self.request_start_time = self.get_current_time_nanoseconds() as u64;
+        self.request_start_time = self.get_current_time().duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default().as_nanos() as u64;
 
         // Skip metrics collection based on sample rate
         if !self.should_sample() {
@@ -114,7 +114,7 @@ impl HttpContext for MetricsFilter {
             let metric_name = format!("marchproxy_requests_by_path_{}", path_prefix);
             self.increment_metric(&metric_name, 1);
 
-            log::debug!("Request: {} {} from {}", method, path, host);
+            proxy_wasm::hostcalls::log(LogLevel::Debug, &format!("Request: {} {} from {}", method, path, host)).ok();
         }
 
         Action::Continue
@@ -149,19 +149,20 @@ impl HttpContext for MetricsFilter {
             let metric_name = format!("marchproxy_responses_by_class_{}xx", status_class);
             self.increment_metric(&metric_name, 1);
 
-            log::debug!("Response: {}", status_code);
+            proxy_wasm::hostcalls::log(LogLevel::Debug, &format!("Response: {}", status_code)).ok();
         }
 
         if self.config.enable_timing_metrics {
             // Calculate request duration
-            let now = self.get_current_time_nanoseconds() as u64;
+            let now = self.get_current_time().duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default().as_nanos() as u64;
             let duration_ns = now - self.request_start_time;
             let duration_ms = duration_ns as f64 / 1_000_000.0;
 
             // Record latency histogram
             self.record_metric("marchproxy_request_duration_ms", duration_ms as u64);
 
-            log::debug!("Request duration: {:.2}ms", duration_ms);
+            proxy_wasm::hostcalls::log(LogLevel::Debug, &format!("Request duration: {:.2}ms", duration_ms)).ok();
         }
 
         Action::Continue
@@ -188,8 +189,11 @@ impl HttpContext for MetricsFilter {
                 self.record_metric("marchproxy_response_size_bytes", self.response_size as u64);
             }
 
-            log::debug!("Request size: {} bytes, Response size: {} bytes",
-                       self.request_size, self.response_size);
+            proxy_wasm::hostcalls::log(
+                LogLevel::Debug,
+                &format!("Request size: {} bytes, Response size: {} bytes",
+                        self.request_size, self.response_size)
+            ).ok();
         }
     }
 }
@@ -201,7 +205,8 @@ impl MetricsFilter {
         }
 
         // Simple sampling: use current time for pseudo-random sampling
-        let now = self.get_current_time_nanoseconds() as u64;
+        let now = self.get_current_time().duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default().as_millis() as u64;
         let sample_threshold = (self.config.sample_rate * 1000.0) as u64;
         (now % 1000) < sample_threshold
     }
@@ -223,11 +228,11 @@ impl MetricsFilter {
         // Use Envoy's metric system
         // Note: In a real implementation, this would use the Envoy stats system
         // For WASM, we rely on Envoy's built-in metrics collection
-        log::trace!("Metric: {} += {}", name, value);
+        proxy_wasm::hostcalls::log(LogLevel::Trace, &format!("Metric: {} += {}", name, value)).ok();
     }
 
     fn record_metric(&self, name: &str, value: u64) {
         // Record histogram/gauge metric
-        log::trace!("Metric: {} = {}", name, value);
+        proxy_wasm::hostcalls::log(LogLevel::Trace, &format!("Metric: {} = {}", name, value)).ok();
     }
 }

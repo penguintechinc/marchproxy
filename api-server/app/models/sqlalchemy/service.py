@@ -30,7 +30,7 @@ class Service(Base):
     created_by = Column(Integer, ForeignKey("auth_user.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    metadata = Column(JSON)
+    extra_metadata = Column(JSON)  # Renamed from 'metadata' (reserved in SQLAlchemy)
 
     cluster = relationship("Cluster", back_populates="services")
     user_assignments = relationship("UserServiceAssignment", back_populates="service")

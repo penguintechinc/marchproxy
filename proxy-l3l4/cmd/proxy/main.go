@@ -10,12 +10,17 @@ import (
 	"syscall"
 	"time"
 
+	"marchproxy-l3l4/internal/acceleration"
+	"marchproxy-l3l4/internal/config"
+	"marchproxy-l3l4/internal/multicloud"
+	"marchproxy-l3l4/internal/numa"
+	"marchproxy-l3l4/internal/observability"
+	"marchproxy-l3l4/internal/qos"
 	"marchproxy-l3l4/internal/zerotrust"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -29,170 +34,237 @@ func main() {
 	logger.SetFormatter(&logrus.JSONFormatter{})
 	logger.SetLevel(logrus.InfoLevel)
 
+	var configPath string
+
 	rootCmd := &cobra.Command{
 		Use:   "proxy-l3l4",
-		Short: "MarchProxy L3/L4 Proxy with Zero-Trust Security",
-		Long: `MarchProxy L3/L4 Proxy
-High-performance L3/L4 proxy with zero-trust security features including:
-- OPA policy enforcement
-- mTLS certificate verification
-- Immutable audit logging
-- Compliance reporting (SOC2, HIPAA, PCI-DSS)`,
+		Short: "MarchProxy L3/L4 Enhanced Proxy",
+		Long: `MarchProxy L3/L4 Proxy - Enterprise-grade network proxy with:
+- NUMA-aware architecture
+- QoS traffic shaping with priority queues
+- Multi-cloud intelligent routing
+- Hardware acceleration (XDP, AF_XDP)
+- Distributed tracing and metrics
+- Zero-trust security features`,
 		Version: fmt.Sprintf("%s (built: %s, commit: %s)", version, buildTime, gitCommit),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runProxy(logger)
+			return runProxy(configPath, logger)
 		},
 	}
 
-	// Configuration flags
-	rootCmd.PersistentFlags().String("config", "", "config file (default: /etc/marchproxy/config.yaml)")
-	rootCmd.PersistentFlags().String("manager-url", "http://api-server:8000", "Manager API URL")
-	rootCmd.PersistentFlags().String("cluster-api-key", "", "Cluster API key for authentication")
-	rootCmd.PersistentFlags().String("opa-url", "http://opa:8181", "OPA server URL")
-	rootCmd.PersistentFlags().String("audit-log-path", "/var/log/marchproxy/audit/audit.log", "Audit log file path")
-	rootCmd.PersistentFlags().String("cert-path", "/etc/marchproxy/certs/server.crt", "Server certificate path")
-	rootCmd.PersistentFlags().String("key-path", "/etc/marchproxy/certs/server.key", "Server key path")
-	rootCmd.PersistentFlags().Bool("enable-zero-trust", true, "Enable zero-trust security features")
-	rootCmd.PersistentFlags().String("bind-addr", ":8081", "Proxy bind address")
-	rootCmd.PersistentFlags().String("metrics-addr", ":8082", "Metrics/health check bind address")
+	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "config file path")
 
-	// Bind flags to viper
-	viper.BindPFlags(rootCmd.PersistentFlags())
-	viper.AutomaticEnv()
-
-	// Execute
 	if err := rootCmd.Execute(); err != nil {
 		logger.WithError(err).Fatal("Failed to start proxy")
 	}
 }
 
-func runProxy(logger *logrus.Logger) error {
+func runProxy(configPath string, logger *logrus.Logger) error {
 	logger.WithFields(logrus.Fields{
 		"version":    version,
 		"build_time": buildTime,
 		"commit":     gitCommit,
-	}).Info("Starting MarchProxy L3/L4 Proxy")
+	}).Info("Starting MarchProxy L3/L4 Enhanced Proxy")
 
-	_, cancel := context.WithCancel(context.Background())
+	// Load configuration
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Setup signal handling
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	// Initialize observability
+	var metrics *observability.Metrics
+	var tracer *observability.Tracer
 
-	// Initialize zero-trust components if enabled
+	metrics = observability.NewMetrics(cfg.MetricsNamespace)
+	logger.Info("Metrics initialized")
+
+	if cfg.EnableTracing {
+		tracer, err = observability.NewTracer("marchproxy-l3l4", cfg.JaegerEndpoint, cfg.TraceSampleRate, logger)
+		if err != nil {
+			logger.WithError(err).Warn("Failed to initialize tracing, continuing without it")
+		} else {
+			defer tracer.Shutdown(ctx)
+			logger.Info("Distributed tracing initialized")
+		}
+	}
+
+	// Initialize NUMA manager
+	var numaManager *numa.Manager
+	if cfg.EnableNUMA {
+		numaManager = numa.NewManager(logger)
+		if err := numaManager.Initialize(); err != nil {
+			logger.WithError(err).Warn("NUMA initialization failed")
+		} else if numaManager.IsEnabled() {
+			// Allocate workers across NUMA nodes
+			workerCount := cfg.WorkerThreads
+			if workerCount == 0 {
+				workerCount = numaManager.GetTopology().TotalCPUs
+			}
+			allocations, err := numaManager.AllocateWorkers(workerCount)
+			if err != nil {
+				logger.WithError(err).Warn("Failed to allocate NUMA workers")
+			} else {
+				logger.WithField("workers", len(allocations)).Info("NUMA workers allocated")
+				metrics.NumaWorkers.Set(float64(len(allocations)))
+				metrics.NumaNodesActive.Set(float64(numaManager.GetTopology().NodeCount))
+			}
+		}
+	}
+
+	// Initialize QoS traffic shaper
+	var trafficShaper *qos.TrafficShaper
+	if cfg.EnableQoS {
+		trafficShaper = qos.NewTrafficShaper(
+			cfg.DefaultBandwidth,
+			cfg.BurstSize,
+			cfg.PriorityQueueDepth,
+			cfg.DSCPMarking,
+			logger,
+		)
+		trafficShaper.Start()
+		logger.Info("QoS traffic shaper started")
+	}
+
+	// Initialize multi-cloud router
+	var mcRouter *multicloud.Router
+	if cfg.EnableMultiCloud && len(cfg.Backends) > 0 {
+		backends := make([]*multicloud.Backend, len(cfg.Backends))
+		for i, b := range cfg.Backends {
+			backends[i] = &multicloud.Backend{
+				Name:     b.Name,
+				URL:      b.URL,
+				Weight:   b.Weight,
+				Priority: b.Priority,
+				Cloud:    b.Cloud,
+				Region:   b.Region,
+				Cost:     b.Cost,
+				Healthy:  true,
+			}
+		}
+
+		mcRouter, err = multicloud.NewRouter(cfg.RoutingAlgorithm, backends, logger)
+		if err != nil {
+			logger.WithError(err).Warn("Failed to initialize multi-cloud router")
+		} else {
+			if err := mcRouter.Start(); err != nil {
+				logger.WithError(err).Warn("Failed to start multi-cloud router")
+			} else {
+				logger.Info("Multi-cloud router started")
+			}
+		}
+	}
+
+	// Initialize hardware acceleration
+	var accelManager *acceleration.Manager
+	if cfg.EnableAcceleration {
+		accelManager, err = acceleration.NewManager(cfg.AccelerationMode, logger)
+		if err != nil {
+			logger.WithError(err).Warn("Failed to initialize acceleration")
+		} else {
+			if err := accelManager.Initialize(cfg.XDPDevice, cfg.AFXDPQueueCount); err != nil {
+				logger.WithError(err).Warn("Failed to initialize acceleration hardware")
+			} else if err := accelManager.Start(); err != nil {
+				logger.WithError(err).Warn("Failed to start acceleration")
+			} else {
+				logger.WithField("mode", accelManager.GetMode()).Info("Hardware acceleration started")
+			}
+		}
+	}
+
+	// Initialize zero-trust components
 	var policyEnforcer *zerotrust.PolicyEnforcer
 	var auditLogger *zerotrust.AuditLogger
 	var certRotator *zerotrust.CertRotator
-	var rbacEvaluator *zerotrust.RBACEvaluator
-	// var complianceReporter *zerotrust.ComplianceReporter // Available for future use
 
-	if viper.GetBool("enable-zero-trust") {
+	if cfg.EnableZeroTrust {
 		logger.Info("Initializing zero-trust security features")
 
-		// Check license for Enterprise features
-		// In production, validate with license server
-		licenseValid := true // Placeholder
-
-		// Initialize audit logger
-		auditLogPath := viper.GetString("audit-log-path")
-		auditLogDir := filepath.Dir(auditLogPath)
+		auditLogDir := filepath.Dir(cfg.AuditLogPath)
 		if err := os.MkdirAll(auditLogDir, 0755); err != nil {
 			return fmt.Errorf("failed to create audit log directory: %w", err)
 		}
 
-		var err error
-		auditLogger, err = zerotrust.NewAuditLogger(auditLogPath, logger)
+		auditLogger, err = zerotrust.NewAuditLogger(cfg.AuditLogPath, logger)
 		if err != nil {
 			return fmt.Errorf("failed to initialize audit logger: %w", err)
 		}
 		defer auditLogger.Close()
 
-		logger.Info("Audit logger initialized")
-
-		// Initialize OPA policy enforcer
-		opaURL := viper.GetString("opa-url")
-		policyEnforcer, err = zerotrust.NewPolicyEnforcer(opaURL, logger, auditLogger)
+		policyEnforcer, err = zerotrust.NewPolicyEnforcer(cfg.OpaURL, logger, auditLogger)
 		if err != nil {
-			logger.WithError(err).Warn("Failed to initialize OPA policy enforcer, continuing without policy enforcement")
+			logger.WithError(err).Warn("OPA policy enforcer unavailable")
 		} else {
-			policyEnforcer.SetLicenseStatus(licenseValid)
-			logger.Info("OPA policy enforcer initialized")
-
-			// Load default policies
-			if err := loadDefaultPolicies(policyEnforcer); err != nil {
-				logger.WithError(err).Warn("Failed to load default policies")
-			}
+			policyEnforcer.SetLicenseStatus(cfg.IsEnterpriseFeatureEnabled("zero-trust"))
 		}
 
-		// Initialize RBAC evaluator
-		if policyEnforcer != nil {
-			rbacEvaluator = zerotrust.NewRBACEvaluator(policyEnforcer, logger)
-
-			// Load default roles
-			loadDefaultRoles(rbacEvaluator)
-
-			logger.Info("RBAC evaluator initialized")
-		}
-
-		// Initialize certificate rotator
-		certPath := viper.GetString("cert-path")
-		keyPath := viper.GetString("key-path")
-
-		if _, err := os.Stat(certPath); err == nil {
-			certRotator, err = zerotrust.NewCertRotator(certPath, keyPath, logger)
+		if _, err := os.Stat(cfg.CertPath); err == nil {
+			certRotator, err = zerotrust.NewCertRotator(cfg.CertPath, cfg.KeyPath, logger)
 			if err != nil {
-				logger.WithError(err).Warn("Failed to initialize certificate rotator")
+				logger.WithError(err).Warn("Certificate rotator unavailable")
 			} else {
 				certRotator.Start()
 				defer certRotator.Stop()
-				logger.Info("Certificate rotator initialized")
 			}
-		}
-
-		// Initialize compliance reporter (available for future use)
-		if auditLogger != nil {
-			_ = zerotrust.NewComplianceReporter(auditLogger, logger)
-			logger.Info("Compliance reporter available")
 		}
 	}
 
+	// Setup signal handling
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
 	// Start metrics/health server
-	metricsAddr := viper.GetString("metrics-addr")
 	metricsMux := http.NewServeMux()
 
-	// Health check endpoint
 	metricsMux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	})
 
-	// Metrics endpoint
 	metricsMux.Handle("/metrics", promhttp.Handler())
 
-	// Zero-trust status endpoint
-	metricsMux.HandleFunc("/zerotrust/status", func(w http.ResponseWriter, r *http.Request) {
+	metricsMux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
 		status := map[string]interface{}{
-			"enabled":             policyEnforcer != nil && policyEnforcer.IsEnabled(),
-			"opa_connected":       policyEnforcer != nil,
-			"audit_chain_valid":   auditLogger != nil && !auditLogger.IsChainBroken(),
-			"cert_rotation_active": certRotator != nil,
+			"version":     version,
+			"uptime":      time.Since(time.Now()).Seconds(),
+			"qos_enabled": cfg.EnableQoS,
+			"numa_enabled": cfg.EnableNUMA,
+			"multicloud_enabled": cfg.EnableMultiCloud,
+			"acceleration_mode": "standard",
+		}
+
+		if accelManager != nil {
+			status["acceleration_mode"] = accelManager.GetMode()
+			status["acceleration_stats"] = accelManager.GetStats()
+		}
+
+		if numaManager != nil && numaManager.IsEnabled() {
+			status["numa_stats"] = numaManager.Stats()
+		}
+
+		if trafficShaper != nil {
+			status["qos_stats"] = trafficShaper.GetStats()
+		}
+
+		if mcRouter != nil {
+			status["routing_stats"] = mcRouter.GetStats()
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		// Write JSON response (simplified)
-		fmt.Fprintf(w, `{"enabled":%v,"opa_connected":%v,"audit_chain_valid":%v,"cert_rotation_active":%v}`,
-			status["enabled"], status["opa_connected"], status["audit_chain_valid"], status["cert_rotation_active"])
+		fmt.Fprintf(w, `{"status":%v}`, status)
 	})
 
 	metricsServer := &http.Server{
-		Addr:    metricsAddr,
+		Addr:    cfg.MetricsAddr,
 		Handler: metricsMux,
 	}
 
 	go func() {
-		logger.WithField("addr", metricsAddr).Info("Starting metrics/health server")
+		logger.WithField("addr", cfg.MetricsAddr).Info("Starting metrics/health server")
 		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.WithError(err).Error("Metrics server error")
 		}
@@ -208,18 +280,22 @@ func runProxy(logger *logrus.Logger) error {
 			Resource:  "system",
 			SourceIP:  "localhost",
 			Allowed:   true,
-			Reason:    "Proxy started successfully",
+			Reason:    "Enhanced proxy started",
 			Metadata: map[string]interface{}{
-				"version":    version,
-				"build_time": buildTime,
+				"version":            version,
+				"qos_enabled":        cfg.EnableQoS,
+				"numa_enabled":       cfg.EnableNUMA,
+				"multicloud_enabled": cfg.EnableMultiCloud,
+				"acceleration_mode":  "standard",
 			},
 		}
-		if err := auditLogger.LogEvent(auditEvent); err != nil {
-			logger.WithError(err).Warn("Failed to log startup event")
+		if accelManager != nil {
+			auditEvent.Metadata["acceleration_mode"] = accelManager.GetMode()
 		}
+		auditLogger.LogEvent(auditEvent)
 	}
 
-	logger.Info("MarchProxy L3/L4 Proxy started successfully")
+	logger.Info("MarchProxy L3/L4 Enhanced Proxy started successfully")
 
 	// Wait for shutdown signal
 	<-sigChan
@@ -235,7 +311,7 @@ func runProxy(logger *logrus.Logger) error {
 			Resource:  "system",
 			SourceIP:  "localhost",
 			Allowed:   true,
-			Reason:    "Proxy shutting down",
+			Reason:    "Enhanced proxy shutting down",
 		}
 		auditLogger.LogEvent(auditEvent)
 	}
@@ -248,61 +324,18 @@ func runProxy(logger *logrus.Logger) error {
 		logger.WithError(err).Error("Metrics server shutdown error")
 	}
 
+	if mcRouter != nil {
+		mcRouter.Stop()
+	}
+
+	if accelManager != nil {
+		accelManager.Stop()
+	}
+
 	if policyEnforcer != nil {
 		policyEnforcer.Close()
 	}
 
 	logger.Info("Shutdown complete")
 	return nil
-}
-
-func loadDefaultPolicies(enforcer *zerotrust.PolicyEnforcer) error {
-	// Load RBAC policy
-	rbacPolicy := `
-package marchproxy.rbac
-
-import rego.v1
-
-default allow := false
-
-allow if {
-    input.user != ""
-    true
-}
-`
-	if err := enforcer.LoadPolicy("rbac", rbacPolicy); err != nil {
-		return fmt.Errorf("failed to load RBAC policy: %w", err)
-	}
-
-	return nil
-}
-
-func loadDefaultRoles(evaluator *zerotrust.RBACEvaluator) {
-	// Define default roles
-	roles := []*zerotrust.Role{
-		{
-			Name: "admin",
-			Permissions: []string{
-				"*",
-			},
-			Description: "Full system access",
-		},
-		{
-			Name: "operator",
-			Permissions: []string{
-				"read:*",
-				"write:services",
-			},
-			Description: "Operator with read access and service management",
-		},
-		{
-			Name: "viewer",
-			Permissions: []string{
-				"read:*",
-			},
-			Description: "Read-only access",
-		},
-	}
-
-	evaluator.LoadRoles(roles)
 }

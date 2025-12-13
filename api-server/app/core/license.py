@@ -12,9 +12,7 @@ from typing import Optional
 import httpx
 from pydantic import BaseModel
 
-from app.config import get_settings
-
-settings = get_settings()
+from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 
@@ -168,3 +166,43 @@ class LicenseValidator:
 
 # Global license validator instance
 license_validator = LicenseValidator()
+
+
+class LicenseManager:
+    """
+    License Manager - Wrapper for LicenseValidator with async/dict interface
+
+    Provides backward compatibility with dependencies.py expectations
+    """
+
+    def __init__(self):
+        self.validator = license_validator
+
+    async def validate_license(self, license_key: str) -> dict:
+        """
+        Validate license key and return dict result
+
+        Args:
+            license_key: License key to validate
+
+        Returns:
+            Dictionary with validation results
+        """
+        # Temporarily override the validator's license key
+        original_key = self.validator.license_key
+        self.validator.license_key = license_key
+
+        try:
+            license_info = await self.validator.validate_license(force=True)
+
+            return {
+                "valid": license_info.is_valid,
+                "tier": license_info.tier.value,
+                "max_proxies": license_info.max_proxies,
+                "features": license_info.features,
+                "valid_until": license_info.valid_until.isoformat()
+                    if license_info.valid_until else None
+            }
+        finally:
+            # Restore original key
+            self.validator.license_key = original_key

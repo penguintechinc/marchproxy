@@ -11,6 +11,7 @@ import (
 	endpoint "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
 	listener "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
 	route "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
+	tls "github.com/envoyproxy/go-control-plane/envoy/extensions/transport_sockets/tls/v3"
 	http_conn "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
 	"github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	"github.com/envoyproxy/go-control-plane/pkg/cache/v3"
@@ -22,10 +23,17 @@ import (
 
 // ServiceConfig represents a service configuration from the API server
 type ServiceConfig struct {
-	Name     string   `json:"name"`
-	Hosts    []string `json:"hosts"`
-	Port     uint32   `json:"port"`
-	Protocol string   `json:"protocol"` // http, https, grpc
+	Name            string   `json:"name"`
+	Hosts           []string `json:"hosts"`
+	Port            uint32   `json:"port"`
+	Protocol        string   `json:"protocol"` // http, https, grpc, http2, websocket
+	TLSEnabled      bool     `json:"tls_enabled"`
+	TLSCertName     string   `json:"tls_cert_name"`     // Reference to certificate
+	TLSVerify       bool     `json:"tls_verify"`        // Verify upstream TLS
+	HealthCheckPath string   `json:"health_check_path"` // Health check endpoint
+	TimeoutSeconds  int      `json:"timeout_seconds"`   // Connection timeout
+	HTTP2Enabled    bool     `json:"http2_enabled"`     // Enable HTTP/2
+	WebSocketUpgrade bool    `json:"websocket_upgrade"` // Enable WebSocket upgrade
 }
 
 // RouteConfig represents a route configuration
@@ -37,19 +45,29 @@ type RouteConfig struct {
 	Timeout      int      `json:"timeout"` // seconds
 }
 
+// CertificateConfig represents TLS certificate configuration
+type CertificateConfig struct {
+	Name         string `json:"name"`
+	CertChain    string `json:"cert_chain"`    // PEM encoded certificate chain
+	PrivateKey   string `json:"private_key"`   // PEM encoded private key
+	CACert       string `json:"ca_cert"`       // Optional CA certificate
+	RequireClient bool  `json:"require_client"` // Require client certificates
+}
+
 // MarchProxyConfig represents the complete configuration from API server
 type MarchProxyConfig struct {
-	Version  string          `json:"version"`
-	Services []ServiceConfig `json:"services"`
-	Routes   []RouteConfig   `json:"routes"`
+	Version      string              `json:"version"`
+	Services     []ServiceConfig     `json:"services"`
+	Routes       []RouteConfig       `json:"routes"`
+	Certificates []CertificateConfig `json:"certificates"`
 }
 
 // GenerateSnapshot creates an Envoy snapshot from MarchProxy configuration
 func GenerateSnapshot(config MarchProxyConfig) (*cache.Snapshot, error) {
-	// Create clusters
+	// Create clusters with enhanced configuration
 	var clusters []types.Resource
 	for _, svc := range config.Services {
-		c, err := makeCluster(svc)
+		c, err := makeClusterWithConfig(svc)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create cluster for %s: %w", svc.Name, err)
 		}
@@ -75,22 +93,36 @@ func GenerateSnapshot(config MarchProxyConfig) (*cache.Snapshot, error) {
 
 	// Create listeners
 	var listeners []types.Resource
-	l, err := makeListener(config.Routes)
+	l, err := makeListener(config.Routes, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create listener: %w", err)
 	}
 	listeners = append(listeners, l)
 
-	// Create snapshot
-	snapshot, err := cache.NewSnapshot(
-		config.Version,
-		map[resource.Type][]types.Resource{
-			resource.EndpointType: endpoints,
-			resource.ClusterType:  clusters,
-			resource.RouteType:    routes,
-			resource.ListenerType: listeners,
-		},
-	)
+	// Create secrets for TLS certificates (SDS)
+	var secrets []types.Resource
+	if len(config.Certificates) > 0 {
+		s, err := makeSecrets(config.Certificates)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create secrets: %w", err)
+		}
+		secrets = s
+	}
+
+	// Create snapshot with all resources
+	resourceMap := map[resource.Type][]types.Resource{
+		resource.EndpointType: endpoints,
+		resource.ClusterType:  clusters,
+		resource.RouteType:    routes,
+		resource.ListenerType: listeners,
+	}
+
+	// Only add secrets if we have them
+	if len(secrets) > 0 {
+		resourceMap[resource.SecretType] = secrets
+	}
+
+	snapshot, err := cache.NewSnapshot(config.Version, resourceMap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create snapshot: %w", err)
 	}
@@ -209,9 +241,37 @@ func makeRouteConfiguration(routes []RouteConfig) (*route.RouteConfiguration, er
 	}, nil
 }
 
-// makeListener creates an Envoy listener for HTTP traffic
-func makeListener(routes []RouteConfig) (*listener.Listener, error) {
-	// Create HTTP connection manager
+// makeListener creates an Envoy listener for HTTP traffic with WebSocket and HTTP/2 support
+func makeListener(routes []RouteConfig, config MarchProxyConfig) (*listener.Listener, error) {
+	// Determine if we need WebSocket or HTTP/2 support
+	websocketEnabled := false
+	http2Enabled := false
+
+	for _, svc := range config.Services {
+		if svc.WebSocketUpgrade {
+			websocketEnabled = true
+		}
+		if svc.HTTP2Enabled || svc.Protocol == "grpc" || svc.Protocol == "http2" {
+			http2Enabled = true
+		}
+	}
+
+	// Create HTTP filters - use first service config for filter generation
+	var httpFilters []*http_conn.HttpFilter
+	if len(config.Services) > 0 {
+		filters, err := makeHTTPFilters(config.Services[0])
+		if err != nil {
+			return nil, fmt.Errorf("failed to create HTTP filters: %w", err)
+		}
+		httpFilters = filters
+	} else {
+		// Default router filter
+		httpFilters = []*http_conn.HttpFilter{{
+			Name: wellknown.Router,
+		}}
+	}
+
+	// Create HTTP connection manager with WebSocket and HTTP/2 support
 	manager := &http_conn.HttpConnectionManager{
 		CodecType:  http_conn.HttpConnectionManager_AUTO,
 		StatPrefix: "ingress_http",
@@ -226,9 +286,20 @@ func makeListener(routes []RouteConfig) (*listener.Listener, error) {
 				RouteConfigName: "marchproxy_routes",
 			},
 		},
-		HttpFilters: []*http_conn.HttpFilter{{
-			Name: wellknown.Router,
-		}},
+		HttpFilters: httpFilters,
+	}
+
+	// Add WebSocket upgrade config if needed
+	if websocketEnabled {
+		manager.UpgradeConfigs = makeUpgradeConfigs(true)
+	}
+
+	// Add HTTP/2 options if needed
+	if http2Enabled {
+		manager.Http2ProtocolOptions = &core.Http2ProtocolOptions{
+			AllowConnect:  true,
+			AllowMetadata: true,
+		}
 	}
 
 	pbst, err := anypb.New(manager)
@@ -267,4 +338,58 @@ func ParseConfig(data []byte) (*MarchProxyConfig, error) {
 		return nil, err
 	}
 	return &config, nil
+}
+
+// makeSecrets creates Envoy secrets for TLS certificates (SDS)
+func makeSecrets(certificates []CertificateConfig) ([]types.Resource, error) {
+	var secrets []types.Resource
+
+	for _, cert := range certificates {
+		// Create TLS certificate secret
+		tlsCert := &core.DataSource{
+			Specifier: &core.DataSource_InlineString{
+				InlineString: cert.CertChain,
+			},
+		}
+
+		tlsKey := &core.DataSource{
+			Specifier: &core.DataSource_InlineString{
+				InlineString: cert.PrivateKey,
+			},
+		}
+
+		secret := &tls.Secret{
+			Name: cert.Name,
+			Type: &tls.Secret_TlsCertificate{
+				TlsCertificate: &tls.TlsCertificate{
+					CertificateChain: tlsCert,
+					PrivateKey:       tlsKey,
+				},
+			},
+		}
+
+		secrets = append(secrets, secret)
+
+		// If CA cert is provided, create validation context secret
+		if cert.CACert != "" {
+			caCert := &core.DataSource{
+				Specifier: &core.DataSource_InlineString{
+					InlineString: cert.CACert,
+				},
+			}
+
+			validationSecret := &tls.Secret{
+				Name: cert.Name + "_validation",
+				Type: &tls.Secret_ValidationContext{
+					ValidationContext: &tls.CertificateValidationContext{
+						TrustedCa: caCert,
+					},
+				},
+			}
+
+			secrets = append(secrets, validationSecret)
+		}
+	}
+
+	return secrets, nil
 }

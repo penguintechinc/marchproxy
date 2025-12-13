@@ -24,7 +24,7 @@ class ProxyServer(Base):
     last_config_fetch = Column(DateTime)
     config_version = Column(String(64))
     registered_at = Column(DateTime, default=datetime.utcnow)
-    metadata = Column(JSON)
+    extra_metadata = Column(JSON)  # Renamed from 'metadata' (reserved in SQLAlchemy)
 
     cluster = relationship("Cluster", back_populates="proxies")
     metrics = relationship("ProxyMetrics", back_populates="proxy")
@@ -46,6 +46,6 @@ class ProxyMetrics(Base):
     latency_avg = Column(Float)
     latency_p95 = Column(Float)
     errors_per_second = Column(Float)
-    metadata = Column(JSON)
+    extra_metadata = Column(JSON)  # Renamed from 'metadata' (reserved in SQLAlchemy)
 
     proxy = relationship("ProxyServer", back_populates="metrics")

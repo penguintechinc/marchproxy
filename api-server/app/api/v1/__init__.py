@@ -8,7 +8,7 @@ Phase 3+: Enterprise features (traffic shaping, multi-cloud, observability, xDS)
 from fastapi import APIRouter
 
 # Phase 2: Core routes
-from app.api.v1.routes import auth, clusters, services, proxies, users
+from app.api.v1.routes import auth, clusters, services, proxies, users, config, certificates
 
 # Create API router
 api_router = APIRouter()
@@ -19,6 +19,8 @@ api_router.include_router(clusters.router, tags=["Clusters"])
 api_router.include_router(services.router, tags=["Services"])
 api_router.include_router(proxies.router, tags=["Proxies"])
 api_router.include_router(users.router, tags=["Users"])
+api_router.include_router(config.router, tags=["Configuration"])
+api_router.include_router(certificates.router, tags=["Certificates"])
 
 # Phase 3+: Enterprise feature routes (optional, will fail gracefully if not available)
 try:
