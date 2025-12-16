@@ -20,8 +20,8 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the binary
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+# Build the binary (CGO_ENABLED=1 required for SQLite support)
+RUN CGO_ENABLED=1 GOOS=linux go build \
     -ldflags="-w -s -X main.version=${VERSION:-1.0.0} -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ) -X main.gitCommit=${GIT_COMMIT:-unknown}" \
     -o proxy-dblb \
     ./cmd/main.go
