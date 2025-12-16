@@ -142,8 +142,8 @@ type CircuitBreakerError struct {
 }
 
 func (cbe *CircuitBreakerError) Error() string {
-	return fmt.Sprintf("circuit breaker for service %s:%d is %s: %v", 
-		cbe.Service.Host, cbe.Service.Port, cbe.State, cbe.Err)
+	return fmt.Sprintf("circuit breaker for service %s:%d is %s: %v",
+		cbe.Service.IPFQDN, cbe.Service.Port, cbe.State, cbe.Err)
 }
 
 func (cbe *CircuitBreakerError) Unwrap() error {

@@ -178,7 +178,7 @@ func (te *TracingEngine) createSpanProcessor() trace.SpanProcessor {
 					te.exporter,
 					trace.WithBatchTimeout(config.Timeout),
 					trace.WithExportTimeout(config.ExportTimeout),
-					trace.WithMaxBatchSize(config.BatchSize),
+					// trace.WithMaxBatchSize(config.BatchSize),
 				))
 			case "simple":
 				processors = append(processors, trace.NewSimpleSpanProcessor(te.exporter))

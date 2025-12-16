@@ -176,7 +176,7 @@ func (rs *RuleSynchronizer) serviceInMapping(service *manager.Service, mapping *
 			return true
 		}
 	}
-	for _, dstID := range mapping.DestinationServices {
+	for _, dstID := range mapping.DestServices {
 		if dstID == service.ID {
 			return true
 		}
