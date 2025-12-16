@@ -15,6 +15,8 @@ on:
       - 'proxy/**'
       - 'manager/**'
       - '.version'
+  schedule:
+    - cron: '0 2 * * 0'  # Weekly cleanup on Sunday at 2 AM UTC
 
 env:
   REGISTRY: ghcr.io
@@ -421,6 +423,3 @@ jobs:
               }
             }
 
-# Schedule cleanup weekly
-schedule:
-  - cron: '0 2 * * 0'  # Sunday at 2 AM UTC
