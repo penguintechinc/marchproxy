@@ -23,9 +23,9 @@ import (
 
 	"marchproxy-ingress/internal/auth"
 	"marchproxy-ingress/internal/config"
-	"marchproxy-ingress/internal/ebpf"
+	// "marchproxy-ingress/internal/ebpf"  // TODO: Create ebpf package or remove usage
 	"marchproxy-ingress/internal/manager"
-	"marchproxy-ingress/internal/tls"
+	// "marchproxy-ingress/internal/tls"   // TODO: Create tls package or remove usage
 	"github.com/spf13/cobra"
 )
 
@@ -135,7 +135,8 @@ func runIngressProxy(cmd *cobra.Command, args []string) {
 	metrics := &IngressMetrics{}
 
 	// Initialize eBPF manager with ingress-specific programs
-	ebpfManager := ebpf.NewManager(cfg.EnableEBPF)
+	// ebpfManager := ebpf.NewManager(cfg.EnableEBPF)  // TODO: Create ebpf package
+	var ebpfManager interface{} // Placeholder
 	if cfg.EnableEBPF {
 		fmt.Printf("eBPF acceleration enabled for ingress\n")
 		if err := ebpfManager.LoadProgram("ingress"); err != nil {
@@ -299,7 +300,8 @@ type IngressProxy struct {
 	managerClient *manager.Client
 	authenticator *auth.Authenticator
 	metrics       *IngressMetrics
-	ebpfManager   *ebpf.Manager
+	// ebpfManager   *ebpf.Manager  // TODO: Create ebpf package
+	ebpfManager   interface{} // Placeholder
 	tlsConfig     *tls.Config
 	httpServer    *http.Server
 	httpsServer   *http.Server
@@ -543,7 +545,7 @@ func (p *IngressProxy) Stop() {
 }
 
 // startAdminServer starts the admin/metrics HTTP server
-func startAdminServer(port int, metrics *IngressMetrics, ebpfMgr *ebpf.Manager) error {
+func startAdminServer(port int, metrics *IngressMetrics, ebpfMgr interface{}) error {  // TODO: Change back to *ebpf.Manager when package created
 	mux := http.NewServeMux()
 
 	// Health check endpoint

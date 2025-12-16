@@ -10,8 +10,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/exporters/jaeger"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -19,7 +17,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	oteltrace "go.opentelemetry.io/otel/trace"
 
-	"github.com/MarchProxy/proxy/internal/manager"
+	"marchproxy-egress/internal/manager"
 )
 
 type TracingEngine struct {
@@ -51,8 +49,8 @@ type TracingConfig struct {
 type ExporterType string
 
 const (
-	ExporterJaeger ExporterType = "jaeger"
-	ExporterOTLP   ExporterType = "otlp"
+	// ExporterJaeger ExporterType = "jaeger"  // Deprecated - use OTLP instead
+	// ExporterOTLP   ExporterType = "otlp"  // Temporarily disabled due to genproto conflicts
 	ExporterStdout ExporterType = "stdout"
 	ExporterConsole ExporterType = "console"
 )
@@ -153,14 +151,14 @@ func (te *TracingEngine) initializeTracer() error {
 
 func (te *TracingEngine) createExporter() (trace.SpanExporter, error) {
 	switch te.config.ExporterType {
-	case ExporterJaeger:
-		return jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(te.config.JaegerEndpoint)))
-	
-	case ExporterOTLP:
-		return otlptracehttp.New(
-			context.Background(),
-			otlptracehttp.WithEndpoint(te.config.OTLPEndpoint),
-		)
+	// case ExporterJaeger:  // Deprecated - Jaeger exporter removed, use OTLP exporter instead
+	//	return jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(te.config.JaegerEndpoint)))
+
+	// case ExporterOTLP:  // Temporarily disabled due to genproto conflicts
+	//	return otlptracehttp.New(
+	//		context.Background(),
+	//		otlptracehttp.WithEndpoint(te.config.OTLPEndpoint),
+	//	)
 	
 	case ExporterStdout, ExporterConsole:
 		return stdouttrace.New(stdouttrace.WithPrettyPrint())

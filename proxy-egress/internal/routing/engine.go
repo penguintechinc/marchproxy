@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/penguintech/marchproxy/internal/manager"
+	"marchproxy-egress/internal/manager"
 )
 
 // RoutingEngine handles advanced request routing with multiple rule types

@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/penguintech/marchproxy/internal/manager"
+	"marchproxy-egress/internal/manager"
 )
 
 // AffinityManager handles CPU affinity and core isolation

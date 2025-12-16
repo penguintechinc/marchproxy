@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/penguintech/marchproxy/internal/auth"
-	"github.com/penguintech/marchproxy/internal/manager"
+	"marchproxy-egress/internal/auth"
+	"marchproxy-egress/internal/manager"
 )
 
 // FallbackHandler processes packets that XDP cannot handle in fast-path

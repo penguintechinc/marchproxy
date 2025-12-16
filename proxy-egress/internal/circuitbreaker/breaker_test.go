@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MarchProxy/proxy/internal/manager"
+	"marchproxy-egress/internal/manager"
 )
 
 func TestCircuitBreakerStates(t *testing.T) {

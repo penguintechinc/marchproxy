@@ -11,7 +11,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/penguintech/marchproxy/internal/config"
+	"marchproxy-egress/internal/config"
 )
 
 // Client handles communication with the MarchProxy manager API

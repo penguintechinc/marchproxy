@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/penguintech/marchproxy/internal/acceleration/xdp"
-	"github.com/penguintech/marchproxy/internal/manager"
+	"marchproxy-egress/internal/acceleration/xdp"
+	"marchproxy-egress/internal/manager"
 )
 
 // RuleSynchronizer handles synchronization between manager rules and XDP fast-path

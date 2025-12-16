@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/MarchProxy/proxy/internal/logging"
-	"github.com/MarchProxy/proxy/internal/metrics"
+	"marchproxy-egress/internal/logging"
+	"marchproxy-egress/internal/metrics"
 )
 
 // XDPRateLimiter fallback implementation for systems without XDP support

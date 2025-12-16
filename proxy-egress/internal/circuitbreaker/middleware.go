@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/MarchProxy/proxy/internal/manager"
-	"github.com/MarchProxy/proxy/internal/middleware"
+	"marchproxy-egress/internal/manager"
+	"marchproxy-egress/internal/middleware"
 )
 
 type CircuitBreakerMiddleware struct {

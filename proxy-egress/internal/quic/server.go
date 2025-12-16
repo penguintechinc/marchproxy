@@ -17,7 +17,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/penguintech/marchproxy/internal/manager"
+	"marchproxy-egress/internal/manager"
 )
 
 // QUICServer handles QUIC/HTTP3 connections and multiplexing

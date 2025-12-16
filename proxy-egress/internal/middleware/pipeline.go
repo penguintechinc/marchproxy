@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/penguintech/marchproxy/internal/manager"
+	"marchproxy-egress/internal/manager"
 )
 
 // Pipeline manages middleware execution order and context

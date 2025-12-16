@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/MarchProxy/proxy/internal/manager"
+	"marchproxy-egress/internal/manager"
 )
 
 type Monitor struct {

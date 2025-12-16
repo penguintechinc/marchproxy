@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/MarchProxy/proxy/internal/health"
-	"github.com/MarchProxy/proxy/internal/manager"
-	"github.com/MarchProxy/proxy/internal/metrics"
+	"marchproxy-egress/internal/health"
+	"marchproxy-egress/internal/manager"
+	"marchproxy-egress/internal/metrics"
 )
 
 type AdminDashboard struct {

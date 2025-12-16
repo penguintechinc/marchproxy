@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/penguintech/marchproxy/internal/config"
-	"github.com/penguintech/marchproxy/internal/logging"
-	"github.com/penguintech/marchproxy/internal/monitoring"
+	"marchproxy-egress/internal/config"
+	"marchproxy-egress/internal/logging"
+	"marchproxy-egress/internal/monitoring"
 )
 
 // Server represents the main proxy server

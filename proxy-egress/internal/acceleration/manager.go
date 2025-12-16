@@ -6,11 +6,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/penguintech/marchproxy/internal/acceleration/afxdp"
-	"github.com/penguintech/marchproxy/internal/acceleration/dpdk"
-	"github.com/penguintech/marchproxy/internal/acceleration/sriov"
-	"github.com/penguintech/marchproxy/internal/acceleration/xdp"
-	"github.com/penguintech/marchproxy/internal/proxy"
+	"marchproxy-egress/internal/acceleration/afxdp"
+	"marchproxy-egress/internal/acceleration/dpdk"
+	"marchproxy-egress/internal/acceleration/sriov"
+	"marchproxy-egress/internal/acceleration/xdp"
+	"marchproxy-egress/internal/proxy"
 )
 
 // AccelerationManager coordinates all network acceleration technologies
