@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: proxy-dblb
+  namespace: marchproxy
+  labels:
+    app.kubernetes.io/name: marchproxy
+    app.kubernetes.io/component: proxy-dblb
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: marchproxy
+    app.kubernetes.io/component: proxy-dblb
+  ports:
+  - name: mysql
+    port: 3306
+    targetPort: 3306
+  - name: postgresql
+    port: 5432
+    targetPort: 5432
+  - name: mongodb
+    port: 27017
+    targetPort: 27017
+  - name: redis
+    port: 6380
+    targetPort: 6380
+  - name: mssql
+    port: 1433
+    targetPort: 1433
+  - name: admin
+    port: 7002
+    targetPort: 7002
+  - name: grpc
+    port: 50052
+    targetPort: 50052

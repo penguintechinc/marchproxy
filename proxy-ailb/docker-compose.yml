@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  ailb:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: marchproxy-ailb
+    ports:
+      - "8080:8080"
+      - "50051:50051"
+    environment:
+      # Server Configuration
+      - HTTP_PORT=8080
+      - GRPC_PORT=50051
+      - MODULE_ID=ailb-1
+      - ROUTING_STRATEGY=load_balanced
+
+      # Features
+      - ENABLE_MEMORY=true
+      - ENABLE_RAG=false
+      - MEMORY_BACKEND=chromadb
+      - RAG_BACKEND=chromadb
+
+      # OpenAI (uncomment and add your key)
+      # - OPENAI_API_KEY=sk-your-key-here
+      # - OPENAI_MODELS=gpt-4,gpt-3.5-turbo
+
+      # Anthropic (uncomment and add your key)
+      # - ANTHROPIC_API_KEY=sk-ant-your-key-here
+      # - ANTHROPIC_MODELS=claude-3-opus-20240229,claude-3-sonnet-20240229
+
+      # Ollama (local LLM)
+      - OLLAMA_BASE_URL=http://ollama:11434
+
+    volumes:
+      - ailb_memory:/app/ailb_memory
+      - ailb_rag:/app/ailb_rag
+
+    networks:
+      - ailb-network
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Local Ollama instance for testing
+  ollama:
+    image: ollama/ollama:latest
+    container_name: marchproxy-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - ailb-network
+    restart: unless-stopped
+
+volumes:
+  ailb_memory:
+    driver: local
+  ailb_rag:
+    driver: local
+  ollama_data:
+    driver: local
+
+networks:
+  ailb-network:
+    driver: bridge

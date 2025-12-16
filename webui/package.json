@@ -1,0 +1,60 @@
+{
+  "name": "marchproxy-webui",
+  "version": "1.0.0",
+  "description": "MarchProxy Web UI - React + TypeScript + Vite",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 100",
+    "preview": "vite preview",
+    "serve": "node server.js",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed",
+    "test:report": "playwright show-report"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.11.3",
+    "@emotion/styled": "^11.11.0",
+    "@monaco-editor/react": "^4.6.0",
+    "@mui/icons-material": "^5.15.10",
+    "@mui/material": "^5.15.10",
+    "@mui/x-data-grid": "^8.22.0",
+    "@mui/x-date-pickers": "^6.19.5",
+    "axios": "^1.6.7",
+    "d3-geo": "^3.1.1",
+    "date-fns": "^3.3.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-hook-form": "^7.68.0",
+    "react-query": "^3.39.3",
+    "react-router-dom": "^6.22.0",
+    "react-simple-maps": "^3.0.0",
+    "reactflow": "^11.11.4",
+    "recharts": "^3.5.1",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.1",
+    "@types/d3-geo": "^3.1.0",
+    "@types/node": "^20.11.17",
+    "@types/react": "^18.2.55",
+    "@types/react-dom": "^18.2.19",
+    "@types/react-simple-maps": "^3.0.6",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "eslint": "^8.56.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.5",
+    "express": "^4.18.2",
+    "terser": "^5.44.1",
+    "typescript": "^5.3.3",
+    "vite": "^5.1.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=9.0.0"
+  }
+}

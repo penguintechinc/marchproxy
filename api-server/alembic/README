@@ -1,0 +1,156 @@
+# Alembic Migrations for MarchProxy
+
+Database migrations for MarchProxy API Server using Alembic with async SQLAlchemy.
+
+## Quick Start
+
+### Apply Migrations
+```bash
+cd /path/to/api-server
+./scripts/migrate.sh              # Apply all pending
+./scripts/migrate.sh 001          # Apply specific revision
+./scripts/migrate.sh head         # Apply to latest (default)
+```
+
+### Check Status
+```bash
+./scripts/migrate-status.sh
+```
+
+### Create New Migration
+```bash
+./scripts/migrate-create.sh "Description of changes"
+```
+
+### Downgrade
+```bash
+./scripts/migrate-down.sh -1      # Downgrade one step
+./scripts/migrate-down.sh base    # Downgrade to initial
+```
+
+## Usage
+
+To create a new migration after modifying models:
+
+```bash
+alembic revision --autogenerate -m "description of changes"
+```
+
+To apply the migration:
+
+```bash
+alembic upgrade head
+```
+
+To see the current revision:
+
+```bash
+alembic current
+```
+
+To see migration history:
+
+```bash
+alembic history
+```
+
+To downgrade:
+
+```bash
+alembic downgrade -1  # Go back one step
+```
+
+## File Structure
+
+- `alembic/` - Migration scripts directory
+  - `versions/` - Individual migration files
+  - `env.py` - Alembic environment configuration (async support)
+  - `script.py.mako` - Template for new migration files
+  - `README` - This file
+- `alembic.ini` - Alembic configuration
+- `scripts/` - Helper scripts for migrations
+  - `migrate.sh` - Apply migrations
+  - `migrate-down.sh` - Downgrade migrations
+  - `migrate-status.sh` - Check status
+  - `migrate-create.sh` - Create new migration
+
+## Configuration
+
+Database URL in `alembic.ini`:
+```ini
+sqlalchemy.url = postgresql+asyncpg://marchproxy:marchproxy@postgres:5432/marchproxy
+```
+
+Or use environment variable:
+```bash
+export DATABASE_URL="postgresql+asyncpg://user:password@host:5432/db"
+```
+
+## Async SQLAlchemy
+
+MarchProxy uses async SQLAlchemy with asyncpg driver. The environment configuration in `env.py` handles:
+- Async engine creation
+- Connection pooling
+- Transaction management
+- Migration execution
+
+No special commands needed - just use the standard Alembic commands.
+
+## Migration Chain
+
+The migration system maintains a linear history of all schema changes:
+
+1. **001_initial_schema.py** - Complete initial schema
+   - All core tables
+   - User authentication
+   - Clustering and services
+   - Certificate management
+   - Enterprise features (QoS, routing, tracing)
+   - All indexes and constraints
+   - Proper foreign key relationships
+
+## Important Notes
+
+1. **Always review migrations** before applying to production
+2. **Test on development database first** with a copy of production data
+3. **Backup database** before running downgrade operations
+4. **Keep models in sync** with migration files
+5. **Use descriptive commit messages** for migration files
+
+## Troubleshooting
+
+### Check Current Database Status
+```bash
+./scripts/migrate-status.sh
+```
+
+### View Migration Files
+```bash
+ls -lh alembic/versions/
+```
+
+### Test Migration Without Applying
+```bash
+alembic upgrade --sql head > migration.sql
+cat migration.sql  # Review before applying
+```
+
+## Documentation
+
+Full migration documentation: See `docs/MIGRATIONS.md`
+
+Contains:
+- Detailed schema documentation
+- Best practices
+- Docker integration
+- Advanced usage
+- Troubleshooting guide
+- Reference materials
+
+## Support
+
+For issues:
+1. Check migration status: `./scripts/migrate-status.sh`
+2. Review migration file: `nano alembic/versions/NNN_migration.py`
+3. Check database logs: `docker logs postgres`
+4. Consult `docs/MIGRATIONS.md`

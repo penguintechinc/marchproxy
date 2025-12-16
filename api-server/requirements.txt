@@ -1,0 +1,45 @@
+# MarchProxy API Server Dependencies
+# Python 3.11+
+
+# Web Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+
+# Database
+sqlalchemy==2.0.25
+alembic==1.13.1
+asyncpg==0.29.0  # PostgreSQL async driver
+psycopg2-binary==2.9.9  # PostgreSQL sync driver (for Alembic)
+
+# Authentication & Security
+python-jose[cryptography]==3.3.0
+passlib==1.7.4
+bcrypt==4.0.1
+python-multipart==0.0.6
+pyotp==2.9.0  # 2FA/TOTP
+cryptography==42.0.0  # Certificate parsing and validation
+
+# Pydantic
+pydantic==2.5.3
+pydantic-settings==2.1.0
+email-validator==2.1.0.post1
+
+# License Integration
+httpx==0.26.0  # For license.penguintech.io API calls
+
+# Caching
+redis==5.0.1
+
+# Monitoring & Observability
+prometheus-client==0.19.0
+opentelemetry-api==1.22.0
+opentelemetry-sdk==1.22.0
+opentelemetry-instrumentation-fastapi==0.43b0
+
+# Utilities
+python-dotenv==1.0.0
+
+# gRPC Support (for xDS bridge)
+grpcio==1.60.0
+grpcio-tools==1.60.0

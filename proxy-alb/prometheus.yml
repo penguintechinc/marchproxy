@@ -1,0 +1,38 @@
+# Prometheus configuration for MarchProxy ALB
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'marchproxy'
+    environment: 'development'
+
+scrape_configs:
+  # ALB Supervisor Metrics
+  - job_name: 'alb-supervisor'
+    static_configs:
+      - targets: ['proxy-alb:9090']
+        labels:
+          service: 'alb-supervisor'
+          module_type: 'ALB'
+
+  # Envoy Admin Metrics
+  - job_name: 'envoy-admin'
+    metrics_path: '/stats/prometheus'
+    static_configs:
+      - targets: ['proxy-alb:9901']
+        labels:
+          service: 'envoy'
+          module_type: 'ALB'
+
+  # API Server Metrics
+  - job_name: 'api-server'
+    static_configs:
+      - targets: ['api-server:8000']
+        labels:
+          service: 'api-server'
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

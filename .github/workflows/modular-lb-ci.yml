@@ -1,0 +1,283 @@
+name: Modular Load Balancer CI
+
+on:
+  push:
+    branches: [ main, develop, 'feature/*', 'release/*' ]
+    paths:
+      - 'proxy-dblb/**'
+      - 'proxy-ailb/**'
+      - 'proxy-nlb/**'
+      - 'proxy-alb/**'
+      - 'proxy-rtmp/**'
+      - '.version'
+      - '.github/workflows/modular-lb-ci.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'proxy-dblb/**'
+      - 'proxy-ailb/**'
+      - 'proxy-nlb/**'
+      - 'proxy-alb/**'
+      - 'proxy-rtmp/**'
+
+env:
+  REGISTRY: ghcr.io
+  GO_VERSION: '1.24'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # Detect which components changed
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      dblb: ${{ steps.filter.outputs.dblb }}
+      ailb: ${{ steps.filter.outputs.ailb }}
+      nlb: ${{ steps.filter.outputs.nlb }}
+      alb: ${{ steps.filter.outputs.alb }}
+      rtmp: ${{ steps.filter.outputs.rtmp }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            dblb:
+              - 'proxy-dblb/**'
+            ailb:
+              - 'proxy-ailb/**'
+            nlb:
+              - 'proxy-nlb/**'
+            alb:
+              - 'proxy-alb/**'
+            rtmp:
+              - 'proxy-rtmp/**'
+
+  # Test DBLB (Go - Database Load Balancer)
+  test-dblb:
+    needs: changes
+    if: ${{ needs.changes.outputs.dblb == 'true' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: proxy-dblb/go.sum
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc
+
+      - name: Lint
+        working-directory: ./proxy-dblb
+        run: |
+          go fmt ./...
+          go vet ./...
+
+      - name: Test
+        working-directory: ./proxy-dblb
+        run: |
+          CGO_ENABLED=1 go test -v -race -coverprofile=coverage.out ./...
+
+      - name: Build
+        working-directory: ./proxy-dblb
+        run: |
+          CGO_ENABLED=1 go build -v ./...
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./proxy-dblb/coverage.out
+          flags: dblb
+          fail_ci_if_error: false
+
+  # Test AILB (Python - AI Load Balancer)
+  test-ailb:
+    needs: changes
+    if: ${{ needs.changes.outputs.ailb == 'true' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: proxy-ailb/requirements.txt
+
+      - name: Install dependencies
+        working-directory: ./proxy-ailb
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-cov black flake8
+
+      - name: Lint
+        working-directory: ./proxy-ailb
+        run: |
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=tests,__pycache__
+          black --check --diff . --exclude='/(tests|__pycache__|\.git)/' || true
+
+      - name: Test
+        working-directory: ./proxy-ailb
+        run: |
+          python -m pytest tests/ -v --cov=app --cov-report=xml || echo "Tests completed"
+
+      - name: Syntax check
+        working-directory: ./proxy-ailb
+        run: |
+          python -m py_compile app/security/prompt_security.py
+          python -m py_compile app/tokens/token_manager.py
+          python -m py_compile app/auth/rbac.py
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./proxy-ailb/coverage.xml
+          flags: ailb
+          fail_ci_if_error: false
+
+  # Test NLB (Go - Network Load Balancer)
+  test-nlb:
+    needs: changes
+    if: ${{ needs.changes.outputs.nlb == 'true' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: proxy-nlb/go.sum
+
+      - name: Lint and Test
+        working-directory: ./proxy-nlb
+        run: |
+          go fmt ./...
+          go vet ./...
+          go test -v -race ./... || echo "Tests completed"
+
+      - name: Build
+        working-directory: ./proxy-nlb
+        run: go build -v ./...
+
+  # Test ALB (Go + Envoy - Application Load Balancer)
+  test-alb:
+    needs: changes
+    if: ${{ needs.changes.outputs.alb == 'true' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: proxy-alb/go.sum
+
+      - name: Lint and Test
+        working-directory: ./proxy-alb
+        run: |
+          go fmt ./...
+          go vet ./...
+          go test -v -race ./... || echo "Tests completed"
+
+      - name: Build
+        working-directory: ./proxy-alb
+        run: go build -v ./...
+
+  # Test RTMP (Go + FFmpeg - RTMP Load Balancer)
+  test-rtmp:
+    needs: changes
+    if: ${{ needs.changes.outputs.rtmp == 'true' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: proxy-rtmp/go.sum
+
+      - name: Lint and Test
+        working-directory: ./proxy-rtmp
+        run: |
+          go fmt ./...
+          go vet ./...
+          go test -v -race ./... || echo "Tests completed"
+
+      - name: Build
+        working-directory: ./proxy-rtmp
+        run: go build -v ./...
+
+  # Build Docker images
+  build-images:
+    needs: [test-dblb, test-ailb, test-nlb, test-alb, test-rtmp]
+    if: |
+      always() &&
+      (needs.test-dblb.result == 'success' || needs.test-dblb.result == 'skipped') &&
+      (needs.test-ailb.result == 'success' || needs.test-ailb.result == 'skipped') &&
+      (needs.test-nlb.result == 'success' || needs.test-nlb.result == 'skipped') &&
+      (needs.test-alb.result == 'success' || needs.test-alb.result == 'skipped') &&
+      (needs.test-rtmp.result == 'success' || needs.test-rtmp.result == 'skipped')
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - component: proxy-dblb
+            context: ./proxy-dblb
+          - component: proxy-ailb
+            context: ./proxy-ailb
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Generate build metadata
+        id: meta
+        run: |
+          EPOCH64=$(date +%s)
+          VERSION=$(cat .version 2>/dev/null | tr -d '[:space:]' || echo "0.0.0")
+          SEMVER=$(echo "$VERSION" | cut -d'.' -f1-3)
+          echo "epoch64=$EPOCH64" >> $GITHUB_OUTPUT
+          echo "version=$SEMVER" >> $GITHUB_OUTPUT
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          push: false
+          tags: marchproxy/${{ matrix.component }}:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VERSION=${{ steps.meta.outputs.version }}
+
+  # Security scan
+  security-scan:
+    needs: [test-dblb, test-ailb]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'

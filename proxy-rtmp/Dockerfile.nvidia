@@ -1,0 +1,84 @@
+# MarchProxy RTMP Container - NVIDIA GPU Version
+# Supports NVENC hardware encoding (H.264/H.265)
+
+FROM golang:1.21-bullseye AS builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    make \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /build
+
+# Copy go mod files
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o rtmp-proxy ./cmd/rtmp
+
+# Final stage with NVIDIA CUDA and FFmpeg
+FROM nvidia/cuda:12.2.0-runtime-ubuntu22.04
+
+# Install FFmpeg with NVIDIA support
+RUN apt-get update && apt-get install -y \
+    software-properties-common \
+    && add-apt-repository ppa:ubuntuhandbook1/ffmpeg6 \
+    && apt-get update && apt-get install -y \
+    ffmpeg \
+    nvidia-utils-535 \
+    ca-certificates \
+    tzdata \
+    netcat \
+    && rm -rf /var/lib/apt/lists/*
+
+# Verify FFmpeg has NVENC support
+RUN ffmpeg -hide_banner -encoders | grep nvenc
+
+# Create non-root user
+RUN groupadd -g 1000 marchproxy && \
+    useradd -u 1000 -g marchproxy -m marchproxy
+
+# Create directories
+RUN mkdir -p /var/lib/marchproxy/streams && \
+    chown -R marchproxy:marchproxy /var/lib/marchproxy
+
+# Copy binary from builder
+COPY --from=builder /build/rtmp-proxy /usr/local/bin/rtmp-proxy
+
+# Switch to non-root user
+USER marchproxy
+
+# Expose ports
+EXPOSE 1935/tcp
+EXPOSE 50053/tcp
+
+# Set environment variables for NVIDIA
+ENV NVIDIA_VISIBLE_DEVICES=all \
+    NVIDIA_DRIVER_CAPABILITIES=compute,video,utility \
+    RTMP_HOST=0.0.0.0 \
+    RTMP_PORT=1935 \
+    RTMP_GRPC_PORT=50053 \
+    RTMP_LOG_LEVEL=info \
+    RTMP_ENCODER=nvenc_h264 \
+    RTMP_PRESET=medium \
+    RTMP_OUTPUT_DIR=/var/lib/marchproxy/streams \
+    RTMP_ENABLE_HLS=true \
+    RTMP_ENABLE_DASH=true \
+    RTMP_SEGMENT_DURATION=6 \
+    RTMP_MAX_BITRATE=10 \
+    RTMP_MAX_STREAMS=100 \
+    RTMP_MAX_RESOLUTION=1080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD ["sh", "-c", "nc -z localhost 1935 && nc -z localhost 50053 || exit 1"]
+
+# Run the application
+ENTRYPOINT ["/usr/local/bin/rtmp-proxy"]
+CMD ["--config", "/etc/marchproxy/rtmp.yaml"]

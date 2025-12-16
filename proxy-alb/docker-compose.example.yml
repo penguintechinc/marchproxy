@@ -1,0 +1,128 @@
+# Example Docker Compose configuration for MarchProxy ALB
+# This demonstrates how to run the ALB with xDS server and NLB
+
+version: '3.8'
+
+services:
+  # API Server with xDS
+  api-server:
+    image: marchproxy/api-server:latest
+    container_name: marchproxy-api-server
+    environment:
+      - DATABASE_URL=postgresql://marchproxy:password@postgres:5432/marchproxy
+      - XDS_GRPC_PORT=18000
+      - XDS_HTTP_PORT=19000
+      - SECRET_KEY=your-secret-key
+    ports:
+      - "8000:8000"    # REST API
+      - "18000:18000"  # xDS gRPC
+      - "19000:19000"  # xDS HTTP
+    depends_on:
+      - postgres
+    networks:
+      - marchproxy-network
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: marchproxy-postgres
+    environment:
+      - POSTGRES_DB=marchproxy
+      - POSTGRES_USER=marchproxy
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - marchproxy-network
+
+  # ALB (Application Load Balancer)
+  proxy-alb:
+    build:
+      context: ..
+      dockerfile: proxy-alb/Dockerfile
+    image: marchproxy/proxy-alb:latest
+    container_name: marchproxy-alb
+    environment:
+      - MODULE_ID=alb-1
+      - MODULE_TYPE=ALB
+      - VERSION=v1.0.0
+      - XDS_SERVER=api-server:18000
+      - XDS_NODE_ID=alb-node-1
+      - XDS_CLUSTER=marchproxy-alb-cluster
+      - CLUSTER_API_KEY=${CLUSTER_API_KEY:-default-key}
+      - ENVOY_LOG_LEVEL=info
+      - LOG_LEVEL=info
+      - GRPC_PORT=50051
+      - METRICS_PORT=9090
+      - HEALTH_PORT=8080
+    ports:
+      - "10000:10000"  # HTTP/HTTPS traffic
+      - "9901:9901"    # Envoy admin
+      - "50051:50051"  # gRPC ModuleService
+      - "9090:9090"    # Prometheus metrics
+      - "8080:8080"    # Health checks
+    depends_on:
+      - api-server
+    networks:
+      - marchproxy-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # Example NLB (for testing ModuleService communication)
+  # This would be replaced with your actual NLB implementation
+  nlb-mock:
+    image: alpine:latest
+    container_name: marchproxy-nlb-mock
+    command: |
+      sh -c "apk add --no-cache grpcurl &&
+             while true; do
+               grpcurl -plaintext proxy-alb:50051 marchproxy.ModuleService/GetStatus;
+               sleep 30;
+             done"
+    depends_on:
+      - proxy-alb
+    networks:
+      - marchproxy-network
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: marchproxy-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9091:9090"
+    networks:
+      - marchproxy-network
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: marchproxy-grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - marchproxy-network
+
+networks:
+  marchproxy-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  prometheus_data:
+  grafana_data:

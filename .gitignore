@@ -2,7 +2,7 @@
 
 # Project planning files (git ignored)
 .REQUIREMENTS
-.PLAN
+.PLAN*
 .TODO
 
 # Version file is NOT ignored - should be tracked

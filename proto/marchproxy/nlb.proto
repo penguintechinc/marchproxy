@@ -1,0 +1,385 @@
+syntax = "proto3";
+
+package marchproxy;
+
+option go_package = "github.com/penguintech/marchproxy/proto/marchproxy;marchproxy";
+
+import "marchproxy/types.proto";
+import "google/protobuf/timestamp.proto";
+
+// NLBService is the service that the NLB container provides for module registration,
+// routing updates, and metrics reporting.
+service NLBService {
+  // Module Registration and Discovery
+
+  // RegisterModule registers a new module instance with the NLB
+  rpc RegisterModule(RegisterModuleRequest) returns (RegisterModuleResponse);
+
+  // UnregisterModule removes a module instance from the NLB
+  rpc UnregisterModule(UnregisterModuleRequest) returns (UnregisterModuleResponse);
+
+  // Heartbeat sends periodic heartbeat from module to NLB
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+
+  // ListModules returns all registered modules
+  rpc ListModules(ListModulesRequest) returns (ListModulesResponse);
+
+  // GetModuleInfo returns detailed information about a specific module
+  rpc GetModuleInfo(GetModuleInfoRequest) returns (GetModuleInfoResponse);
+
+  // Routing Management
+
+  // UpdateRouting updates the routing configuration for the NLB
+  rpc UpdateRouting(UpdateRoutingRequest) returns (UpdateRoutingResponse);
+
+  // GetRoutingTable returns the current routing table
+  rpc GetRoutingTable(GetRoutingTableRequest) returns (GetRoutingTableResponse);
+
+  // RouteRequest routes a single request to the appropriate module
+  rpc RouteRequest(RouteRequestRequest) returns (RouteRequestResponse);
+
+  // ValidateRoute validates if a route can be handled
+  rpc ValidateRoute(ValidateRouteRequest) returns (ValidateRouteResponse);
+
+  // Metrics and Monitoring
+
+  // ReportMetrics allows modules to report metrics to the NLB
+  rpc ReportMetrics(ReportMetricsRequest) returns (ReportMetricsResponse);
+
+  // GetNLBMetrics returns aggregated NLB metrics
+  rpc GetNLBMetrics(GetNLBMetricsRequest) returns (GetNLBMetricsResponse);
+
+  // GetModuleMetrics returns metrics for a specific module
+  rpc GetModuleMetrics(GetModuleMetricsRequest) returns (GetModuleMetricsResponse);
+
+  // StreamNLBMetrics streams real-time NLB metrics (server-side streaming)
+  rpc StreamNLBMetrics(StreamNLBMetricsRequest) returns (stream StreamNLBMetricsResponse);
+
+  // Health and Status
+
+  // CheckHealth performs health check on the NLB
+  rpc CheckHealth(CheckHealthRequest) returns (CheckHealthResponse);
+
+  // GetNLBStatus returns current NLB status
+  rpc GetNLBStatus(GetNLBStatusRequest) returns (GetNLBStatusResponse);
+
+  // Configuration Management
+
+  // UpdateNLBConfig updates the NLB configuration
+  rpc UpdateNLBConfig(UpdateNLBConfigRequest) returns (UpdateNLBConfigResponse);
+
+  // GetNLBConfig returns the current NLB configuration
+  rpc GetNLBConfig(GetNLBConfigRequest) returns (GetNLBConfigResponse);
+
+  // Load Balancing and Scaling
+
+  // RebalanceLoad triggers load rebalancing across modules
+  rpc RebalanceLoad(RebalanceLoadRequest) returns (RebalanceLoadResponse);
+
+  // GetLoadDistribution returns current load distribution across modules
+  rpc GetLoadDistribution(GetLoadDistributionRequest) returns (GetLoadDistributionResponse);
+
+  // TriggerScaling triggers scaling operations for a module
+  rpc TriggerScaling(TriggerScalingRequest) returns (TriggerScalingResponse);
+}
+
+// Module Registration Messages
+
+message RegisterModuleRequest {
+  ModuleInstance instance = 1;
+  repeated Route initial_routes = 2;    // Initial routes this module handles
+  HealthCheckConfig health_config = 3;  // Health check configuration
+  map<string, string> capabilities = 4; // Module capabilities
+}
+
+message RegisterModuleResponse {
+  bool success = 1;
+  string message = 2;
+  string registration_id = 3;           // Unique registration ID
+  google.protobuf.Timestamp registered_at = 4;
+  Error error = 5;
+}
+
+message UnregisterModuleRequest {
+  string instance_id = 1;
+  string registration_id = 2;
+  bool graceful = 3;                    // Graceful unregistration
+  int32 drain_timeout_seconds = 4;      // Time to drain connections
+}
+
+message UnregisterModuleResponse {
+  bool success = 1;
+  string message = 2;
+  int32 active_connections_drained = 3;
+  Error error = 4;
+}
+
+message HeartbeatRequest {
+  string instance_id = 1;
+  string registration_id = 2;
+  HealthStatus status = 3;
+  ModuleStats current_stats = 4;        // Current statistics
+  google.protobuf.Timestamp timestamp = 5;
+}
+
+message HeartbeatResponse {
+  bool acknowledged = 1;
+  string message = 2;
+  google.protobuf.Timestamp server_time = 3;
+  bool should_reload = 4;               // Signal to reload config
+  bool should_scale = 5;                // Signal to scale
+  map<string, string> instructions = 6; // Additional instructions
+}
+
+message ListModulesRequest {
+  ModuleType module_type_filter = 1;    // Optional: filter by type
+  HealthStatus status_filter = 2;       // Optional: filter by status
+  Query query = 3;                      // Optional: query parameters
+}
+
+message ListModulesResponse {
+  repeated ModuleInstance modules = 1;
+  int32 total_modules = 2;
+  Pagination pagination = 3;
+}
+
+message GetModuleInfoRequest {
+  string instance_id = 1;
+}
+
+message GetModuleInfoResponse {
+  ModuleInstance instance = 1;
+  repeated Route routes = 2;
+  ModuleStats stats = 3;
+  BlueGreenConfig deployment_config = 4;
+  map<string, string> details = 5;
+}
+
+// Routing Management Messages
+
+message UpdateRoutingRequest {
+  repeated Route routes = 1;            // Routes to add/update
+  bool replace_all = 2;                 // Replace all existing routes
+  string source_instance_id = 3;        // Module requesting the update
+  bool validate_only = 4;               // Only validate, don't apply
+}
+
+message UpdateRoutingResponse {
+  bool success = 1;
+  string message = 2;
+  int32 routes_updated = 3;
+  repeated string validation_errors = 4;
+  Error error = 5;
+}
+
+message GetRoutingTableRequest {
+  Protocol protocol_filter = 1;         // Optional: filter by protocol
+  string destination_filter = 2;        // Optional: filter by destination
+  Query query = 3;
+}
+
+message RoutingEntry {
+  Route route = 1;
+  string target_instance_id = 2;        // Target module instance
+  ModuleType target_module_type = 3;
+  int32 current_connections = 4;        // Connections using this route
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp last_used = 6;
+}
+
+message GetRoutingTableResponse {
+  repeated RoutingEntry entries = 1;
+  int32 total_entries = 2;
+  Pagination pagination = 3;
+}
+
+message RouteRequestRequest {
+  Route route = 1;
+  map<string, string> context = 2;      // Request context
+  bool dry_run = 3;                     // Don't actually route, just find target
+}
+
+message RouteRequestResponse {
+  bool routed = 1;
+  string target_instance_id = 2;
+  ModuleType target_module_type = 3;
+  string target_address = 4;
+  int32 priority = 5;
+  string message = 6;
+  Error error = 7;
+}
+
+message ValidateRouteRequest {
+  Route route = 1;
+}
+
+message ValidateRouteResponse {
+  bool valid = 1;
+  bool has_handler = 2;                 // At least one module can handle
+  repeated string capable_instances = 3; // Instances that can handle
+  repeated string validation_errors = 4;
+  map<string, string> details = 5;
+}
+
+// Metrics and Monitoring Messages
+
+message ReportMetricsRequest {
+  string instance_id = 1;
+  ModuleMetrics metrics = 2;
+  google.protobuf.Timestamp reported_at = 3;
+}
+
+message ReportMetricsResponse {
+  bool acknowledged = 1;
+  string message = 2;
+  google.protobuf.Timestamp processed_at = 3;
+}
+
+message GetNLBMetricsRequest {
+  repeated string metric_names = 1;     // Optional: specific metrics
+  google.protobuf.Timestamp start_time = 2;
+  google.protobuf.Timestamp end_time = 3;
+  bool aggregate = 4;                   // Aggregate across all modules
+}
+
+message GetNLBMetricsResponse {
+  repeated MetricDataPoint metrics = 1;
+  map<string, ModuleMetrics> module_metrics = 2; // Per-module breakdown
+  google.protobuf.Timestamp collected_at = 3;
+}
+
+message GetModuleMetricsRequest {
+  string instance_id = 1;
+  repeated string metric_names = 2;
+  google.protobuf.Timestamp start_time = 3;
+  google.protobuf.Timestamp end_time = 4;
+}
+
+message GetModuleMetricsResponse {
+  ModuleMetrics metrics = 1;
+  google.protobuf.Timestamp collected_at = 2;
+}
+
+message StreamNLBMetricsRequest {
+  int32 interval_seconds = 1;           // Streaming interval
+  repeated string metric_names = 2;     // Metrics to stream
+  bool include_modules = 3;             // Include per-module metrics
+}
+
+message StreamNLBMetricsResponse {
+  repeated MetricDataPoint metrics = 1;
+  map<string, ModuleMetrics> module_metrics = 2;
+  google.protobuf.Timestamp timestamp = 3;
+}
+
+// Health and Status Messages
+
+message CheckHealthRequest {
+  bool deep_check = 1;                  // Perform deep health check
+  bool check_modules = 2;               // Check all registered modules
+}
+
+message CheckHealthResponse {
+  HealthStatus status = 1;
+  string message = 2;
+  map<string, HealthStatus> module_health = 3; // Per-module health
+  map<string, string> checks = 4;       // Individual check results
+  google.protobuf.Timestamp checked_at = 5;
+}
+
+message GetNLBStatusRequest {
+  bool include_modules = 1;             // Include module status
+}
+
+message GetNLBStatusResponse {
+  HealthStatus status = 1;
+  string version = 2;
+  google.protobuf.Timestamp started_at = 3;
+  int64 total_requests = 4;
+  int64 active_connections = 5;
+  int32 registered_modules = 6;
+  map<string, int32> modules_by_type = 7; // Module count by type
+  repeated ModuleInstance modules = 8;  // Module instances (if requested)
+  map<string, string> details = 9;
+}
+
+// Configuration Management Messages
+
+message UpdateNLBConfigRequest {
+  ConfigUpdate config = 1;
+  bool validate_only = 2;               // Only validate, don't apply
+  bool restart_required = 3;            // Indicates if restart needed
+}
+
+message UpdateNLBConfigResponse {
+  bool success = 1;
+  string message = 2;
+  bool validation_passed = 3;
+  repeated string validation_errors = 4;
+  bool requires_restart = 5;
+  Error error = 6;
+}
+
+message GetNLBConfigRequest {
+  string config_type = 1;               // Optional: specific config type
+}
+
+message GetNLBConfigResponse {
+  repeated ConfigUpdate configs = 1;
+  google.protobuf.Timestamp last_updated = 2;
+}
+
+// Load Balancing and Scaling Messages
+
+message RebalanceLoadRequest {
+  bool force = 1;                       // Force rebalancing even if balanced
+  repeated string target_instances = 2; // Optional: specific instances
+  string strategy = 3;                  // Balancing strategy (round-robin, least-conn, etc.)
+}
+
+message RebalanceLoadResponse {
+  bool success = 1;
+  string message = 2;
+  map<string, int32> previous_distribution = 3; // Instance -> connection count
+  map<string, int32> new_distribution = 4;
+  Error error = 5;
+}
+
+message GetLoadDistributionRequest {
+  ModuleType module_type_filter = 1;    // Optional: filter by type
+  bool include_historical = 2;          // Include historical data
+}
+
+message GetLoadDistributionResponse {
+  map<string, LoadInfo> distribution = 1; // Instance ID -> load info
+  double balance_score = 2;             // Overall balance score (0-100)
+  google.protobuf.Timestamp measured_at = 3;
+}
+
+message LoadInfo {
+  string instance_id = 1;
+  int32 active_connections = 2;
+  double cpu_usage_percent = 3;
+  double memory_usage_mb = 4;
+  int64 requests_per_second = 5;
+  double avg_latency_ms = 6;
+  int32 queue_depth = 7;
+  double load_score = 8;                // Normalized load score (0-100)
+}
+
+message TriggerScalingRequest {
+  string instance_id = 1;               // Optional: specific instance
+  ModuleType module_type = 2;           // Optional: scale by type
+  string scaling_action = 3;            // "scale-up", "scale-down", "auto"
+  int32 target_instances = 4;           // Optional: target instance count
+  ScalingConfig config = 5;             // Optional: scaling configuration
+}
+
+message TriggerScalingResponse {
+  bool success = 1;
+  string message = 2;
+  int32 current_instances = 3;
+  int32 target_instances = 4;
+  string scaling_action = 5;
+  Error error = 6;
+}

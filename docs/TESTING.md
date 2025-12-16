@@ -1,339 +1,396 @@
-# MarchProxy Testing Guide
+# MarchProxy Testing Infrastructure
 
-This guide covers testing the dual proxy architecture (proxy-egress and proxy-ingress) with mTLS authentication.
+Comprehensive testing documentation for MarchProxy integration, end-to-end, performance, and security tests.
 
-## Prerequisites
+## Table of Contents
 
-- Docker and Docker Compose installed
-- OpenSSL for certificate generation and testing
-- curl for HTTP/HTTPS testing
-- Optional: Apache Bench (ab) for load testing
+- [Overview](#overview)
+- [Test Suites](#test-suites)
+- [Running Tests](#running-tests)
+- [CI/CD Integration](#cicd-integration)
+- [Coverage Requirements](#coverage-requirements)
+- [Test Development](#test-development)
 
-## Quick Start
+## Overview
 
-1. **Generate certificates:**
-   ```bash
-   docker-compose --profile tools run --rm cert-generator
-   ```
+MarchProxy implements a comprehensive testing strategy with multiple test levels:
 
-2. **Start services:**
-   ```bash
-   docker-compose up -d
-   ```
+1. **Unit Tests** - Individual component testing
+2. **Integration Tests** - API and database integration
+3. **End-to-End Tests** - Full system deployment
+4. **Performance Tests** - Load and stress testing
+5. **Security Tests** - Vulnerability and penetration testing
+6. **UI Tests** - Browser automation with Playwright
 
-3. **Run comprehensive tests:**
-   ```bash
-   ./scripts/test-proxies.sh
-   ```
+## Test Suites
 
-4. **Run mTLS-specific tests:**
-   ```bash
-   ./scripts/test-mtls.sh
-   ```
+### API Server Integration Tests
 
-## Test Scripts
+**Location**: `api-server/tests/integration/`
 
-### 1. Certificate Generation (`scripts/generate-certs.sh`)
+Tests complete workflows for:
+- Authentication flow (login, 2FA, token refresh)
+- Cluster lifecycle (CRUD, license validation)
+- Service management (creation, routing, tokens)
+- Proxy registration (heartbeat, metrics)
+- Certificate management (upload, rotation, expiry)
+- xDS configuration (generation, updates)
 
-Generates a complete mTLS certificate chain:
-- CA certificate and private key
-- Server certificate for both proxies
-- Client certificates for testing
-- Test client certificates for validation scenarios
-
-**Usage:**
+**Run**:
 ```bash
-# Via Docker (recommended)
-docker-compose --profile tools run --rm cert-generator
-
-# Direct execution (requires OpenSSL)
-./scripts/generate-certs.sh
+cd api-server
+pytest tests/integration/ -v --cov=app
 ```
 
-**Generated files:**
-- `certs/ca.pem` - Certificate Authority
-- `certs/server-cert.pem` - Server certificate
-- `certs/server-key.pem` - Server private key
-- `certs/client-cert.pem` - Client certificate
-- `certs/client-key.pem` - Client private key
-- `certs/test-client-*` - Additional test certificates
+### WebUI Integration Tests
 
-### 2. Comprehensive Testing (`scripts/test-proxies.sh`)
+**Location**: `webui/tests/integration/`
 
-Tests the complete MarchProxy dual proxy system:
-- Certificate validation
-- Docker service startup
-- Manager API functionality
-- Proxy-egress functionality
-- Proxy-ingress functionality
-- mTLS communication
-- Inter-service integration
-- Monitoring stack
-- Basic performance
+Playwright tests for:
+- Login flow with 2FA
+- Cluster management UI
+- Service CRUD operations
+- Real-time proxy monitoring
+- Dashboard functionality
 
-**Usage:**
+**Run**:
 ```bash
-# Full test suite
-./scripts/test-proxies.sh
-
-# Quick test (skip monitoring and performance)
-./scripts/test-proxies.sh --quick
-
-# Custom certificate directory
-./scripts/test-proxies.sh --cert-dir /path/to/certs
-
-# Cleanup volumes after testing
-./scripts/test-proxies.sh --cleanup-volumes
+cd webui
+npm run test
 ```
 
-### 3. mTLS Testing (`scripts/test-mtls.sh`)
+### End-to-End Tests
 
-Focused testing of mTLS functionality:
-- Certificate chain validation
-- TLS connection testing
-- mTLS authentication
-- Client certificate validation
-- Certificate rejection scenarios
-- Cipher suite verification
+**Location**: `tests/e2e/`
 
-**Usage:**
+Full deployment tests:
+- All 4 containers startup
+- Proxy → API → xDS → Envoy flow
+- Service routing configuration
+- Certificate rotation propagation
+- License enforcement
+
+**Run**:
 ```bash
-# Test with default settings
-./scripts/test-mtls.sh
-
-# Custom endpoints
-./scripts/test-mtls.sh --ingress-host proxy.example.com --ingress-port 8443
+./scripts/run-e2e-tests.sh
 ```
 
-## Service Endpoints
+### Performance Tests
 
-### Manager
-- Main API: http://localhost:8000
-- Health: http://localhost:8000/healthz
-- Metrics: http://localhost:8000/metrics
-- License Status: http://localhost:8000/license-status
+**Location**: `tests/performance/`
 
-### Proxy Egress
-- Admin/Health: http://localhost:8081/healthz
-- Metrics: http://localhost:8081/metrics
-- Stats: http://localhost:8081/stats
+Load testing with Locust:
+- API server load (10K+ req/s target)
+- Proxy throughput benchmarks
+- Concurrent connections handling
+- Response time SLAs
 
-### Proxy Ingress
-- HTTP: http://localhost:80
-- HTTPS: https://localhost:443
-- Admin/Health: http://localhost:8082/healthz
-- Metrics: http://localhost:8082/metrics
-
-### Monitoring
-- Prometheus: http://localhost:9090
-- Grafana: http://localhost:3000 (admin/admin123)
-- Kibana: http://localhost:5601
-
-## Manual Testing
-
-### 1. Basic Connectivity
-
+**Run**:
 ```bash
-# Manager health
-curl http://localhost:8000/healthz
-
-# Egress proxy health
-curl http://localhost:8081/healthz
-
-# Ingress proxy health
-curl http://localhost:8082/healthz
+./scripts/run-performance-tests.sh
+# Or manually:
+cd tests/performance
+locust -f locustfile.py --host=http://localhost:8000
 ```
 
-### 2. mTLS Testing
+### Security Tests
 
+**Location**: `tests/security/`
+
+OWASP Top 10 validation:
+- Authentication security
+- Authorization/RBAC enforcement
+- SQL injection prevention
+- XSS prevention
+- Command injection prevention
+- Rate limiting
+- Secret management
+
+**Run**:
 ```bash
-# Test ingress HTTPS with client certificate
-curl --cert certs/client-cert.pem \
-     --key certs/client-key.pem \
-     --cacert certs/ca.pem \
-     -k https://localhost:443/
-
-# Test without client certificate (should fail if mTLS required)
-curl -k https://localhost:443/
+pytest tests/security/ -v -m security
 ```
 
-### 3. Metrics Collection
+## Running Tests
+
+### Run All Tests
 
 ```bash
-# View egress proxy metrics
-curl http://localhost:8081/metrics | grep marchproxy
-
-# View ingress proxy metrics
-curl http://localhost:8082/metrics | grep marchproxy_ingress
-
-# View manager metrics
-curl http://localhost:8000/metrics | grep marchproxy
+./scripts/run-tests.sh
 ```
 
-### 4. Certificate Validation
+This script runs:
+1. API integration tests with coverage
+2. End-to-end tests
+3. Security tests
+4. Performance benchmarks
+5. WebUI Playwright tests
+
+### Run Specific Test Suites
+
+**API Integration Only**:
+```bash
+cd api-server
+pytest tests/integration/ -v
+```
+
+**E2E Only**:
+```bash
+./scripts/run-e2e-tests.sh
+```
+
+**Security Only**:
+```bash
+pytest tests/security/ -v -m security
+```
+
+**Performance Only**:
+```bash
+./scripts/run-performance-tests.sh
+```
+
+**WebUI Only**:
+```bash
+cd webui
+npm run test
+npm run test:headed  # Watch tests run
+npm run test:ui      # Interactive UI
+```
+
+### Test Markers
+
+Tests are organized with pytest markers:
 
 ```bash
-# Verify certificate chain
-openssl verify -CAfile certs/ca.pem certs/server-cert.pem
-openssl verify -CAfile certs/ca.pem certs/client-cert.pem
-
-# View certificate details
-openssl x509 -in certs/server-cert.pem -text -noout
-openssl x509 -in certs/client-cert.pem -text -noout
+pytest -m integration    # Integration tests
+pytest -m e2e           # End-to-end tests
+pytest -m security      # Security tests
+pytest -m performance   # Performance tests
+pytest -m "not slow"    # Exclude slow tests
 ```
+
+## CI/CD Integration
+
+### GitHub Actions Workflow
+
+**File**: `.github/workflows/tests.yml`
+
+Automatically runs on:
+- Push to `main` or `develop`
+- Pull requests to `main` or `develop`
+
+**Jobs**:
+1. `api-integration-tests` - API server integration tests
+2. `webui-tests` - Playwright UI tests
+3. `e2e-tests` - Full deployment E2E tests
+4. `security-tests` - Security scans and tests
+
+### Test Reports
+
+Reports are generated and uploaded as artifacts:
+- **API Coverage**: HTML coverage report
+- **Playwright Report**: Visual test execution
+- **E2E Report**: HTML test results
+- **Security Reports**: Bandit and Safety JSON output
+
+Access reports in GitHub Actions artifacts (retained for 30 days).
+
+## Coverage Requirements
+
+### Minimum Coverage Thresholds
+
+- **API Server**: 80% code coverage
+- **Services**: 85% code coverage
+- **Critical paths**: 95% code coverage
+
+### Coverage Reports
+
+**API Server**:
+```bash
+cd api-server
+pytest tests/integration/ --cov=app --cov-report=html
+open htmlcov/index.html
+```
+
+**Coverage by Module**:
+- `app/routers/`: API endpoints
+- `app/services/`: Business logic
+- `app/models/`: Database models
+- `app/dependencies/`: Dependency injection
+
+## Test Development
+
+### Writing Integration Tests
+
+**Example**:
+```python
+@pytest.mark.asyncio
+async def test_create_cluster(async_client, auth_headers):
+    """Test cluster creation."""
+    response = await async_client.post(
+        "/api/v1/clusters",
+        headers=auth_headers,
+        json={
+            "name": "test-cluster",
+            "tier": "community"
+        }
+    )
+    
+    assert response.status_code == 201
+    data = response.json()
+    assert data["name"] == "test-cluster"
+    assert "api_key" in data
+```
+
+### Writing E2E Tests
+
+**Example**:
+```python
+@pytest.mark.e2e
+def test_full_flow(docker_services, api_base_url):
+    """Test complete flow."""
+    # Create cluster
+    response = requests.post(f"{api_base_url}/api/v1/clusters", ...)
+    
+    # Register proxy
+    proxy_response = requests.post(f"{api_base_url}/api/v1/proxies/register", ...)
+    
+    # Verify
+    assert response.status_code == 201
+```
+
+### Writing Playwright Tests
+
+**Example**:
+```typescript
+test('should create cluster', async ({ page }) => {
+  await page.goto('/dashboard/clusters');
+  await page.click('button:has-text("Create Cluster")');
+  await page.fill('input[name="name"]', 'test-cluster');
+  await page.click('button[type="submit"]');
+  
+  await expect(page.locator('text=Success')).toBeVisible();
+});
+```
+
+### Test Fixtures
+
+**Common Fixtures**:
+- `admin_user` - Admin user with credentials
+- `test_cluster` - Pre-created test cluster
+- `auth_headers` - Authorization headers
+- `db_session` - Database session
+- `docker_services` - Running Docker services
+
+### Test Database
+
+Tests use a separate test database:
+- **URL**: `postgresql://marchproxy:marchproxy@localhost:5432/marchproxy_test`
+- Automatically created/dropped per test session
+- Isolated from development/production databases
+
+## Performance Benchmarks
+
+### Target Performance Metrics
+
+- **Health endpoint**: < 50ms p99
+- **Authentication**: < 500ms average
+- **List operations**: < 200ms average
+- **Metrics endpoint**: < 100ms average
+- **Concurrent requests**: 100+ simultaneous without errors
+
+### Load Testing Scenarios
+
+**Locust scenarios**:
+1. `MarchProxyUser` - Simulates admin operations
+2. `ProxyHeartbeatUser` - Simulates proxy heartbeats
+
+**Run load test**:
+```bash
+cd tests/performance
+locust -f locustfile.py --users 100 --spawn-rate 10 --run-time 5m
+```
+
+## Security Testing
+
+### Automated Security Scans
+
+**Bandit** - Python code security:
+```bash
+bandit -r api-server/app
+```
+
+**Safety** - Dependency vulnerabilities:
+```bash
+safety check
+```
+
+**OWASP ZAP** - Web application scanning (manual):
+```bash
+docker run -t owasp/zap2docker-stable zap-baseline.py -t http://localhost:8000
+```
+
+### Security Test Categories
+
+1. **Authentication** - JWT validation, token expiry, 2FA
+2. **Authorization** - RBAC, permission checks
+3. **Injection** - SQL, XSS, command injection
+4. **Rate Limiting** - Brute force protection
+5. **Secrets** - No hardcoded credentials
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Certificate errors:**
-   - Regenerate certificates with `docker-compose --profile tools run --rm cert-generator`
-   - Check certificate permissions (keys should be 600)
-   - Verify certificate paths in docker-compose.yml
-
-2. **Service startup failures:**
-   - Check logs: `docker-compose logs [service-name]`
-   - Verify environment variables in docker-compose.yml
-   - Ensure required dependencies are running
-
-3. **mTLS connection failures:**
-   - Verify certificate chain with `openssl verify`
-   - Check TLS configuration in proxy settings
-   - Test with `openssl s_client` for detailed TLS debugging
-
-4. **Proxy registration failures:**
-   - Check manager connectivity
-   - Verify API keys match
-   - Check license limits
-
-### Debugging Commands
-
+**Database connection errors**:
 ```bash
-# View service logs
-docker-compose logs manager
-docker-compose logs proxy-egress
-docker-compose logs proxy-ingress
-
-# Check service status
-docker-compose ps
-
-# Debug TLS connection
-openssl s_client -connect localhost:443 \
-  -cert certs/client-cert.pem \
-  -key certs/client-key.pem \
-  -CAfile certs/ca.pem \
-  -verify_return_error
-
-# Test certificate loading
-openssl s_server -accept 9999 \
-  -cert certs/server-cert.pem \
-  -key certs/server-key.pem \
-  -CAfile certs/ca.pem \
-  -verify_return_error
+# Ensure PostgreSQL is running
+docker-compose -f docker-compose.test.yml up -d postgres
 ```
 
-## Performance Testing
-
-### Load Testing with Apache Bench
-
+**Port conflicts**:
 ```bash
-# Test ingress proxy HTTP
-ab -n 1000 -c 10 http://localhost:80/
-
-# Test ingress proxy admin endpoint
-ab -n 1000 -c 10 http://localhost:8082/healthz
-
-# Test egress proxy admin endpoint
-ab -n 1000 -c 10 http://localhost:8081/healthz
+# Stop conflicting services
+docker-compose -f docker-compose.test.yml down
 ```
 
-### Load Testing with curl
-
+**Playwright installation**:
 ```bash
-# Concurrent requests to ingress
-for i in {1..100}; do
-  curl -s http://localhost:80/ >/dev/null &
-done
-wait
-
-# Monitor metrics during load
-watch -n 1 'curl -s http://localhost:8082/metrics | grep active_connections'
+cd webui
+npx playwright install --with-deps
 ```
 
-## Environment Variables
-
-### Development Override
-
-The `docker-compose.override.yml` file sets development-friendly defaults:
-
-```yaml
-environment:
-  - MTLS_ENABLED=true
-  - LOG_LEVEL=DEBUG
-  - ENABLE_PROFILING=true
-```
-
-### Production Configuration
-
-For production, override these variables:
-
+**Missing dependencies**:
 ```bash
-export MTLS_ENABLED=true
-export MTLS_REQUIRE_CLIENT_CERT=true
-export MTLS_VERIFY_CLIENT_CERT=true
-export LOG_LEVEL=INFO
-export RATE_LIMIT_ENABLED=true
+pip install -r api-server/requirements-test.txt
+pip install -r tests/requirements.txt
+cd webui && npm ci
 ```
 
-## Continuous Integration
+## Best Practices
 
-For CI/CD pipelines:
+1. **Test Isolation** - Each test should be independent
+2. **Cleanup** - Always cleanup resources after tests
+3. **Realistic Data** - Use realistic test data
+4. **Error Cases** - Test both success and failure paths
+5. **Performance** - Keep tests fast (< 5s per test)
+6. **Documentation** - Document complex test scenarios
+7. **Fixtures** - Reuse fixtures for common setup
 
-```bash
-# Quick validation
-./scripts/test-proxies.sh --quick
+## Contributing
 
-# Full test with cleanup
-./scripts/test-proxies.sh --cleanup-volumes
+When adding new features:
 
-# mTLS-only testing
-./scripts/test-mtls.sh
-```
+1. Write tests first (TDD)
+2. Ensure 80%+ coverage
+3. Add integration tests for APIs
+4. Add E2E tests for critical flows
+5. Update test documentation
+6. Run full test suite before PR
 
-## Security Considerations
+## Resources
 
-1. **Certificate Management:**
-   - Use strong ECC P-384 keys in production
-   - Implement certificate rotation
-   - Monitor certificate expiry
-
-2. **mTLS Configuration:**
-   - Require client certificates for sensitive operations
-   - Implement certificate revocation checking
-   - Use strong cipher suites only
-
-3. **Network Security:**
-   - Use TLS 1.2+ only
-   - Disable weak cipher suites
-   - Implement proper firewall rules
-
-## Success Criteria
-
-A successful test run should show:
-- ✅ All certificates valid and properly chained
-- ✅ Both proxies start and register with manager
-- ✅ Health endpoints respond correctly
-- ✅ Metrics are being collected
-- ✅ mTLS authentication works
-- ✅ Client certificate validation works
-- ✅ Invalid certificates are rejected
-- ✅ Strong cipher suites are used
-- ✅ Integration between services works
-
-## Support
-
-If tests fail, please:
-1. Check the troubleshooting section above
-2. Review service logs with `docker-compose logs`
-3. Verify your environment meets the prerequisites
-4. Ensure certificates are properly generated
+- [Pytest Documentation](https://docs.pytest.org/)
+- [Playwright Documentation](https://playwright.dev/)
+- [Locust Documentation](https://docs.locust.io/)
+- [OWASP Testing Guide](https://owasp.org/www-project-web-security-testing-guide/)
