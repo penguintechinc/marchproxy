@@ -7,12 +7,13 @@ This document outlines development standards, code quality requirements, and bes
 1. [Code Quality Standards](#code-quality-standards)
 2. [Python Standards (Manager)](#python-standards-manager)
 3. [Go Standards (Proxy Services)](#go-standards-proxy-services)
-4. [Docker Standards](#docker-standards)
-5. [Testing Requirements](#testing-requirements)
-6. [Security Standards](#security-standards)
-7. [CI/CD Standards](#cicd-standards)
-8. [Documentation Standards](#documentation-standards)
-9. [Git Workflow](#git-workflow)
+4. [TypeScript Standards (Web UI)](#typescript-standards-web-ui)
+5. [Docker Standards](#docker-standards)
+6. [Testing Requirements](#testing-requirements)
+7. [Security Standards](#security-standards)
+8. [CI/CD Standards](#cicd-standards)
+9. [Documentation Standards](#documentation-standards)
+10. [Git Workflow](#git-workflow)
 
 ---
 
@@ -206,6 +207,98 @@ require (
 - **Network security**: TLS 1.2 minimum
 - **Dependency auditing**: Regular go mod audit checks
 - **gosec scanning**: Run before commits
+
+---
+
+## TypeScript Standards (Web UI)
+
+### Framework & Tools
+
+- **Framework**: React with TypeScript
+- **Node.js Version**: 20.x or 22.x LTS
+- **Package Manager**: npm
+- **Linting**: ESLint with TypeScript parser
+- **Formatting**: Prettier
+
+### Code Style
+
+**Formatting & Linting**:
+- ESLint: Code linting with React plugin
+- Prettier: Code formatting (line width: 80)
+- TypeScript: Strict mode enabled
+
+**TypeScript Requirements**:
+- Strict mode: `"strict": true`
+- No `any` types without explicit justification
+- All functions must have return type annotations
+- React components must have proper prop types
+
+### File Organization
+
+```
+webui/
+├── src/
+│   ├── components/
+│   │   ├── Layout/
+│   │   ├── Common/
+│   │   └── *.tsx
+│   ├── pages/
+│   │   ├── Dashboard.tsx
+│   │   ├── Clusters.tsx
+│   │   └── *.tsx
+│   ├── services/
+│   │   ├── api.ts
+│   │   ├── types.ts
+│   │   └── *.ts
+│   ├── App.tsx
+│   ├── index.tsx
+│   └── styles/
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   └── *.spec.ts
+├── package.json
+├── tsconfig.json
+├── .eslintrc.json
+└── .prettierrc.json
+```
+
+### Dependency Management
+
+**package.json** (production):
+```json
+{
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "axios": "^1.6.0",
+    "react-router-dom": "^6.20.0"
+  }
+}
+```
+
+**devDependencies**:
+```json
+{
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "eslint": "^8.55.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "prettier": "^3.1.0",
+    "jest": "^29.7.0",
+    "@testing-library/react": "^14.1.0"
+  }
+}
+```
+
+### Testing Requirements
+
+- **Minimum coverage**: 80% code coverage
+- **Test types**: Unit and integration tests
+- **Framework**: Jest with React Testing Library
+- **Mocking**: Mock API calls, not component internals
+- **E2E Testing**: Playwright for critical user flows
 
 ---
 
@@ -653,6 +746,6 @@ Before committing code:
 
 ---
 
-**Last Updated**: 2025-12-11
-**Version**: 1.0.0
+**Last Updated**: 2025-12-16
+**Version**: 1.1.0
 **Maintained by**: MarchProxy Team

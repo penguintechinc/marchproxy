@@ -10,6 +10,7 @@ import Clusters from '@pages/Clusters';
 import Services from '@pages/Services';
 import Proxies from '@pages/Proxies';
 import Certificates from '@pages/Certificates';
+import Users from '@pages/Users';
 import Settings from '@pages/Settings';
 import Tracing from '@pages/Observability/Tracing';
 import Metrics from '@pages/Observability/Metrics';
@@ -53,6 +54,7 @@ const App: React.FC = () => {
         <Route path="services" element={<Services />} />
         <Route path="proxies" element={<Proxies />} />
         <Route path="certificates" element={<Certificates />} />
+        <Route path="users" element={<Users />} />
         <Route path="observability/tracing" element={<Tracing />} />
         <Route path="observability/metrics" element={<Metrics />} />
         <Route path="observability/alerts" element={<Alerts />} />

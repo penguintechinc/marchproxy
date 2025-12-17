@@ -37,15 +37,18 @@ export interface Cluster {
   id: number;
   name: string;
   description: string;
-  api_key: string;
-  syslog_server?: string;
-  syslog_port?: number;
-  auth_log_enabled: boolean;
-  netflow_log_enabled: boolean;
-  debug_log_enabled: boolean;
+  api_key_hash: string;
+  syslog_endpoint?: string;
+  log_auth: boolean;
+  log_netflow: boolean;
+  log_debug: boolean;
+  max_proxies: number;
+  is_active: boolean;
+  is_default: boolean;
+  created_by: number;
   created_at: string;
   updated_at: string;
-  proxy_count?: number;
+  proxy_count: number;
 }
 
 // Proxy Types

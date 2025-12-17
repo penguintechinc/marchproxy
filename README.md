@@ -147,8 +147,6 @@ kubectl apply -f examples/simple-marchproxy.yaml
 - [Quick Start](#-quick-start)
 - [Installation](#-installation)
 - [Configuration](#-configuration)
-- [Performance](#-performance)
-- [Security](#-security)
 - [Documentation](#-documentation)
 - [v1.0.0 Release](#-v100-release-highlights)
 - [Contributing](#-contributing)
@@ -363,6 +361,27 @@ mappings:
     auth_required: true
     cluster_id: 1
 ```
+
+## 📚 Documentation
+
+MarchProxy comprehensive documentation is organized in the `docs/` folder:
+
+### Getting Started
+- **[QUICKSTART.md](docs/QUICKSTART.md)** - Getting started with MarchProxy in 5 minutes
+- **[KUBERNETES.md](docs/KUBERNETES.md)** - Kubernetes deployment guide with Helm and Operators
+
+### Core Documentation
+- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System design, component architecture, and data flows
+- **[SECURITY.md](docs/SECURITY.md)** - Security policy, threat models, and hardening guidance
+- **[STANDARDS.md](docs/STANDARDS.md)** - Development standards, code style, and best practices
+- **[WORKFLOWS.md](docs/WORKFLOWS.md)** - CI/CD pipelines, GitHub Actions, and deployment workflows
+
+### Contributing & Attribution
+- **[CONTRIBUTION.md](docs/CONTRIBUTION.md)** - Contributing guidelines and developer setup
+- **[ATTRIBUTION.md](docs/ATTRIBUTION.md)** - Credits, third-party libraries, and acknowledgments
+
+### Release Information
+- **[RELEASE_NOTES.md](docs/RELEASE_NOTES.md)** - Version history and breaking changes
 
 ## 🔧 Development
 

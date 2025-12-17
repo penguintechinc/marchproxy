@@ -35,8 +35,8 @@ import {
   certificateApi,
   Certificate,
   UploadCertificateRequest,
-  InfisicalIntegrationRequest,
-  VaultIntegrationRequest,
+  InfisicalCertificateRequest,
+  VaultCertificateRequest,
 } from '@services/certificateApi';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -63,30 +63,32 @@ const Certificates: React.FC = () => {
   const uploadForm = useForm<UploadCertificateRequest>({
     defaultValues: {
       name: '',
-      certificate: '',
-      private_key: '',
+      source_type: 'upload',
+      cert_data: '',
+      key_data: '',
       ca_chain: '',
       auto_renew: false,
     }
   });
 
-  const infisicalForm = useForm<InfisicalIntegrationRequest>({
+  const infisicalForm = useForm<InfisicalCertificateRequest>({
     defaultValues: {
       name: '',
-      infisical_url: 'https://app.infisical.com',
-      infisical_token: '',
-      project_id: '',
-      secret_path: '/certificates',
+      source_type: 'infisical',
+      infisical_secret_path: '/certificates',
+      infisical_project_id: '',
+      infisical_environment: 'production',
       auto_renew: true,
     }
   });
 
-  const vaultForm = useForm<VaultIntegrationRequest>({
+  const vaultForm = useForm<VaultCertificateRequest>({
     defaultValues: {
       name: '',
-      vault_url: '',
-      vault_token: '',
+      source_type: 'vault',
       vault_path: 'secret/certificates',
+      vault_role: '',
+      vault_common_name: '',
       auto_renew: true,
     }
   });
@@ -147,7 +149,7 @@ const Certificates: React.FC = () => {
     }
   };
 
-  const onInfisicalSubmit = async (data: InfisicalIntegrationRequest) => {
+  const onInfisicalSubmit = async (data: InfisicalCertificateRequest) => {
     try {
       await certificateApi.configureInfisical(data);
       setOpenDialog(false);
@@ -158,7 +160,7 @@ const Certificates: React.FC = () => {
     }
   };
 
-  const onVaultSubmit = async (data: VaultIntegrationRequest) => {
+  const onVaultSubmit = async (data: VaultCertificateRequest) => {
     try {
       await certificateApi.configureVault(data);
       setOpenDialog(false);
@@ -181,7 +183,7 @@ const Certificates: React.FC = () => {
     { field: 'name', headerName: 'Name', width: 200, flex: 1 },
     { field: 'common_name', headerName: 'Common Name', width: 250, flex: 1 },
     {
-      field: 'source',
+      field: 'source_type',
       headerName: 'Source',
       width: 120,
       renderCell: (params) => (
@@ -234,7 +236,7 @@ const Certificates: React.FC = () => {
           icon={<RenewIcon />}
           label="Renew"
           onClick={() => handleRenew(params.row.id)}
-          disabled={params.row.source === 'upload'}
+          disabled={params.row.source_type === 'upload'}
         />,
         <GridActionsCellItem
           icon={<DeleteIcon />}
@@ -316,7 +318,7 @@ const Certificates: React.FC = () => {
                   )}
                 />
                 <Controller
-                  name="certificate"
+                  name="cert_data"
                   control={uploadForm.control}
                   rules={{ required: 'Certificate is required' }}
                   render={({ field }) => (
@@ -326,13 +328,13 @@ const Certificates: React.FC = () => {
                       fullWidth
                       multiline
                       rows={6}
-                      error={!!uploadForm.formState.errors.certificate}
-                      helperText={uploadForm.formState.errors.certificate?.message}
+                      error={!!uploadForm.formState.errors.cert_data}
+                      helperText={uploadForm.formState.errors.cert_data?.message}
                     />
                   )}
                 />
                 <Controller
-                  name="private_key"
+                  name="key_data"
                   control={uploadForm.control}
                   rules={{ required: 'Private key is required' }}
                   render={({ field }) => (
@@ -343,8 +345,8 @@ const Certificates: React.FC = () => {
                       multiline
                       rows={6}
                       type="password"
-                      error={!!uploadForm.formState.errors.private_key}
-                      helperText={uploadForm.formState.errors.private_key?.message}
+                      error={!!uploadForm.formState.errors.key_data}
+                      helperText={uploadForm.formState.errors.key_data?.message}
                     />
                   )}
                 />
@@ -399,36 +401,7 @@ const Certificates: React.FC = () => {
                   )}
                 />
                 <Controller
-                  name="infisical_url"
-                  control={infisicalForm.control}
-                  rules={{ required: 'Infisical URL is required' }}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      label="Infisical URL"
-                      fullWidth
-                      error={!!infisicalForm.formState.errors.infisical_url}
-                      helperText={infisicalForm.formState.errors.infisical_url?.message}
-                    />
-                  )}
-                />
-                <Controller
-                  name="infisical_token"
-                  control={infisicalForm.control}
-                  rules={{ required: 'Token is required' }}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      label="Infisical Token"
-                      fullWidth
-                      type="password"
-                      error={!!infisicalForm.formState.errors.infisical_token}
-                      helperText={infisicalForm.formState.errors.infisical_token?.message}
-                    />
-                  )}
-                />
-                <Controller
-                  name="project_id"
+                  name="infisical_project_id"
                   control={infisicalForm.control}
                   rules={{ required: 'Project ID is required' }}
                   render={({ field }) => (
@@ -436,16 +409,35 @@ const Certificates: React.FC = () => {
                       {...field}
                       label="Project ID"
                       fullWidth
-                      error={!!infisicalForm.formState.errors.project_id}
-                      helperText={infisicalForm.formState.errors.project_id?.message}
+                      error={!!infisicalForm.formState.errors.infisical_project_id}
+                      helperText={infisicalForm.formState.errors.infisical_project_id?.message}
                     />
                   )}
                 />
                 <Controller
-                  name="secret_path"
+                  name="infisical_secret_path"
+                  control={infisicalForm.control}
+                  rules={{ required: 'Secret Path is required' }}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="Secret Path"
+                      fullWidth
+                      error={!!infisicalForm.formState.errors.infisical_secret_path}
+                      helperText={infisicalForm.formState.errors.infisical_secret_path?.message}
+                    />
+                  )}
+                />
+                <Controller
+                  name="infisical_environment"
                   control={infisicalForm.control}
                   render={({ field }) => (
-                    <TextField {...field} label="Secret Path" fullWidth />
+                    <TextField
+                      {...field}
+                      label="Environment"
+                      fullWidth
+                      defaultValue="production"
+                    />
                   )}
                 />
                 <Controller
@@ -485,40 +477,47 @@ const Certificates: React.FC = () => {
                   )}
                 />
                 <Controller
-                  name="vault_url"
-                  control={vaultForm.control}
-                  rules={{ required: 'Vault URL is required' }}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      label="Vault URL"
-                      fullWidth
-                      placeholder="https://vault.example.com"
-                      error={!!vaultForm.formState.errors.vault_url}
-                      helperText={vaultForm.formState.errors.vault_url?.message}
-                    />
-                  )}
-                />
-                <Controller
-                  name="vault_token"
-                  control={vaultForm.control}
-                  rules={{ required: 'Token is required' }}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      label="Vault Token"
-                      fullWidth
-                      type="password"
-                      error={!!vaultForm.formState.errors.vault_token}
-                      helperText={vaultForm.formState.errors.vault_token?.message}
-                    />
-                  )}
-                />
-                <Controller
                   name="vault_path"
                   control={vaultForm.control}
+                  rules={{ required: 'Vault Path is required' }}
                   render={({ field }) => (
-                    <TextField {...field} label="Vault Path" fullWidth />
+                    <TextField
+                      {...field}
+                      label="Vault PKI Path"
+                      fullWidth
+                      placeholder="secret/certificates"
+                      error={!!vaultForm.formState.errors.vault_path}
+                      helperText={vaultForm.formState.errors.vault_path?.message}
+                    />
+                  )}
+                />
+                <Controller
+                  name="vault_role"
+                  control={vaultForm.control}
+                  rules={{ required: 'Vault Role is required' }}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="Vault PKI Role"
+                      fullWidth
+                      error={!!vaultForm.formState.errors.vault_role}
+                      helperText={vaultForm.formState.errors.vault_role?.message}
+                    />
+                  )}
+                />
+                <Controller
+                  name="vault_common_name"
+                  control={vaultForm.control}
+                  rules={{ required: 'Common Name is required' }}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="Certificate Common Name"
+                      fullWidth
+                      placeholder="example.com"
+                      error={!!vaultForm.formState.errors.vault_common_name}
+                      helperText={vaultForm.formState.errors.vault_common_name?.message}
+                    />
                   )}
                 />
                 <Controller

@@ -3,35 +3,198 @@
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Workflow Architecture](#workflow-architecture)
-3. [Build Services](#build-services)
-4. [Naming Conventions](#naming-conventions)
-5. [Path Filter Requirements](#path-filter-requirements)
-6. [Workflow Triggers](#workflow-triggers)
-7. [Security Scanning](#security-scanning)
-8. [Version Release Workflow](#version-release-workflow)
-9. [Build Optimization](#build-optimization)
-10. [Troubleshooting](#troubleshooting)
+2. [Workflow Reference](#workflow-reference)
+3. [Workflow Architecture](#workflow-architecture)
+4. [Build Services](#build-services)
+5. [Naming Conventions](#naming-conventions)
+6. [Path Filter Requirements](#path-filter-requirements)
+7. [Workflow Triggers](#workflow-triggers)
+8. [Security Scanning](#security-scanning)
+9. [Version Release Workflow](#version-release-workflow)
+10. [Build Optimization](#build-optimization)
+11. [Troubleshooting](#troubleshooting)
 
 ---
 
 ## Overview
 
-MarchProxy uses GitHub Actions for continuous integration and deployment (CI/CD). The CI/CD pipeline ensures code quality, security, and reliability across all three main services:
+MarchProxy uses GitHub Actions for continuous integration and deployment (CI/CD). The CI/CD pipeline ensures code quality, security, and reliability across all services and components.
 
-- **Manager** (Python/py4web) - Management server with web UI and API
-- **Proxy** (Go) - High-performance egress proxy with eBPF support
-- **Proxy-Ingress** (Go) - Reverse proxy variant with ingress routing
-
-Each service has dedicated workflows that handle:
-- Code linting and formatting checks
-- Unit testing with mocked dependencies
-- Security scanning (dependencies, code vulnerabilities, container images)
-- Multi-architecture Docker builds (AMD64, ARM64, ARM v7)
-- Automated versioning with epoch64 timestamps
-- Pre-release creation on version changes
+**Core Workflows**:
+- **build-and-test.yml** - Combined manager and proxy builds (Go/Python, multi-arch)
+- **ci.yml** - Legacy pipeline with integration and performance testing
+- **manager-ci.yml** - Manager service only (Python, linting, testing, deployment)
+- **proxy-ci.yml** - Proxy egress service (Go, eBPF, benchmarking)
+- **proxy-ingress-ci.yml** - Proxy ingress service (Go, ingress routing)
+- **security.yml** - Comprehensive security scanning (dependencies, SAST, containers, secrets)
+- **version-release.yml** - Automatic pre-release creation on version file changes
 
 **Philosophy**: Workflows are optimized for **speed, reliability, and security**. Path filters ensure workflows only run when relevant files change.
+
+---
+
+## Workflow Reference
+
+### build-and-test.yml
+
+**Purpose**: Multi-service combined build and integration testing
+**Trigger**: Push to main/develop/feature/release branches, PRs on main/develop, weekly schedule
+**Key Jobs**: test-proxy, test-manager, build-multi-arch, integration-test, security-scan, release, cleanup
+
+**Test Jobs**:
+- Go 1.22 linting (golangci-lint) and testing in `./proxy`
+- Python 3.12 linting (flake8, black, mypy) and testing in `./manager`
+- eBPF dependency installation for Go builds
+
+**Build Job**:
+- Multi-architecture builds (linux/amd64, linux/arm64, linux/arm/v7)
+- Automatic version/epoch64 detection from `.version` file
+- Tag schema: `alpha-<epoch64>` (feature), `beta-<epoch64>` (main), `v<X.Y.Z>-alpha/beta`, `v<X.Y.Z>` (release)
+- GitHub Actions layer caching for 50%+ speed improvement
+
+**Integration Testing**:
+- Verifies container starts and health endpoints respond
+- Tests both manager (`/healthz`) and proxy (`/healthz`) endpoints
+- Uses docker-compose.ci.yml configuration
+
+**Security Scanning**:
+- Trivy filesystem scan (OS/dependency vulnerabilities)
+- SARIF report upload to GitHub Security tab
+- Runs in parallel with build jobs
+
+**Cleanup Job**:
+- Runs weekly on Sunday at 2 AM UTC
+- Deletes old container images, keeping latest 10 versions
+- Prevents registry bloat
+
+### ci.yml
+
+**Purpose**: Legacy comprehensive CI/CD pipeline
+**Trigger**: Push to main/develop/v*.x branches, PRs on main/develop, manual dispatch
+**Key Jobs**: lint-and-test, security-scan, build-and-test-integration, build-production, performance-test, release
+
+**Features**:
+- Matrix strategy for manager, proxy-egress, proxy-ingress (single workflow file)
+- Go 1.21, Python 3.11 (older versions than build-and-test.yml)
+- Full integration testing with docker-compose
+- Performance benchmarking (Apache Bench, wrk)
+- Test artifact collection (logs, metrics)
+- Coverage reporting to Codecov
+
+**Deployment**:
+- Production build only on main branch
+- Supports both manager and proxy target builds
+- Linux/amd64 and linux/arm64 architectures
+
+### manager-ci.yml
+
+**Purpose**: Manager service dedicated CI/CD pipeline
+**Trigger**: Push/PR to main/develop affecting `manager/`, `.version`, or workflow file
+**Key Jobs**: lint-and-test, security-scan, build-and-test, build-production, deploy-staging, deploy-production
+
+**Python Workflow**:
+- Python 3.12 with flake8, black, mypy, pytest
+- Unit testing with coverage reporting to Codecov
+- Test database: PostgreSQL 15 (local container)
+
+**Build**:
+- Dockerfile: `./manager/Dockerfile`, target: `production`
+- Multi-architecture: linux/amd64, linux/arm64
+- Layer caching via GitHub Actions
+
+**Deployments**:
+- Staging deployment on develop branch (requires `staging` environment)
+- Production deployment on main branch (requires `production` environment)
+- Placeholder for deployment script integration
+
+### proxy-ci.yml
+
+**Purpose**: Proxy egress service dedicated CI/CD pipeline
+**Trigger**: Push/PR to main/develop affecting `proxy-egress/`, `.version`, or workflow file
+**Key Jobs**: lint-and-test, security-scan, build-and-test, ebpf-test, build-production, performance-test, deploy-staging, deploy-production
+
+**Go Workflow**:
+- Go 1.21 with golangci-lint, go fmt, go vet, govulncheck
+- Benchmarking via `go test -bench`
+- Coverage reporting to Codecov
+- Gosec security scanning
+
+**eBPF Testing**:
+- Special job to test eBPF program compilation and loading
+- Runs in privileged container with kernel debug filesystem
+- Tests `./ebpf/...` package (gracefully skips if kernel features unavailable)
+
+**Docker Builds**:
+- Production target: optimized image
+- Debug target: includes debug symbols for troubleshooting
+- Both pushed to registry on main branch
+
+**Performance Testing**:
+- Go benchmarks with 10-second runtime
+- Load testing with `hey` HTTP benchmark tool (10k requests, 100 concurrent)
+- Processes results and reports metrics
+
+### proxy-ingress-ci.yml
+
+**Purpose**: Proxy ingress service dedicated CI/CD pipeline
+**Trigger**: Push/PR to main/develop affecting `proxy-ingress/`, `.version`, or workflow file
+**Key Jobs**: Similar structure to proxy-ci.yml but for ingress component
+
+**Differences from proxy-ci.yml**:
+- Monitors `proxy-ingress/` instead of `proxy-egress/`
+- IMAGE_NAME: `marchproxy/proxy-ingress`
+- No eBPF-specific tests (ingress may not require eBPF)
+
+### security.yml
+
+**Purpose**: Comprehensive security scanning across all components
+**Trigger**: Push/PR on main/develop, daily at 2 AM UTC, manual dispatch
+**Key Jobs**: secret-scan, dependency-scan, container-scan, sast-scan, license-compliance, security-report
+
+**Secret Scanning**:
+- TruffleHog detects exposed credentials, API keys, tokens
+- Verified results only (reduces false positives)
+- Full git history scan
+
+**Dependency Scanning**:
+- Python: `safety`, `pip-audit` (manager/)
+- Go: `govulncheck` (proxy-egress/, proxy-ingress/)
+- Results uploaded as artifacts
+
+**Container Scanning**:
+- Trivy scans built Docker images
+- Detects OS package vulnerabilities
+- SARIF format upload to GitHub Security
+
+**SAST (Static Application Security Testing)**:
+- Python: Bandit security linter (manager/)
+- Go: Gosec security scanner (proxy-egress/, proxy-ingress/)
+- Semgrep multi-language analysis (all code)
+- Checks OWASP Top 10, secrets, security-audit rules
+
+**License Compliance**:
+- Python: `pip-licenses` checks manager dependencies
+- Go: `go-licenses` checks proxy dependencies
+- Fails on GPL/LGPL/AGPL licenses (configurable)
+
+**Security Report**:
+- Aggregates all scan results
+- Generates markdown summary
+- Uploaded as artifact for review
+
+### version-release.yml
+
+**Purpose**: Automatic pre-release creation when `.version` file changes
+**Trigger**: Push to main branch with changes to `.version` file only
+**Key Jobs**: create-release
+
+**Behavior**:
+- Reads `.version` file and detects semantic version
+- Checks if release already exists (skips if duplicate)
+- Skips if version is default `0.0.0`
+- Creates GitHub pre-release with auto-generated notes
+- Release notes include version, commit SHA, branch
+- Enables manual release workflow (git tag creates final release)
 
 ---
 
@@ -508,5 +671,6 @@ When adding new workflows:
 
 ---
 
-**Last Updated**: 2025-12-11
+**Last Updated**: 2025-12-16
 **Maintained by**: MarchProxy Team
+**Version Reference**: 7 workflows documented (build-and-test, ci, manager-ci, proxy-ci, proxy-ingress-ci, security, version-release)

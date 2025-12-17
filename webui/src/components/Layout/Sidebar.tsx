@@ -20,6 +20,7 @@ import {
   Security as CertificateIcon,
   Speed as TracingIcon,
   NotificationsActive as AlertsIcon,
+  People as UsersIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -42,6 +43,7 @@ const menuItems: MenuItem[] = [
   { text: 'Services', icon: <ServiceIcon />, path: '/services' },
   { text: 'Proxies', icon: <ProxyIcon />, path: '/proxies' },
   { text: 'Certificates', icon: <CertificateIcon />, path: '/certificates' },
+  { text: 'Users', icon: <UsersIcon />, path: '/users' },
   { text: 'Tracing', icon: <TracingIcon />, path: '/observability/tracing' },
   { text: 'Metrics', icon: <MetricsIcon />, path: '/observability/metrics' },
   { text: 'Alerts', icon: <AlertsIcon />, path: '/observability/alerts' },
