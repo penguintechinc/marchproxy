@@ -21,8 +21,6 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init:/docker-entrypoint-initdb.d
-    ports:
-      - "5432:5432"
     networks:
       - marchproxy-internal
     restart: unless-stopped
@@ -39,8 +37,6 @@ services:
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis123}
     volumes:
       - redis_data:/data
-    ports:
-      - "6379:6379"
     networks:
       - marchproxy-internal
     restart: unless-stopped
@@ -185,7 +181,7 @@ services:
       # Client body/header buffers for large requests
       KONG_NGINX_PROXY_CLIENT_BODY_BUFFER_SIZE: ${KONG_CLIENT_BODY_BUFFER:-128k}
       KONG_NGINX_PROXY_CLIENT_MAX_BODY_SIZE: ${KONG_CLIENT_MAX_BODY:-100m}
-      KONG_NGINX_PROXY_LARGE_CLIENT_HEADER_BUFFERS: "4 32k"
+      KONG_NGINX_PROXY_LARGE_CLIENT_HEADER_BUFFERS: 4 32k
 
       # Proxy buffering for better throughput
       KONG_NGINX_PROXY_PROXY_BUFFERING: "on"
@@ -276,8 +272,8 @@ services:
       # ============================================================
       # MISC PERFORMANCE
       # ============================================================
-      # Shared dictionaries for Lua caching
-      KONG_NGINX_HTTP_LUA_SHARED_DICT: "prometheus_metrics 16m, kong_locks 16m, kong_healthchecks 10m, kong_rate_limiting_counters 12m, kong_db_cache ${KONG_DB_CACHE_SIZE:-128m}, kong_db_cache_miss 12m"
+      # Shared dictionaries for Lua caching (removed - Kong manages these automatically)
+      # KONG_NGINX_HTTP_LUA_SHARED_DICT: prometheus_metrics 16m kong_locks 16m kong_healthchecks 10m kong_rate_limiting_counters 12m kong_db_cache 128m kong_db_cache_miss 12m
 
       # Disable unnecessary features
       KONG_ANONYMOUS_REPORTS: "off"
@@ -285,7 +281,7 @@ services:
 
     ports:
       # Proxy ports - PUBLIC (external API traffic)
-      - "${KONG_PROXY_HTTP_PORT:-8000}:8000"
+      - "${KONG_PROXY_HTTP_PORT:-8002}:8000"
       - "${KONG_PROXY_HTTPS_PORT:-8443}:8443"
       # NOTE: Admin API (8001) is NOT exposed to host - internal network only
     networks:
@@ -308,23 +304,6 @@ services:
       nproc:
         soft: 65535
         hard: 65535
-    # System tuning via sysctls
-    sysctls:
-      net.core.somaxconn: 65535
-      net.ipv4.tcp_max_syn_backlog: 65535
-      net.ipv4.ip_local_port_range: "1024 65535"
-      net.ipv4.tcp_tw_reuse: 1
-      net.ipv4.tcp_fin_timeout: 15
-      net.core.netdev_max_backlog: 65535
-      net.ipv4.tcp_keepalive_time: 300
-      net.ipv4.tcp_keepalive_intvl: 30
-      net.ipv4.tcp_keepalive_probes: 3
-      net.ipv4.tcp_syncookies: 1
-      net.ipv4.tcp_max_tw_buckets: 1440000
-      net.core.rmem_max: 16777216
-      net.core.wmem_max: 16777216
-      net.ipv4.tcp_rmem: "4096 87380 16777216"
-      net.ipv4.tcp_wmem: "4096 65536 16777216"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "kong", "health"]
@@ -353,7 +332,7 @@ services:
       - REDIS_URL=redis://:${REDIS_PASSWORD:-redis123}@redis:6379/0
 
       # Application
-      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-this}
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-this-to-something-longer-for-production}
       - DEBUG=${DEBUG:-false}
       - LOG_LEVEL=${LOG_LEVEL:-info}
 
@@ -366,7 +345,7 @@ services:
       - LICENSE_SERVER_URL=${LICENSE_SERVER_URL:-https://license.penguintech.io}
 
       # CORS
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://webui:3000}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3010,http://webui:3010}
 
       # Observability
       - JAEGER_ENABLED=${JAEGER_ENABLED:-true}
@@ -408,7 +387,7 @@ services:
       - HOST=0.0.0.0
       - PORT=3000
     ports:
-      - "3000:3000"
+      - "3010:3000"
     networks:
       - marchproxy-internal
       - marchproxy-external
@@ -834,18 +813,12 @@ networks:
   marchproxy-internal:
     driver: bridge
     internal: false  # Needs external access for license validation
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
     labels:
       - "network=marchproxy-internal"
       - "purpose=grpc-communication"
 
   marchproxy-external:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.21.0.0/16
     labels:
       - "network=marchproxy-external"
       - "purpose=public-access"
