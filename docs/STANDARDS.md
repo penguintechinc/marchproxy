@@ -1,304 +1,341 @@
 # MarchProxy Development Standards
 
-This document outlines development standards, code quality requirements, and best practices for all MarchProxy components.
+This document consolidates all development standards, patterns, and requirements for MarchProxy following the Penguin Tech Inc gold standard template while incorporating MarchProxy-specific requirements.
+
+**Aligned with**: `/home/penguin/code/project-template/docs/STANDARDS.md`
 
 ## Table of Contents
 
-1. [Code Quality Standards](#code-quality-standards)
-2. [Python Standards (Manager)](#python-standards-manager)
-3. [Go Standards (Proxy Services)](#go-standards-proxy-services)
-4. [TypeScript Standards (Web UI)](#typescript-standards-web-ui)
-5. [Docker Standards](#docker-standards)
-6. [Testing Requirements](#testing-requirements)
-7. [Security Standards](#security-standards)
-8. [CI/CD Standards](#cicd-standards)
-9. [Documentation Standards](#documentation-standards)
-10. [Git Workflow](#git-workflow)
+1. [Language Selection](#language-selection)
+2. [py4web Framework Integration](#py4web-framework-integration)
+3. [Go Development Standards](#go-development-standards)
+4. [ReactJS Frontend Standards](#reactjs-frontend-standards)
+5. [Database Standards](#database-standards)
+6. [API Versioning](#api-versioning)
+7. [Performance Optimization](#performance-optimization)
+8. [eBPF and Hardware Acceleration](#ebpf-and-hardware-acceleration)
+9. [Microservices Architecture](#microservices-architecture)
+10. [Docker Standards](#docker-standards)
+11. [Testing Requirements](#testing-requirements)
+12. [Security Standards](#security-standards)
+13. [CI/CD Standards](#cicd-standards)
 
 ---
 
-## Code Quality Standards
+## Language Selection
 
-### Universal Requirements
+### Python 3.12+ (Manager Service)
 
-All code must meet these requirements regardless of language:
+**Use Python for the management server:**
+- py4web framework for rapid development
+- PyDAL ORM for database abstraction
+- Business logic and service management
+- Configuration and licensing handling
+- REST API endpoints
+- Authentication and authorization
 
-- **No warnings from linters** - All code must pass linting without warnings
-- **Proper error handling** - All errors must be handled appropriately
-- **Type safety** - Type hints/declarations required for all functions
-- **Comments for complexity** - Complex logic must have explanatory comments
-- **Constants for magic numbers** - No hardcoded values in code
-- **Input validation** - All external inputs must be validated
-- **No dead code** - Unused functions, variables, imports must be removed
-- **No TODO placeholders** - All temporary code must be completed or removed
+**Advantages:**
+- Rapid development and iteration
+- Rich ecosystem of libraries
+- Excellent for data processing
+- Strong py4web and PyDAL integration
+- Easy maintenance and debugging
 
-### Code Organization
+### Go 1.23.x or 1.24.x (Proxy Services)
 
-- **Single responsibility** - Each function/class handles one concern
-- **Clear naming** - Variables and functions have descriptive names
-- **Consistent formatting** - Code style is consistent throughout
-- **Appropriate abstraction** - Functions are properly decomposed
-- **DRY principle** - No duplicate code or logic
+**Use Go for high-performance proxy services:**
+- eBPF kernel-level packet filtering
+- High-throughput traffic processing (<10ms latency)
+- Network-intensive operations (>10K packets/sec)
+- Low-latency packet forwarding
+- Optional hardware acceleration (DPDK, XDP, AF_XDP, SR-IOV)
+- Performance-critical operations
+
+**Advantages:**
+- Exceptional performance for networking
+- eBPF integration for kernel operations
+- Minimal memory footprint
+- Excellent concurrency with goroutines
+- Direct system-level control
 
 ---
 
-## Python Standards (Manager)
+## py4web Framework Integration
 
-### Framework & Tools
+**MANDATORY for ALL Manager (Python) services**
 
-- **Framework**: py4web with pydal ORM (mandatory)
-- **Python Version**: 3.12+ (3.13 preferred)
+### Core Features
+
+- User authentication and session management
+- Role-based access control (RBAC)
+- Native API key system
+- Built-in form validation and CSRF protection
+- ORM integration with PyDAL
+- RESTful API support
+
+### py4web Documentation Research
+
+- **Official Documentation**: https://py4web.com/_documentation
+- **Always research py4web native features before implementing custom solutions**
+- **Leverage py4web's built-in authentication, user management, and API systems**
+- **Use py4web's native decorators, validators, and utilities wherever possible**
+- **Priority order: py4web native → PyDAL features → custom implementation**
+
+### Input Validation Standards
+
+- **ALL fields and inputs MUST have appropriate validators**
+- **Use PyDAL's built-in validators (IS_EMAIL, IS_STRONG, IS_IN_SET, etc.)**
+- **Implement input sanitization for XSS prevention**
+- **Validate data types, lengths, and formats at database and API levels**
+- **Use py4web's native form validation**
+- **Never trust client-side input - always validate server-side**
+- **Implement CSRF protection using py4web's native features**
+
+### Linting & Code Quality Requirements
+
+- **Python**: flake8, black, isort, mypy (type checking), bandit (security)
 - **Package Manager**: pip with requirements.txt
 - **Type Checking**: mypy with type hints
-
-### Code Style
-
-**Formatting & Linting**:
-- black: Code formatting (line length: 100)
-- isort: Import sorting
-- flake8: Linting (ignore E203, W503)
-- mypy: Type checking with strict mode
-
-**PEP Compliance**:
-- PEP 8: Style guide
-- PEP 257: Docstring conventions
-- PEP 484: Type hints
-
-### File Organization
-
-```
-manager/
-├── apps/
-│   ├── __init__.py
-│   ├── models.py      # pydal models and schemas
-│   ├── routes.py      # API endpoints
-│   ├── auth.py        # Authentication and authorization
-│   └── utils.py       # Utility functions
-├── tests/
-│   ├── __init__.py
-│   ├── test_auth.py
-│   ├── test_models.py
-│   └── test_routes.py
-├── requirements.txt     # Production dependencies
-├── requirements-dev.txt # Development dependencies
-└── Dockerfile
-```
-
-### Dependency Management
-
-**requirements.txt** (production):
-```
-py4web>=1.0.0
-pydal>=20.11.1
-flask-security-too>=5.0.0
-sqlalchemy>=2.0.0
-```
-
-**requirements-dev.txt** (development):
-```
--r requirements.txt
-pytest>=7.0.0
-pytest-cov>=4.0.0
-black==23.0.0
-isort==5.12.0
-flake8==6.0.0
-mypy==1.0.0
-bandit==1.7.0
-safety==2.3.0
-```
-
-### Testing Requirements
-
-- **Minimum coverage**: 80% code coverage
-- **Test types**: Unit tests only (mocked external dependencies)
-- **Framework**: pytest with fixtures
-- **Mocking**: unittest.mock for external services
-- **Database**: SQLite in-memory for tests
-
-### Security Requirements
-
-- **Input validation**: All API inputs validated
-- **SQL injection prevention**: Use pydal parameterized queries
-- **XSS prevention**: HTML escaping in templates
-- **CSRF protection**: py4web built-in protection
-- **Password hashing**: bcrypt via Flask-Security-Too
-- **Environment variables**: All secrets via environment
+- **PEP Compliance**: Python code must follow PEP 8, PEP 257, PEP 484
 
 ---
 
-## Go Standards (Proxy Services)
+## Go Development Standards
 
-### Framework & Tools
-
-- **Go Version**: 1.23+ (1.24 preferred)
-- **Package Manager**: go mod
-- **Module Name**: github.com/penguintechinc/marchproxy
-- **Linting**: golangci-lint
-- **Security**: gosec
-
-### Code Style
-
-**Formatting & Linting**:
-- gofmt: Standard Go formatter (enforced)
-- go vet: Built-in Go analysis
-- golangci-lint: Comprehensive linting
-  - Includes: staticcheck, gosec, ineffassign, misspell, etc.
-
-**Conventions**:
-- CamelCase for exported identifiers
-- snake_case for unexported identifiers
-- Receiver names short (1-2 characters)
-- Error handling: `if err != nil { return err }`
-
-### File Organization
+### Project Structure
 
 ```
-proxy-egress/
+services/proxy-egress/
 ├── cmd/
 │   └── proxy/
 │       └── main.go          # Application entry point
+├── pkg/
+│   ├── ebpf/               # eBPF programs
+│   ├── packet/             # Packet processing
+│   ├── registry/           # Manager registration
+│   └── metrics/            # Prometheus metrics
 ├── internal/
-│   ├── config/
-│   │   └── config.go        # Configuration parsing
-│   ├── proxy/
-│   │   ├── listener.go      # Network listeners
-│   │   ├── handler.go       # Connection handlers
-│   │   └── ebpf.go          # eBPF programs
-│   ├── health/
-│   │   └── health.go        # Health check endpoints
-│   └── metrics/
-│       └── metrics.go       # Prometheus metrics
-├── tests/
-│   ├── integration_test.go
-│   └── performance_test.go
+│   ├── config/             # Configuration handling
+│   ├── proxy/              # Proxy logic
+│   ├── health/             # Health checks
+│   └── logger/             # Logging
 ├── go.mod
 ├── go.sum
 ├── Dockerfile
-└── .golangci.yml            # golangci-lint config
+└── tests/
 ```
 
-### Dependency Management
+### Linting & Code Quality Requirements
 
-**go.mod**:
-```go
-module github.com/penguintechinc/marchproxy
+- **Go**: golangci-lint (includes staticcheck, gosec, etc.)
+- **gosec**: Security scanning (mandatory before commits)
+- **go fmt**: Standard Go formatter
+- **go vet**: Built-in Go analysis
 
-go 1.24
+### Concurrency Patterns
 
-require (
-    github.com/prometheus/client_golang v1.18.0
-    golang.org/x/sys v0.14.0
-)
-```
-
-### Testing Requirements
-
-- **Minimum coverage**: 80% code coverage
-- **Test types**: Unit and integration tests
-- **Framework**: Go testing package (no external test framework)
-- **Benchmarks**: Included for performance-critical code
-- **Mocking**: Manual mocking or interfaces
-- **Race detection**: All tests run with `-race` flag
-
-### Security Requirements
-
-- **Input validation**: Validate all external inputs
-- **Command execution**: Use exec.Command safely
-- **Network security**: TLS 1.2 minimum
-- **Dependency auditing**: Regular go mod audit checks
-- **gosec scanning**: Run before commits
+**Use goroutines for high-performance operations:**
+- Process multiple packets concurrently
+- Use sync.Pool for buffer reuse
+- Implement connection pooling
+- Proper error handling and cancellation
 
 ---
 
-## TypeScript Standards (Web UI)
+## ReactJS Frontend Standards
 
-### Framework & Tools
-
-- **Framework**: React with TypeScript
-- **Node.js Version**: 20.x or 22.x LTS
-- **Package Manager**: npm
-- **Linting**: ESLint with TypeScript parser
-- **Formatting**: Prettier
-
-### Code Style
-
-**Formatting & Linting**:
-- ESLint: Code linting with React plugin
-- Prettier: Code formatting (line width: 80)
-- TypeScript: Strict mode enabled
-
-**TypeScript Requirements**:
-- Strict mode: `"strict": true`
-- No `any` types without explicit justification
-- All functions must have return type annotations
-- React components must have proper prop types
-
-### File Organization
+### Project Structure
 
 ```
-webui/
+services/webui/
 ├── src/
-│   ├── components/
-│   │   ├── Layout/
-│   │   ├── Common/
-│   │   └── *.tsx
-│   ├── pages/
-│   │   ├── Dashboard.tsx
-│   │   ├── Clusters.tsx
-│   │   └── *.tsx
-│   ├── services/
-│   │   ├── api.ts
-│   │   ├── types.ts
-│   │   └── *.ts
-│   ├── App.tsx
-│   ├── index.tsx
-│   └── styles/
-├── tests/
-│   ├── unit/
-│   ├── integration/
-│   └── *.spec.ts
+│   ├── components/         # Reusable components
+│   ├── pages/              # Page components
+│   ├── services/           # API client services
+│   ├── hooks/              # Custom React hooks
+│   ├── context/            # React context providers
+│   ├── utils/              # Utility functions
+│   └── App.jsx
 ├── package.json
-├── tsconfig.json
-├── .eslintrc.json
-└── .prettierrc.json
+├── Dockerfile
+└── .env
 ```
 
-### Dependency Management
+### Color Theme (Dark Mode with Gold)
 
-**package.json** (production):
-```json
-{
-  "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "axios": "^1.6.0",
-    "react-router-dom": "^6.20.0"
-  }
+**CSS Variables (Required):**
+
+```css
+:root {
+  /* Background colors */
+  --bg-primary: #0f172a;      /* slate-900 */
+  --bg-secondary: #1e293b;    /* slate-800 */
+  --bg-tertiary: #334155;     /* slate-700 */
+
+  /* Text colors - Gold default */
+  --text-primary: #fbbf24;    /* amber-400 */
+  --text-secondary: #f59e0b;  /* amber-500 */
+
+  /* Interactive elements - Sky blue */
+  --primary-500: #0ea5e9;
+  --primary-600: #0284c7;
 }
 ```
 
-**devDependencies**:
-```json
-{
-  "devDependencies": {
-    "typescript": "^5.3.0",
-    "eslint": "^8.55.0",
-    "@typescript-eslint/eslint-plugin": "^6.13.0",
-    "@typescript-eslint/parser": "^6.13.0",
-    "prettier": "^3.1.0",
-    "jest": "^29.7.0",
-    "@testing-library/react": "^14.1.0"
-  }
-}
+### Linting & Code Quality Requirements
+
+- **JavaScript/TypeScript**: ESLint, Prettier, TypeScript
+- **ESLint Configuration**: All projects MUST include `.eslintrc` configuration
+- **TypeScript**: Strict mode enabled
+- **80%+ test coverage** required
+
+---
+
+## Database Standards
+
+### Hybrid Approach: SQLAlchemy + PyDAL
+
+**SQLAlchemy for initialization:**
+- Schema creation and migrations
+- Initial table setup
+
+**PyDAL for day-to-day operations:**
+- All CRUD operations
+- Queries and data retrieval
+- Migrations and schema changes
+- Multi-database support
+
+### Supported Databases
+
+- **PostgreSQL** (default and recommended)
+- **MySQL/MariaDB** (including Galera clusters for Enterprise)
+- **SQLite** (development and testing only)
+
+### Environment Variables
+
+```bash
+DB_TYPE=postgres            # postgres, mysql, sqlite
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=marchproxy
+DB_USER=app_user
+DB_PASS=app_pass
+DB_POOL_SIZE=10
 ```
 
-### Testing Requirements
+### Thread Safety
 
-- **Minimum coverage**: 80% code coverage
-- **Test types**: Unit and integration tests
-- **Framework**: Jest with React Testing Library
-- **Mocking**: Mock API calls, not component internals
-- **E2E Testing**: Playwright for critical user flows
+**Use thread-local connections:**
+- Each thread gets its own DAL instance
+- Connection pooling handles multi-threaded access
+- Flask/WSGI applications use request context
+
+---
+
+## API Versioning
+
+**ALL REST APIs MUST use versioning in URL path:**
+
+### Required Format
+
+```
+/api/v1/clusters
+/api/v2/analytics
+```
+
+**Key Rules:**
+1. Always include version prefix in URL path
+2. Semantic versioning for API versions: v1, v2, v3, etc.
+3. Major version only in URL - minor/patch versions NOT in URL
+4. Support current and previous versions (N-1) minimum
+5. Add deprecation headers to old versions
+
+### Version Lifecycle
+
+- **Current Version**: Active development and fully supported
+- **Previous Version (N-1)**: Supported with bug fixes and security patches
+- **Older Versions (N-2+)**: Deprecated with deprecation warning headers
+
+---
+
+## Performance Optimization
+
+### Python Performance (Manager)
+
+**Dataclasses with slots:**
+- 30-50% memory reduction per instance
+- Faster attribute access
+
+**Type hints (mandatory):**
+- Required for all Python code
+- Enables static type checking
+
+**Async/await for I/O operations:**
+- Database queries and connections
+- HTTP/REST API calls
+- File I/O operations
+
+### Go Performance (Proxy)
+
+**Goroutines for packet processing:**
+- Concurrent processing of multiple packets
+- sync.Pool for buffer reuse
+- Connection pooling
+
+**Memory optimization:**
+- Reuse buffers to reduce GC pressure
+- Pre-allocate slices with known capacity
+
+---
+
+## eBPF and Hardware Acceleration
+
+### eBPF Fast Path
+
+eBPF programs execute at kernel level for ultra-low latency packet processing:
+- Programmable kernel-level packet filtering
+- Rule-based packet forwarding decisions
+- Stateful connection tracking
+- Ultra-low latency (<1ms for lookups)
+
+### Hardware Acceleration Options
+
+**Optional acceleration methods (in priority order):**
+
+1. **DPDK**: Kernel bypass for maximum throughput
+   - For extreme traffic (>1M packets/sec)
+   - Requires dedicated CPU cores
+   - Significant complexity
+
+2. **XDP**: Driver-level packet processing
+   - Easier than DPDK
+   - Good performance improvement
+
+3. **AF_XDP**: Zero-copy user-space sockets
+   - Balance between performance and flexibility
+
+4. **SR-IOV**: Virtualization-aware packet handling
+   - For virtualized deployments
+
+---
+
+## Microservices Architecture
+
+### Three-Container Model
+
+| Container | Technology | Purpose |
+|-----------|-----------|---------|
+| **manager** | Python/py4web | Configuration, licensing, clustering |
+| **proxy-egress** | Go/eBPF | Egress traffic proxy |
+| **webui** | Node.js/React | Management UI |
+
+### Container Communication
+
+**Internal Docker networking:**
+- Services communicate via internal hostnames
+- manager: `http://manager:8000`
+- proxy: `http://manager:8000/api/v1/register`
+- webui: `http://manager:8000/api/v1`
 
 ---
 
@@ -306,446 +343,194 @@ webui/
 
 ### Base Images
 
-**ALWAYS use Debian variants** for all container images (no Alpine):
-- Use Debian release codenames: `bookworm`, `trixie`, `bullseye`
-- Examples of correct base images:
-  - **Go**: `golang:1.24-bookworm`, `golang:1.24-trixie`
-  - **Python**: `python:3.12-bookworm`, `python:3.12-slim`
-  - **Node.js**: `node:20-bookworm-slim`, `node:22-bookworm`
-  - **Runtime**: `debian:bookworm-slim`, `debian:12-slim`
-- **NEVER use Alpine images** (`*-alpine`) due to musl libc compatibility issues
+**ALWAYS use Debian variants (NO Alpine):**
 
-### Approved Languages and Versions
-
-- **Python**: 3.12+ only
-- **Go**: 1.23.x or 1.24.x only (use 1.24 for latest features)
-- **Node.js**: 20.x or 22.x LTS only
-- **NO Rust, C++, or other languages** unless explicitly approved
-
-### Health Check Requirements
-
-**ALWAYS use native language health checks** instead of curl/wget:
-- This reduces image size and eliminates unnecessary dependencies
-- Health checks should use the application's own binary or runtime
-
-**Examples**:
 ```dockerfile
-# Go containers - implement --healthcheck flag in the binary
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD ["./app", "--healthcheck"]
+# Go service
+FROM golang:1.24-bookworm AS builder
+FROM debian:bookworm-slim
 
-# Python containers - use urllib from standard library
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"
+# Python service
+FROM python:3.12-slim
 
-# Node.js containers - use http module from standard library
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD node -e "const http = require('http'); http.get('http://localhost:3000/', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1));"
+# Node service
+FROM node:20-bookworm-slim
 ```
+
+**Why not Alpine:**
+- musl libc compatibility issues
+- Missing dependencies for many packages
+- Performance inconsistency
 
 ### Multi-Stage Builds
 
-All Dockerfiles must use multi-stage builds:
+Use multi-stage Dockerfile to:
+- Reduce final image size
+- Separate build and runtime environments
+- Exclude development dependencies
+
+### Health Checks
+
+**Use native language health checks (NOT curl/wget):**
 
 ```dockerfile
-# Build stage
-FROM golang:1.24-bookworm AS builder
-WORKDIR /build
-COPY . .
-RUN CGO_ENABLED=0 go build -o app ./cmd/main.go
+# Go service
+HEALTHCHECK CMD ["proxy", "--healthcheck"]
 
-# Runtime stage
-FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
-COPY --from=builder /build/app /usr/local/bin/
-EXPOSE 8080
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD ["/usr/local/bin/app", "--healthcheck"]
-CMD ["app"]
+# Python service
+HEALTHCHECK CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"
+
+# Node service
+HEALTHCHECK CMD node -e "const http = require('http'); http.get('http://localhost:3000/', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"
 ```
-
-### Build Arguments
-
-- `VERSION`: Passed during build for embedding
-- `BUILD_DATE`: Build timestamp
-- `VCS_REF`: Git commit SHA
-
-### Scanning
-
-- **Hadolint**: Dockerfile linting
-- **Trivy**: Container image scanning
-- **No vulnerabilities**: High and critical vulnerabilities not allowed
 
 ---
 
 ## Testing Requirements
 
-### Test Structure
+### Unit Tests
 
-**Unit Tests**:
-- Test individual functions in isolation
-- Mock all external dependencies
-- Cover normal, error, and edge cases
-- Fast execution (< 1 second per test)
+**Mandatory:**
+- 80%+ code coverage
+- No external dependencies
+- Mocked I/O operations
+- Fast execution (<100ms per test)
 
-**Integration Tests**:
-- Test component interactions
-- Use real containers/services where needed
-- Slower execution acceptable (< 30 seconds per test)
-- Marked with build tags
+### Integration Tests
 
-**Performance Tests**:
-- Benchmark critical paths
-- Track performance metrics
-- Part of CI/CD pipeline
+- Component interactions
+- API endpoint testing
+- Database operations
+- External service mocking
 
-### Coverage Requirements
+### E2E Tests
 
-- **Minimum**: 80% code coverage
-- **Target**: 90%+ code coverage
-- **Exception**: Generated code, vendor code excluded
-- **Tracking**: Coverage reports uploaded to Codecov
+- Critical workflows
+- User journeys
+- Production-like scenarios
 
-### Running Tests Locally
+### Performance Tests
 
-```bash
-# Python (Manager)
-cd manager
-pytest tests/ -v --cov=apps --cov-report=term-missing
-
-# Go (Proxy services)
-cd proxy-egress
-go test -v -race -coverprofile=coverage.out ./...
-```
+- Benchmark critical operations
+- Load testing for scalability
+- Regression testing
 
 ---
 
 ## Security Standards
 
-### Dependency Management
+### Input Validation
 
-- **Regular audits**: Weekly security audits
-  - Python: `safety check`, `pip-audit`
-  - Go: `govulncheck`, `go mod audit`
-  - Vulnerability reports uploaded to GitHub
+**MANDATORY for all APIs:**
+- Validate all external inputs
+- Use framework-native validation
+- Implement XSS and SQL injection prevention
+- Server-side validation for all client input
 
-- **Update policy**:
-  - Critical vulnerabilities: Fix within 24 hours
-  - High vulnerabilities: Fix within 1 week
-  - Medium vulnerabilities: Fix within 2 weeks
-  - Low vulnerabilities: Fix within 1 month
+### Authentication & Authorization
 
-### Secrets Management
+**Role-based access control:**
+- Administrator role
+- Service-owner role
+- Cluster-specific assignments
 
-**Never commit**:
-- Passwords or API keys
-- Private certificates
-- Database credentials
-- OAuth tokens
+**Authentication methods:**
+- py4web native authentication
+- API key management via py4web native system
+- JWT for stateless API calls
+- Base64 tokens as alternative
 
-**Use instead**:
-- GitHub Secrets for CI/CD
-- Environment variables at runtime
-- HashiCorp Vault for production
-- Infisical for shared secrets
+### Encryption
 
-### Code Scanning
+**Use AES-256-GCM for sensitive data:**
+- API keys encryption
+- TLS 1.2 minimum (prefer TLS 1.3)
+- Certificate validation required
+- HSTS headers enabled
 
-All code must pass security scanning:
+### Dependency Security
 
-**Python**:
-- bandit: Security issue detection
-- safety: Dependency vulnerability check
-- pip-audit: Alternative dependency auditing
-
-**Go**:
-- gosec: Security issue detection
-- govulncheck: Vulnerability checks
-- staticcheck: Code analysis (via golangci-lint)
-
-**Multi-language**:
-- Semgrep: Pattern-based security scanning
-- CodeQL: GitHub code analysis (if configured)
-
-### Network Security
-
-- **TLS**: TLS 1.2 minimum, TLS 1.3 preferred
-- **Certificates**: Validated for all HTTPS connections
-- **mTLS**: Mutual TLS for service-to-service
-- **No self-signed**: Production uses trusted CAs
+- **ALWAYS check for Dependabot alerts** before commits
+- **Monitor vulnerabilities** via Socket.dev
+- **Mandatory security scanning** before dependency changes
+- **Fix all security alerts immediately**
+- **Regular security audits**: `npm audit`, `go mod audit`, `safety check`
 
 ---
 
 ## CI/CD Standards
 
-### Workflow Requirements
+### Build Pipeline Stages
 
-All CI/CD workflows must:
+1. **Lint Stage** (fail fast)
+   - Python: flake8, black, mypy
+   - Go: golangci-lint, gosec
+   - Node: ESLint, Prettier
 
-1. **Path Filters**: Monitor `.version` and relevant component directories
-2. **Version Detection**: Extract version from `.version` file
-3. **Epoch64 Timestamps**: Generate for development builds
-4. **Parallel Jobs**: Run linting and security scans in parallel
-5. **Artifact Preservation**: Keep scan results for analysis
-6. **Artifact Upload**: Upload to GitHub for visibility
+2. **Test Stage** (unit + integration)
+   - 80%+ coverage required
+   - Must pass before proceeding
 
-### Build Naming Conventions
+3. **Build Stage** (multi-arch)
+   - AMD64 and ARM64
+   - Multi-stage Docker builds
 
-**Image Tags Generated Automatically**:
+4. **Security Scan Stage**
+   - gosec, bandit, Trivy
+   - CodeQL analysis
+   - Fail on HIGH/CRITICAL
 
-| Branch Type | Build Type | Tag Format | Example |
-|-------------|-----------|-----------|---------|
-| feature/* | development | `alpha-<epoch64>` | `alpha-1734001234` |
-| develop | development | `alpha-<epoch64>` | `alpha-1734001234` |
-| main | development | `beta-<epoch64>` | `beta-1734001234` |
-| main | after version change | `v<VERSION>-beta` | `v1.2.3-beta` |
-| git tag (v*) | release | `v<VERSION>` | `v1.2.3` |
-| git tag (v*) | release | `latest` | `latest` |
+### Image Tagging
 
-### Linting Gates
+```
+# Development builds
+manager:beta-1702000000      (main branch)
+manager:alpha-1702000000     (feature branch)
 
-Workflows enforce linting at earliest stage:
+# Version releases
+manager:v1.2.3-beta          (main branch)
+manager:v1.2.3-alpha         (feature branch)
 
-**Python (Manager)**:
-- flake8: Code style and correctness
-- black: Code formatting
-- isort: Import sorting
-- mypy: Type checking
-
-**Go (Proxy services)**:
-- golangci-lint: Comprehensive linting
-- gosec: Security scanning
-- go fmt: Code formatting (enforced)
-- go vet: Built-in analysis
-
-**Docker**:
-- hadolint: Dockerfile linting
-- trivy: Container image scanning
-
-### Security Scanning
-
-All workflows include comprehensive security scanning:
-
-**Dependency Scanning**:
-- Python: bandit, safety, pip-audit
-- Go: govulncheck, gosec
-- Reports in GitHub artifacts
-
-**Code Scanning**:
-- bandit (Python)
-- gosec (Go)
-- Semgrep (multi-language)
-- Results in SARIF format
-
-**Container Scanning**:
-- Trivy for image vulnerabilities
-- Hadolint for Dockerfile issues
-- Results uploaded to GitHub Security tab
+# Production
+manager:v1.2.3               (git tag)
+manager:latest               (latest release)
+```
 
 ### Version Management
 
-**Version File (.version)**:
-- Location: Repository root
-- Format: `vX.Y.Z` or `vX.Y.Z.EPOCH64`
-- Updates: Manual edit and commit
-- Triggers: All workflows on change
+Update `.version` for releases:
 
-**Update Process**:
 ```bash
-# Update version
-echo "v1.2.3" > .version
-
-# Commit
-git add .version
-git commit -m "Bump version to v1.2.3"
-
-# Push triggers build with new version tags
-git push origin develop
+./scripts/update-version.sh patch    # Patch release
+./scripts/update-version.sh minor    # Minor release
+./scripts/update-version.sh major    # Major release
 ```
 
-**Release Process**:
-```bash
-# Create release
-git tag v1.2.3
-git push origin v1.2.3
-
-# This triggers release workflow that:
-# 1. Validates version
-# 2. Builds final images
-# 3. Creates GitHub release
-# 4. Tags with vX.Y.Z and latest
-```
-
-### Caching Strategy
-
-All workflows implement GitHub Actions caching:
-
-**Go**:
-- Cache: `~/.cache/go-build`, `~/go/pkg/mod`
-- Key: `go-${{ hashFiles('**/go.sum') }}`
-
-**Python**:
-- Cache: `~/.cache/pip`
-- Key: `pip-${{ hashFiles('**/requirements.txt') }}`
-
-**Docker**:
-- Cache: `type=gha` (GitHub Actions cache)
-- Saves: Build layers for reuse
-- Benefit: 50%+ reduction in build time
-
-### Multi-Architecture Builds
-
-Services build for three architectures:
-
-- `linux/amd64` - Intel/AMD 64-bit
-- `linux/arm64` - ARM 64-bit (Apple Silicon, Graviton)
-- `linux/arm/v7` - ARM 32-bit (Raspberry Pi)
-
-Uses `docker buildx` for parallel builds across platforms.
-
-### Environment-Specific Builds
-
-**Pull Requests**:
-- Build images without pushing
-- Test container validity
-- Security scans run
-- No registry push
-
-**Main Branch**:
-- Build and push to registry
-- Tag with `beta-<epoch64>`
-- Security scans run
-- Available for staging
-
-**Releases (git tags)**:
-- Build and push to registry
-- Tag with `v<VERSION>` and `latest`
-- Create GitHub release
-- Promoted to production
+**Path filters in workflows:**
+- ALL workflows must include `.version` in path filters
+- Ensures all services version-lock together
+- Prevents partial version releases
 
 ---
 
-## Documentation Standards
+## Quality Checklist Before Task Completion
 
-### Code Documentation
-
-**Docstrings Required**:
-- Python: PEP 257 ("""Triple quoted""")
-- Go: Exported functions (start with name)
-
-**Python Example**:
-```python
-def validate_service_name(name: str) -> bool:
-    """Validate service name format.
-
-    Args:
-        name: Service name to validate
-
-    Returns:
-        True if name is valid, False otherwise
-
-    Raises:
-        ValueError: If name is empty
-    """
-```
-
-**Go Example**:
-```go
-// ValidateServiceName validates the service name format.
-func ValidateServiceName(name string) (bool, error) {
-    // Implementation
-}
-```
-
-### File Documentation
-
-**README.md in each directory**:
-- Purpose of component
-- Quick start instructions
-- Key files explanation
-- Development setup
-
-**doc_strings.md for complex logic**:
-- Algorithm explanation
-- Design decisions
-- Performance considerations
-- References to papers/articles
-
-### API Documentation
-
-- Endpoint specifications in code comments
-- Request/response format documentation
-- Error code documentation
-- Example requests and responses
-
-### Workflow Documentation
-
-- See `docs/WORKFLOWS.md` for comprehensive documentation
-- Update when adding new workflows
-- Include trigger conditions
-- Document any manual intervention needed
+- All error cases handled properly
+- Unit tests cover all code paths (80%+ coverage)
+- Integration tests verify component interactions
+- Security requirements fully implemented
+- Performance meets acceptable standards
+- Documentation complete and accurate
+- Code review standards met
+- No hardcoded secrets or credentials
+- Logging and monitoring in place
+- Build passes in containerized environment
+- No security vulnerabilities in dependencies
+- Edge cases and boundary conditions tested
 
 ---
 
-## Git Workflow
-
-### Branch Naming
-
-- Feature branches: `feature/<description>` (e.g., `feature/add-metrics`)
-- Bug fixes: `bugfix/<description>` (e.g., `bugfix/fix-panic`)
-- Release branches: `release/v<VERSION>` (e.g., `release/v1.2.3`)
-- Hotfix branches: `hotfix/<description>` (e.g., `hotfix/critical-security`)
-
-### Commit Message Format
-
-```
-<type>(<scope>): <subject>
-
-<body>
-
-<footer>
-```
-
-**Type**: feat, fix, docs, style, refactor, test, chore
-**Scope**: manager, proxy, proxy-egress, proxy-ingress
-**Subject**: Imperative, lowercase, no period
-**Body**: Explain what and why (not how)
-**Footer**: Close issues (#123)
-
-**Example**:
-```
-feat(manager): add service validation API
-
-Add endpoint /api/v1/services/validate for validating
-service configurations before deployment.
-
-Closes #456
-```
-
-### Code Review Requirements
-
-- Minimum 1 approval required
-- All checks must pass (linting, tests, security)
-- No merge conflicts
-- Branch up-to-date with target
-
-### Pre-Commit Checklist
-
-Before committing code:
-
-- [ ] Code passes all linters
-- [ ] Tests pass locally
-- [ ] No hardcoded secrets
-- [ ] No debug statements
-- [ ] Security scans clean
-- [ ] Docstrings added for new functions
-- [ ] Updated relevant documentation
-- [ ] No console.log or print statements
-- [ ] No TODO comments (complete or remove)
-- [ ] Code coverage maintained (80%+ minimum)
-
----
-
-**Last Updated**: 2025-12-16
-**Version**: 1.1.0
-**Maintained by**: MarchProxy Team
+**Standards Version**: 1.0 for MarchProxy
+**Last Updated**: 2025-12-18
+**Maintained by**: Penguin Tech Inc
+**Reference Template**: `/home/penguin/code/project-template/docs/STANDARDS.md`

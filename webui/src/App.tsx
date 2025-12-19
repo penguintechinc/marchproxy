@@ -15,6 +15,7 @@ import Settings from '@pages/Settings';
 import Tracing from '@pages/Observability/Tracing';
 import Metrics from '@pages/Observability/Metrics';
 import Alerts from '@pages/Observability/Alerts';
+import KongIndex from '@pages/Kong';
 
 const App: React.FC = () => {
   const { isLoading, loadUser } = useAuthStore();
@@ -58,6 +59,7 @@ const App: React.FC = () => {
         <Route path="observability/tracing" element={<Tracing />} />
         <Route path="observability/metrics" element={<Metrics />} />
         <Route path="observability/alerts" element={<Alerts />} />
+        <Route path="kong/*" element={<KongIndex />} />
         <Route path="settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>

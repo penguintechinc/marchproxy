@@ -51,6 +51,293 @@ services:
       retries: 5
 
   # ============================================================================
+  # Kong API Gateway (APILB)
+  # ============================================================================
+
+  # Kong Database (separate from main marchproxy database) - PERFORMANCE OPTIMIZED
+  kong-db:
+    image: postgres:16-alpine
+    container_name: marchproxy-kong-db
+    environment:
+      POSTGRES_USER: kong
+      POSTGRES_PASSWORD: ${KONG_DB_PASSWORD:-kongpass}
+      POSTGRES_DB: kong
+      # Performance tuning for Kong workload
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    command:
+      - "postgres"
+      # Connection settings
+      - "-c"
+      - "max_connections=500"
+      - "-c"
+      - "superuser_reserved_connections=3"
+      # Memory settings (tune based on available RAM)
+      - "-c"
+      - "shared_buffers=256MB"
+      - "-c"
+      - "effective_cache_size=768MB"
+      - "-c"
+      - "work_mem=16MB"
+      - "-c"
+      - "maintenance_work_mem=128MB"
+      # WAL settings for write performance
+      - "-c"
+      - "wal_buffers=16MB"
+      - "-c"
+      - "checkpoint_completion_target=0.9"
+      - "-c"
+      - "max_wal_size=1GB"
+      - "-c"
+      - "min_wal_size=100MB"
+      # Query optimization
+      - "-c"
+      - "random_page_cost=1.1"
+      - "-c"
+      - "effective_io_concurrency=200"
+      # Parallel query execution
+      - "-c"
+      - "max_parallel_workers_per_gather=2"
+      - "-c"
+      - "max_parallel_workers=4"
+      # Logging (minimal for performance)
+      - "-c"
+      - "logging_collector=off"
+      - "-c"
+      - "log_statement=none"
+      # Disable fsync for dev (ENABLE IN PRODUCTION!)
+      # - "-c"
+      # - "fsync=off"
+    volumes:
+      - kong_db_data:/var/lib/postgresql/data
+    networks:
+      - marchproxy-internal
+    # Shared memory for PostgreSQL
+    shm_size: 256mb
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kong"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      - "service=marchproxy-kong-db"
+      - "component=database"
+      - "performance=optimized"
+
+  # Kong Database Migrations (runs once on startup)
+  kong-migrations:
+    image: kong:3.9
+    container_name: marchproxy-kong-migrations
+    command: kong migrations bootstrap
+    depends_on:
+      kong-db:
+        condition: service_healthy
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-db
+      KONG_PG_USER: kong
+      KONG_PG_PASSWORD: ${KONG_DB_PASSWORD:-kongpass}
+    networks:
+      - marchproxy-internal
+    restart: on-failure
+    labels:
+      - "service=marchproxy-kong-migrations"
+      - "component=database"
+
+  # Kong API Gateway - PERFORMANCE OPTIMIZED
+  kong:
+    image: kong:3.9
+    container_name: marchproxy-kong
+    depends_on:
+      kong-migrations:
+        condition: service_completed_successfully
+    environment:
+      # Database connection with connection pooling
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-db
+      KONG_PG_USER: kong
+      KONG_PG_PASSWORD: ${KONG_DB_PASSWORD:-kongpass}
+      KONG_PG_POOL_SIZE: ${KONG_PG_POOL_SIZE:-256}
+      KONG_PG_BACKLOG: ${KONG_PG_BACKLOG:-16384}
+      KONG_PG_KEEPALIVE_TIMEOUT: ${KONG_PG_KEEPALIVE_TIMEOUT:-60000}
+
+      # ============================================================
+      # NGINX WORKER PERFORMANCE TUNING
+      # ============================================================
+      # Auto-detect CPU cores for worker processes
+      KONG_NGINX_WORKER_PROCESSES: ${KONG_WORKER_PROCESSES:-auto}
+      # Maximum concurrent connections per worker (default 16384)
+      KONG_NGINX_MAIN_WORKER_RLIMIT_NOFILE: ${KONG_WORKER_RLIMIT_NOFILE:-1048576}
+      KONG_NGINX_EVENTS_WORKER_CONNECTIONS: ${KONG_WORKER_CONNECTIONS:-65535}
+      # Use epoll for Linux (most efficient)
+      KONG_NGINX_EVENTS_USE: epoll
+      # Accept multiple connections per worker wakeup
+      KONG_NGINX_EVENTS_MULTI_ACCEPT: "on"
+
+      # ============================================================
+      # PROXY PERFORMANCE TUNING
+      # ============================================================
+      # Upstream keepalive connections (connection pooling)
+      KONG_UPSTREAM_KEEPALIVE_POOL_SIZE: ${KONG_UPSTREAM_KEEPALIVE:-512}
+      KONG_UPSTREAM_KEEPALIVE_MAX_REQUESTS: ${KONG_UPSTREAM_KEEPALIVE_REQUESTS:-10000}
+      KONG_UPSTREAM_KEEPALIVE_IDLE_TIMEOUT: ${KONG_UPSTREAM_KEEPALIVE_TIMEOUT:-60}
+
+      # Client body/header buffers for large requests
+      KONG_NGINX_PROXY_CLIENT_BODY_BUFFER_SIZE: ${KONG_CLIENT_BODY_BUFFER:-128k}
+      KONG_NGINX_PROXY_CLIENT_MAX_BODY_SIZE: ${KONG_CLIENT_MAX_BODY:-100m}
+      KONG_NGINX_PROXY_LARGE_CLIENT_HEADER_BUFFERS: "4 32k"
+
+      # Proxy buffering for better throughput
+      KONG_NGINX_PROXY_PROXY_BUFFERING: "on"
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: ${KONG_PROXY_BUFFER_SIZE:-128k}
+      KONG_NGINX_PROXY_PROXY_BUFFERS: "4 256k"
+      KONG_NGINX_PROXY_PROXY_BUSY_BUFFERS_SIZE: ${KONG_PROXY_BUSY_BUFFERS:-256k}
+
+      # ============================================================
+      # TCP OPTIMIZATION
+      # ============================================================
+      # Enable TCP nodelay (disable Nagle's algorithm for low latency)
+      KONG_NGINX_PROXY_PROXY_SOCKET_KEEPALIVE: "on"
+
+      # ============================================================
+      # SSL/TLS PERFORMANCE
+      # ============================================================
+      # SSL session caching for reduced handshake overhead
+      KONG_SSL_SESSION_CACHE_SIZE: ${KONG_SSL_CACHE_SIZE:-10m}
+      KONG_SSL_SESSION_TIMEOUT: ${KONG_SSL_SESSION_TIMEOUT:-1d}
+      # Prefer server cipher order for security + performance
+      KONG_SSL_PREFER_SERVER_CIPHERS: "on"
+      # Modern TLS only (faster ciphers)
+      KONG_SSL_PROTOCOLS: "TLSv1.2 TLSv1.3"
+      KONG_SSL_CIPHERS: "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305"
+
+      # ============================================================
+      # DNS OPTIMIZATION
+      # ============================================================
+      # Faster DNS resolution with caching
+      KONG_DNS_ORDER: "LAST,A,SRV,CNAME"
+      KONG_DNS_STALE_TTL: ${KONG_DNS_STALE_TTL:-4}
+      KONG_DNS_NOT_FOUND_TTL: ${KONG_DNS_NOT_FOUND_TTL:-1}
+      KONG_DNS_ERROR_TTL: ${KONG_DNS_ERROR_TTL:-1}
+      KONG_DNS_NO_SYNC: "on"
+
+      # ============================================================
+      # CACHING
+      # ============================================================
+      # Database cache (reduce DB roundtrips)
+      KONG_DB_CACHE_TTL: ${KONG_DB_CACHE_TTL:-0}
+      KONG_DB_CACHE_NEG_TTL: ${KONG_DB_CACHE_NEG_TTL:-0}
+      KONG_DB_RESURRECT_TTL: ${KONG_DB_RESURRECT_TTL:-30}
+
+      # Router flavor - 'expressions' is fastest for complex routing
+      KONG_ROUTER_FLAVOR: ${KONG_ROUTER_FLAVOR:-traditional_compatible}
+
+      # ============================================================
+      # LOGGING (optimized for production)
+      # ============================================================
+      # Buffered logging reduces I/O overhead
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      # Log level (warn in production for reduced overhead)
+      KONG_LOG_LEVEL: ${KONG_LOG_LEVEL:-warn}
+
+      # ============================================================
+      # LISTENERS
+      # ============================================================
+      # Admin API - INTERNAL NETWORK ONLY (not exposed to host)
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001 reuseport backlog=16384
+
+      # Proxy - PUBLIC with performance flags
+      # reuseport: Distribute connections across workers (kernel load balancing)
+      # backlog: Increase connection queue for burst handling
+      # deferred: Accept connections only when data is ready (reduces context switches)
+      KONG_PROXY_LISTEN: "0.0.0.0:8000 reuseport backlog=16384 deferred, 0.0.0.0:8443 ssl http2 reuseport backlog=16384 deferred"
+
+      # Enable HTTP/2 on admin for efficient management
+      KONG_ADMIN_GUI_LISTEN: "off"
+
+      # ============================================================
+      # PLUGINS
+      # ============================================================
+      # Enable only needed plugins (reduces memory and CPU overhead)
+      KONG_PLUGINS: ${KONG_PLUGINS:-bundled}
+      # Plugin server (for custom plugins via gRPC - optional)
+      # KONG_PLUGINSERVER_NAMES: ""
+
+      # ============================================================
+      # REAL IP HANDLING
+      # ============================================================
+      KONG_TRUSTED_IPS: 0.0.0.0/0,::/0
+      KONG_REAL_IP_HEADER: X-Forwarded-For
+      KONG_REAL_IP_RECURSIVE: "on"
+
+      # ============================================================
+      # MISC PERFORMANCE
+      # ============================================================
+      # Shared dictionaries for Lua caching
+      KONG_NGINX_HTTP_LUA_SHARED_DICT: "prometheus_metrics 16m, kong_locks 16m, kong_healthchecks 10m, kong_rate_limiting_counters 12m, kong_db_cache ${KONG_DB_CACHE_SIZE:-128m}, kong_db_cache_miss 12m"
+
+      # Disable unnecessary features
+      KONG_ANONYMOUS_REPORTS: "off"
+      KONG_VITALS: ${KONG_VITALS:-off}
+
+    ports:
+      # Proxy ports - PUBLIC (external API traffic)
+      - "${KONG_PROXY_HTTP_PORT:-8000}:8000"
+      - "${KONG_PROXY_HTTPS_PORT:-8443}:8443"
+      # NOTE: Admin API (8001) is NOT exposed to host - internal network only
+    networks:
+      - marchproxy-internal   # Admin API accessible here
+      - marchproxy-external   # Proxy accessible here
+    # Resource limits for predictable performance
+    deploy:
+      resources:
+        limits:
+          cpus: "${KONG_CPU_LIMIT:-0}"
+          memory: "${KONG_MEMORY_LIMIT:-0}"
+        reservations:
+          cpus: "${KONG_CPU_RESERVATION:-0.5}"
+          memory: "${KONG_MEMORY_RESERVATION:-256M}"
+    # Increase file descriptor limits
+    ulimits:
+      nofile:
+        soft: 1048576
+        hard: 1048576
+      nproc:
+        soft: 65535
+        hard: 65535
+    # System tuning via sysctls
+    sysctls:
+      net.core.somaxconn: 65535
+      net.ipv4.tcp_max_syn_backlog: 65535
+      net.ipv4.ip_local_port_range: "1024 65535"
+      net.ipv4.tcp_tw_reuse: 1
+      net.ipv4.tcp_fin_timeout: 15
+      net.core.netdev_max_backlog: 65535
+      net.ipv4.tcp_keepalive_time: 300
+      net.ipv4.tcp_keepalive_intvl: 30
+      net.ipv4.tcp_keepalive_probes: 3
+      net.ipv4.tcp_syncookies: 1
+      net.ipv4.tcp_max_tw_buckets: 1440000
+      net.core.rmem_max: 16777216
+      net.core.wmem_max: 16777216
+      net.ipv4.tcp_rmem: "4096 87380 16777216"
+      net.ipv4.tcp_wmem: "4096 65536 16777216"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      - "service=marchproxy-kong"
+      - "component=api-gateway"
+      - "layer=apilb"
+      - "performance=optimized"
+
+  # ============================================================================
   # MarchProxy Core Services
   # ============================================================================
 
@@ -115,6 +402,7 @@ services:
     container_name: marchproxy-webui
     environment:
       - VITE_API_URL=http://api-server:8000
+      - VITE_KONG_ADMIN_URL=http://kong:8001
       - VITE_JAEGER_URL=http://jaeger:16686
       - NODE_ENV=production
       - HOST=0.0.0.0
@@ -126,6 +414,7 @@ services:
       - marchproxy-external
     depends_on:
       - api-server
+      - kong
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/"]
@@ -568,6 +857,8 @@ volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  kong_db_data:
     driver: local
   prometheus_data:
     driver: local

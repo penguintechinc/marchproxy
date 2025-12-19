@@ -21,6 +21,7 @@ import {
   Speed as TracingIcon,
   NotificationsActive as AlertsIcon,
   People as UsersIcon,
+  Api as ApiIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -42,6 +43,7 @@ const menuItems: MenuItem[] = [
   { text: 'Clusters', icon: <ClusterIcon />, path: '/clusters' },
   { text: 'Services', icon: <ServiceIcon />, path: '/services' },
   { text: 'Proxies', icon: <ProxyIcon />, path: '/proxies' },
+  { text: 'Kong Gateway', icon: <ApiIcon />, path: '/kong' },
   { text: 'Certificates', icon: <CertificateIcon />, path: '/certificates' },
   { text: 'Users', icon: <UsersIcon />, path: '/users' },
   { text: 'Tracing', icon: <TracingIcon />, path: '/observability/tracing' },
@@ -93,7 +95,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         {menuItems.map((item) => (
           <ListItem key={item.text} disablePadding>
             <ListItemButton
-              selected={location.pathname === item.path}
+              selected={location.pathname === item.path || location.pathname.startsWith(item.path + '/')}
               onClick={() => handleNavigation(item.path)}
               sx={{
                 '&.Mui-selected': {
