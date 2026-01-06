@@ -1,4 +1,8 @@
 # MarchProxy
+<p align="center">
+  <img src="logo.png" alt="MarchProxy Logo" width="400" />
+</p>
+
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Go Report Card](https://goreportcard.com/badge/github.com/marchproxy/marchproxy)](https://goreportcard.com/report/github.com/marchproxy/marchproxy)
