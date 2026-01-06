@@ -21,9 +21,15 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  token: string;
-  user: User;
-  expires_at: string;
+  user_id: number;
+  username: string;
+  email: string;
+  is_admin: boolean;
+  requires_2fa: boolean;
+  access_token?: string;
+  refresh_token?: string;
+  token_type?: string;
+  expires_in?: number;
 }
 
 export interface AuthState {

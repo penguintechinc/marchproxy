@@ -29,6 +29,7 @@ class Cluster(Base):
     services = relationship("Service", back_populates="cluster")
     proxies = relationship("ProxyServer", back_populates="cluster")
     user_assignments = relationship("UserClusterAssignment", back_populates="cluster")
+    mappings = relationship("Mapping", back_populates="cluster")
 
 
 class UserClusterAssignment(Base):
