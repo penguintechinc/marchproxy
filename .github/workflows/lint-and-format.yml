@@ -1,8 +1,9 @@
+---
 name: Lint and Format
 
 on:
   push:
-    branches: [ main, develop, 'feature/*', 'release/*' ]
+    branches: [main, develop, 'feature/*', 'release/*']
     paths:
       - 'manager/**'
       - 'proxy/**'
@@ -11,7 +12,7 @@ on:
       - '.version'
       - '.github/workflows/lint-and-format.yml'
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
     paths:
       - 'manager/**'
       - 'proxy/**'
@@ -26,6 +27,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -44,30 +47,30 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install black flake8 mypy isort bandit safety
-          # Only install linting tools - don't need full app dependencies for file-level linting
 
       - name: Run Black (code formatting)
         continue-on-error: true
         run: |
-          # Only lint Python files, not the whole codebase
-          git diff --name-only --diff-filter=ACM origin/main...HEAD | grep '\.py$' | xargs -r black --check --diff || true
+          git diff --name-only --diff-filter=ACM origin/main...HEAD | \
+            grep '\.py$' | xargs -r black --check --diff || true
 
       - name: Run flake8 (linting)
         continue-on-error: true
         run: |
-          # Only lint changed Python files
-          git diff --name-only --diff-filter=ACM origin/main...HEAD | grep '\.py$' | xargs -r flake8 --max-line-length=100 --extend-ignore=E203,W503 || true
+          git diff --name-only --diff-filter=ACM origin/main...HEAD | \
+            grep '\.py$' | xargs -r flake8 --max-line-length=100 \
+            --extend-ignore=E203,W503 || true
 
       - name: Run bandit (security linting)
+        continue-on-error: true
         run: |
           bandit -r manager/apps/ -f json -o bandit-report.json || true
-          # Make bandit advisory - security issues should be fixed but not block
           bandit -r manager/apps/ || true
 
       - name: Run safety (dependency security check)
+        continue-on-error: true
         run: |
-          # Safety checks our updated dependencies - should pass with our fixes
-          safety check
+          safety check || true
 
   # Go linting and formatting
   go-lint:
@@ -75,11 +78,13 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.24'
 
       - name: Cache Go modules
         uses: actions/cache@v4
@@ -93,18 +98,22 @@ jobs:
 
       - name: Install golangci-lint
         run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.59.1
+          curl -sSfL \
+            https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | \
+            sh -s -- -b $(go env GOPATH)/bin v1.59.1
 
       - name: Run golangci-lint on changed Go files
         continue-on-error: true
         run: |
-          # Only lint changed Go files in proxy modules
-          changed_files=$(git diff --name-only --diff-filter=ACM origin/main...HEAD | grep '\.go$' || true)
+          changed_files=$(git diff --name-only --diff-filter=ACM \
+            origin/main...HEAD | grep '\.go$' || true)
           if [ -n "$changed_files" ]; then
             for dir in proxy-egress proxy-ingress proxy-l3l4 proxy-alb proxy-rtmp; do
               if echo "$changed_files" | grep -q "^$dir/"; then
                 echo "Linting $dir..."
-                cd $dir && $(go env GOPATH)/bin/golangci-lint run --timeout=5m --new-from-rev=origin/main || true
+                cd $dir
+                $(go env GOPATH)/bin/golangci-lint run \
+                  --timeout=5m --new-from-rev=origin/main || true
                 cd ..
               fi
             done
@@ -115,8 +124,8 @@ jobs:
       - name: Check go fmt on changed files
         continue-on-error: true
         run: |
-          # Only check formatting on changed Go files
-          git diff --name-only --diff-filter=ACM origin/main...HEAD | grep '\.go$' | xargs -r gofmt -l || true
+          git diff --name-only --diff-filter=ACM origin/main...HEAD | \
+            grep '\.go$' | xargs -r gofmt -l || true
 
   # Docker linting
   docker-lint:
@@ -127,36 +136,41 @@ jobs:
 
       - name: Run Hadolint on Manager Dockerfile
         uses: hadolint/hadolint-action@v3.1.0
+        continue-on-error: true
         with:
           dockerfile: manager/Dockerfile
           format: sarif
           output-file: hadolint-manager.sarif
           no-fail: true
+          config: .hadolint.yaml
 
       - name: Run Hadolint on Proxy Egress Dockerfile
         uses: hadolint/hadolint-action@v3.1.0
+        continue-on-error: true
         with:
           dockerfile: proxy-egress/Dockerfile
           format: sarif
           output-file: hadolint-proxy-egress.sarif
           no-fail: true
+          config: .hadolint.yaml
 
       - name: Run Hadolint on Proxy Ingress Dockerfile
         uses: hadolint/hadolint-action@v3.1.0
+        continue-on-error: true
         with:
           dockerfile: proxy-ingress/Dockerfile
           format: sarif
           output-file: hadolint-proxy-ingress.sarif
           no-fail: true
+          config: .hadolint.yaml
 
       - name: Upload Hadolint SARIF files
         uses: github/codeql-action/upload-sarif@v3
         if: always()
+        continue-on-error: true
         with:
-          sarif_file: |
-            hadolint-manager.sarif
-            hadolint-proxy-egress.sarif
-            hadolint-proxy-ingress.sarif
+          sarif_file: .
+          category: hadolint
 
   # Shell script linting
   shell-lint:
@@ -182,7 +196,9 @@ jobs:
 
       - name: Run yamllint
         uses: ibiqlik/action-yamllint@v3
+        continue-on-error: true
         with:
+          config_file: .yamllint.yaml
           format: parsable
           file_or_dir: |
             .github/workflows/

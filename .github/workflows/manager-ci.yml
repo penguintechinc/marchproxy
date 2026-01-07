@@ -159,7 +159,7 @@ jobs:
           -e POSTGRES_USER=test \
           -e POSTGRES_PASSWORD=test \
           -p 5432:5432 \
-          postgres:15-alpine
+          postgres:15-bookworm
 
         # Wait for database
         sleep 10

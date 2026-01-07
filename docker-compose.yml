@@ -11,7 +11,7 @@ services:
 
   # PostgreSQL Database
   postgres:
-    image: postgres:15-alpine
+    image: postgres:15-bookworm
     container_name: marchproxy-postgres
     environment:
       POSTGRES_DB: marchproxy
@@ -32,7 +32,7 @@ services:
 
   # Redis Cache
   redis:
-    image: redis:7-alpine
+    image: redis:7-bookworm
     container_name: marchproxy-redis
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis123}
     volumes:
@@ -52,7 +52,7 @@ services:
 
   # Kong Database (separate from main marchproxy database) - PERFORMANCE OPTIMIZED
   kong-db:
-    image: postgres:16-alpine
+    image: postgres:16-bookworm
     container_name: marchproxy-kong-db
     environment:
       POSTGRES_USER: kong
@@ -743,7 +743,7 @@ services:
 
   # Jaeger for distributed tracing
   jaeger:
-    image: jaegertracing/all-in-one:latest
+    image: jaegertracing/all-in-one:1.54
     container_name: marchproxy-jaeger
     environment:
       - COLLECTOR_ZIPKIN_HTTP_PORT=9411
@@ -771,7 +771,7 @@ services:
 
   # Prometheus for metrics collection
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.51.0
     container_name: marchproxy-prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -789,7 +789,7 @@ services:
 
   # Grafana for visualization
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:10.4.1
     container_name: marchproxy-grafana
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}

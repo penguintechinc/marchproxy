@@ -177,7 +177,7 @@ jobs:
         docker run -d --name test-redis \
           --network test-network \
           -e REDIS_PASSWORD=test123 \
-          redis:7-alpine redis-server --requirepass test123
+          redis:7-bookworm redis-server --requirepass test123
 
         # Start mock backend
         docker run -d --name test-backend \
