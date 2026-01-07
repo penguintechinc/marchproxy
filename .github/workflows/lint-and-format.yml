@@ -6,18 +6,30 @@ on:
     branches: [main, develop, 'feature/*', 'release/*']
     paths:
       - 'manager/**'
-      - 'proxy/**'
       - 'proxy-egress/**'
       - 'proxy-ingress/**'
+      - 'proxy-ailb/**'
+      - 'proxy-alb/**'
+      - 'proxy-dblb/**'
+      - 'proxy-l3l4/**'
+      - 'proxy-l7/**'
+      - 'proxy-nlb/**'
+      - 'proxy-rtmp/**'
       - '.version'
       - '.github/workflows/lint-and-format.yml'
   pull_request:
     branches: [main, develop]
     paths:
       - 'manager/**'
-      - 'proxy/**'
       - 'proxy-egress/**'
       - 'proxy-ingress/**'
+      - 'proxy-ailb/**'
+      - 'proxy-alb/**'
+      - 'proxy-dblb/**'
+      - 'proxy-l3l4/**'
+      - 'proxy-l7/**'
+      - 'proxy-nlb/**'
+      - 'proxy-rtmp/**'
       - '.version'
 
 jobs:

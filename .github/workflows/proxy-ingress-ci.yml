@@ -58,7 +58,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.21'
+        go-version: '1.24'
         cache-dependency-path: 'proxy-ingress/go.sum'
 
     - name: Install dependencies
@@ -112,7 +112,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.21'
+        go-version: '1.24'
 
     - name: Install golangci-lint
       uses: golangci/golangci-lint-action@v4
@@ -394,7 +394,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.21'
+        go-version: '1.24'
 
     - name: Install performance testing tools
       run: |

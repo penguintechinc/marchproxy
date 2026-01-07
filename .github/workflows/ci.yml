@@ -11,7 +11,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  GO_VERSION: '1.21'
+  GO_VERSION: '1.24'
   PYTHON_VERSION: '3.11'
 
 jobs:
@@ -206,7 +206,7 @@ jobs:
 
     - name: Upload logs
       if: failure()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: integration-test-logs
         path: test-logs/

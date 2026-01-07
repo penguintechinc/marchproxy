@@ -2,17 +2,19 @@ name: Build and Test MarchProxy
 
 on:
   push:
-    branches: [ main, develop, 'feature/*', 'release/*' ]
-    tags: [ 'v*' ]
+    branches: [main, develop, 'feature/*', 'release/*']
+    tags: ['v*']
     paths:
-      - 'proxy/**'
+      - 'proxy-egress/**'
+      - 'proxy-ingress/**'
       - 'manager/**'
       - '.version'
       - '.github/workflows/build-and-test.yml'
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
     paths:
-      - 'proxy/**'
+      - 'proxy-egress/**'
+      - 'proxy-ingress/**'
       - 'manager/**'
       - '.version'
   schedule:
@@ -21,7 +23,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME_MANAGER: ${{ github.repository }}/manager
-  IMAGE_NAME_PROXY: ${{ github.repository }}/proxy
+  IMAGE_NAME_PROXY: ${{ github.repository }}/proxy-egress
 
 jobs:
   # Test Go proxy application
@@ -59,7 +61,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.24'
 
       - name: Cache Go modules
         uses: actions/cache@v4
@@ -80,28 +82,28 @@ jobs:
         uses: golangci/golangci-lint-action@v4
         with:
           version: latest
-          working-directory: ./proxy
+          working-directory: ./proxy-egress
 
       - name: Run golangci-lint
-        working-directory: ./proxy
+        working-directory: ./proxy-egress
         run: |
           golangci-lint run ./...
 
       - name: Run gosec security scanner
-        working-directory: ./proxy
+        working-directory: ./proxy-egress
         run: |
           go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
           gosec -fmt json -out gosec-report.json ./... || true
           cat gosec-report.json
 
       - name: Build proxy
-        working-directory: ./proxy
+        working-directory: ./proxy-egress
         run: |
           go mod tidy
           go build -v ./...
 
       - name: Test proxy
-        working-directory: ./proxy
+        working-directory: ./proxy-egress
         run: |
           go test -v ./...
 
@@ -145,6 +147,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxml2-dev libxslt1-dev
+
       - name: Install Python dependencies
         working-directory: ./manager
         run: |
@@ -174,7 +181,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        component: [manager, proxy]
+        component: [manager, proxy-egress]
 
     steps:
       - name: Checkout code
@@ -225,6 +232,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ matrix.component == 'manager' && env.IMAGE_NAME_MANAGER || env.IMAGE_NAME_PROXY }}
+          flavor: |
+            latest=auto
           tags: |
             # Development builds with epoch64 timestamps
             type=raw,value=alpha-${{ steps.build_meta.outputs.epoch64 }},enable=${{ !fromJSON(steps.build_meta.outputs.is_main) && !fromJSON(steps.build_meta.outputs.is_tag) }}
@@ -242,9 +251,9 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: ./docker/${{ matrix.component }}/Dockerfile
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          context: ./${{ matrix.component }}
+          file: ./${{ matrix.component }}/Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
