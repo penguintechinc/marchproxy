@@ -112,7 +112,7 @@ func (l *Logger) Debug(msg string, keysAndValues ...interface{}) {
 // parseKeysAndValues converts alternating key-value pairs to a map
 func parseKeysAndValues(keysAndValues ...interface{}) logrus.Fields {
 	fields := logrus.Fields{}
-	
+
 	for i := 0; i < len(keysAndValues); i += 2 {
 		if i+1 < len(keysAndValues) {
 			key := fmt.Sprintf("%v", keysAndValues[i])
@@ -120,6 +120,47 @@ func parseKeysAndValues(keysAndValues ...interface{}) logrus.Fields {
 			fields[key] = value
 		}
 	}
-	
+
 	return fields
+}
+
+// LogRequest logs an HTTP request with structured fields
+func (l *Logger) LogRequest(method, path, status, duration, clientIP string) {
+	l.Entry.WithFields(logrus.Fields{
+		"method":    method,
+		"path":      path,
+		"status":    status,
+		"duration":  duration,
+		"client_ip": clientIP,
+		"type":      "request",
+	}).Info("HTTP request")
+}
+
+// LogAuthentication logs an authentication event
+func (l *Logger) LogAuthentication(user, clientIP string, success bool, reason string) {
+	fields := logrus.Fields{
+		"user":      user,
+		"client_ip": clientIP,
+		"success":   success,
+		"type":      "authentication",
+	}
+	if reason != "" {
+		fields["reason"] = reason
+	}
+
+	if success {
+		l.Entry.WithFields(fields).Info("Authentication succeeded")
+	} else {
+		l.Entry.WithFields(fields).Warn("Authentication failed")
+	}
+}
+
+// LogError logs an error with structured fields
+func (l *Logger) LogError(errorType, errorMessage, details string) {
+	l.Entry.WithFields(logrus.Fields{
+		"error_type":    errorType,
+		"error_message": errorMessage,
+		"details":       details,
+		"type":          "error",
+	}).Error(errorMessage)
 }

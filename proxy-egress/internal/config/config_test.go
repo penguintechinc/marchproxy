@@ -2,9 +2,8 @@ package config
 
 import (
 	"os"
+	"strings"
 	"testing"
-
-	"github.com/spf13/viper"
 )
 
 func TestNewConfig(t *testing.T) {

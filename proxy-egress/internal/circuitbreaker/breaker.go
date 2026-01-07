@@ -461,29 +461,44 @@ func NewServiceCircuitBreaker(config Config) *ServiceCircuitBreaker {
 }
 
 func (scb *ServiceCircuitBreaker) GetBreaker(service *manager.Service) *CircuitBreaker {
-	key := service.IPFQDN
-	
+	key := scb.serviceKey(service)
+
 	scb.mutex.RLock()
 	breaker, exists := scb.breakers[key]
 	scb.mutex.RUnlock()
-	
+
 	if exists {
 		return breaker
 	}
-	
+
 	scb.mutex.Lock()
 	defer scb.mutex.Unlock()
-	
+
 	if breaker, exists := scb.breakers[key]; exists {
 		return breaker
 	}
-	
+
 	config := scb.config
 	config.Name = key
 	breaker = NewCircuitBreaker(config)
+	breaker.name = key
 	scb.breakers[key] = breaker
-	
+
 	return breaker
+}
+
+// serviceKey generates a unique key for a service
+func (scb *ServiceCircuitBreaker) serviceKey(service *manager.Service) string {
+	if service.IPFQDN != "" {
+		return service.IPFQDN
+	}
+	if service.Host != "" && service.Port > 0 {
+		return fmt.Sprintf("%s:%d", service.Host, service.Port)
+	}
+	if service.Host != "" {
+		return service.Host
+	}
+	return service.Name
 }
 
 func (scb *ServiceCircuitBreaker) ExecuteRequest(service *manager.Service, req func() (interface{}, error)) (interface{}, error) {
@@ -508,11 +523,11 @@ func (scb *ServiceCircuitBreaker) GetAllBreakers() map[string]*CircuitBreaker {
 }
 
 func (scb *ServiceCircuitBreaker) RemoveBreaker(service *manager.Service) {
-	key := service.IPFQDN
-	
+	key := scb.serviceKey(service)
+
 	scb.mutex.Lock()
 	defer scb.mutex.Unlock()
-	
+
 	delete(scb.breakers, key)
 }
 

@@ -82,6 +82,11 @@ func (ctx *MiddlewareContext) HasData(key string) bool {
 	return exists
 }
 
+// StopProcessing stops further middleware processing
+func (ctx *MiddlewareContext) StopProcessing() {
+	ctx.AbortPipeline = true
+}
+
 // PipelineConfig holds pipeline configuration
 type PipelineConfig struct {
 	MaxMiddlewares   int
