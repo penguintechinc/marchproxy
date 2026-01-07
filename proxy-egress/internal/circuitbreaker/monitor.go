@@ -9,8 +9,6 @@ import (
 	"sort"
 	"sync"
 	"time"
-
-	"marchproxy-egress/internal/manager"
 )
 
 type Monitor struct {

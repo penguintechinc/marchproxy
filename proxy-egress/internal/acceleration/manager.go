@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"marchproxy-egress/internal/acceleration/afxdp"
-	"marchproxy-egress/internal/acceleration/dpdk"
+	_ "marchproxy-egress/internal/acceleration/dpdk" // DPDK support not yet integrated
 	"marchproxy-egress/internal/acceleration/sriov"
 	"marchproxy-egress/internal/acceleration/xdp"
 	"marchproxy-egress/internal/proxy"
@@ -392,10 +392,10 @@ func (am *AccelerationManager) updateStats() {
 
 	// Collect stats from each technology
 	// DPDK manager not available in current struct
-	// if // am.dpdkManager != nil {
-		// am.stats.DPDKStats = // am.dpdkManager.GetStats()
-		// am.stats.DPDKPackets = // am.stats.DPDKStats.RxPackets
-	}
+	// if am.dpdkManager != nil {
+	//     am.stats.DPDKStats = am.dpdkManager.GetStats()
+	//     am.stats.DPDKPackets = am.stats.DPDKStats.RxPackets
+	// }
 
 	if am.xdpManager != nil {
 		am.stats.XDPStats = am.xdpManager.GetStats()
@@ -412,8 +412,8 @@ func (am *AccelerationManager) updateStats() {
 	}
 
 	// Calculate overall metrics
-	totalPackets := // am.stats.DPDKPackets + am.stats.XDPPackets +
-	               am.stats.AFXDPPackets + am.stats.GoProxyPackets
+	// Note: DPDKPackets commented out as DPDK manager not available
+	totalPackets := am.stats.XDPPackets + am.stats.AFXDPPackets + am.stats.GoProxyPackets
 
 	if totalPackets > 0 {
 		timeDiff := time.Since(am.stats.LastUpdate)
@@ -460,9 +460,9 @@ func (am *AccelerationManager) Stop() error {
 	}
 
 	// DPDK manager not available in current struct
-	// if // am.dpdkManager != nil {
-		// am.dpdkManager.Stop()
-	}
+	// if am.dpdkManager != nil {
+	//     am.dpdkManager.Stop()
+	// }
 
 	if am.sriovManager != nil {
 		am.sriovManager.Stop()
@@ -493,9 +493,10 @@ func (am *AccelerationManager) GetActiveTechnologies() []string {
 
 	var active []string
 
-	if // am.dpdkManager != nil && // am.dpdkManager.IsRunning() {
-		active = append(active, "DPDK")
-	}
+	// DPDK manager not available in current struct
+	// if am.dpdkManager != nil && am.dpdkManager.IsRunning() {
+	//     active = append(active, "DPDK")
+	// }
 	if am.xdpManager != nil && am.xdpManager.IsRunning() {
 		active = append(active, "XDP")
 	}

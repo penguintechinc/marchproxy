@@ -66,19 +66,43 @@ type Service struct {
 	AuthToken  string `json:"auth_token,omitempty"`
 	JWTSecret  string `json:"jwt_secret,omitempty"`
 	JWTExpiry  int    `json:"jwt_expiry,omitempty"`
+
+	// Network fields used by routing and circuit breaker
+	Host       string `json:"host,omitempty"`
+	Port       int    `json:"port,omitempty"`
+	Scheme     string `json:"scheme,omitempty"`
+	IPAddress  string `json:"ip_address,omitempty"`
+	TLSEnabled bool   `json:"tls_enabled,omitempty"`
+	Healthy    bool   `json:"healthy,omitempty"`
+	PortRange  string `json:"port_range,omitempty"`
 }
 
 type Mapping struct {
-	ID              int      `json:"id"`
-	Name            string   `json:"name"`
-	SourceServices  []int    `json:"source_services"`
-	DestServices    []int    `json:"dest_services"`
-	Protocols       []string `json:"protocols"`
-	Ports           string   `json:"ports"`
-	AuthRequired    bool     `json:"auth_required"`
-	AuthType        string   `json:"auth_type"`
-	Priority        int      `json:"priority"`
-	Timeout         int      `json:"timeout"`
+	ID                  int      `json:"id"`
+	Name                string   `json:"name"`
+	SourceServices      []int    `json:"source_services"`
+	DestServices        []int    `json:"dest_services"`
+	Protocols           []string `json:"protocols"`
+	Ports               string   `json:"ports"`
+	AuthRequired        bool     `json:"auth_required"`
+	AuthType            string   `json:"auth_type"`
+	Priority            int      `json:"priority"`
+	Timeout             int      `json:"timeout"`
+
+	// Additional routing fields
+	SupportsWebSocket    bool            `json:"supports_websocket,omitempty"`
+	DestinationServices  []Service       `json:"destination_services,omitempty"`
+	LoadBalancing        string          `json:"load_balancing,omitempty"`
+	RoutingRules         []RoutingRule   `json:"routing_rules,omitempty"`
+	DynamicPorts         bool            `json:"dynamic_ports,omitempty"`
+}
+
+type RoutingRule struct {
+	ID        int               `json:"id"`
+	Type      string            `json:"type"`       // "header", "path", "query"
+	Pattern   string            `json:"pattern"`
+	Target    int               `json:"target"`     // Target service ID
+	Headers   map[string]string `json:"headers,omitempty"`
 }
 
 type Certificate struct {

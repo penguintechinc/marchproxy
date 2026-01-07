@@ -429,6 +429,46 @@ func (xm *XDPManager) GetInterfaceStats(interfaceName string) (*XDPInterface, er
 	return &ifaceCopy, nil
 }
 
+// IsRunning returns whether XDP manager is running
+func (xm *XDPManager) IsRunning() bool {
+	return xm.IsEnabled()
+}
+
+// ClearServiceRules clears all service rules from XDP maps
+func (xm *XDPManager) ClearServiceRules() error {
+	xm.mu.Lock()
+	defer xm.mu.Unlock()
+
+	// Clear the service rules map
+	// This would typically iterate through the BPF map and delete all entries
+	// For now, this is a stub implementation
+	return nil
+}
+
+// AddServiceRule adds a service rule to XDP
+func (xm *XDPManager) AddServiceRule(ruleID uint32, rule *ServiceRule) error {
+	xm.mu.Lock()
+	defer xm.mu.Unlock()
+
+	if !xm.enabled || !xm.programLoaded {
+		return fmt.Errorf("XDP not initialized")
+	}
+
+	// Get the service rules map file descriptor
+	mapFD, exists := xm.serviceMaps["service_rules"]
+	if !exists {
+		return fmt.Errorf("service_rules map not found")
+	}
+
+	// Update the BPF map with the new rule
+	ret := C.update_service_rule_xdp(C.int(mapFD), C.__u32(ruleID), unsafe.Pointer(rule))
+	if ret != 0 {
+		return fmt.Errorf("failed to add service rule: %d", ret)
+	}
+
+	return nil
+}
+
 // Helper functions
 func ipToUint32(ip net.IP) uint32 {
 	if ip == nil {

@@ -19,9 +19,10 @@ MarchProxy is a next-generation proxy solution designed for enterprise data cent
 
 ## Why MarchProxy?
 
-- **Multiple Specialized Proxies**: NLB (L3/L4 load balancing), ALB (L7 application), DBLB (database load balancing), AILB (Artificial Intelligence load balancing), RTMP (media streaming) and more
+- **Multiple Specialized Proxies**: NLB (L3/L4 load balancing), ALB (L7 application), **Egress (secure egress traffic control)**, DBLB (database load balancing), AILB (Artificial Intelligence load balancing), RTMP (media streaming) and more
 - **Unmatched Performance**: Multi-tier acceleration from standard networking → eBPF → XDP/AF_XDP → DPDK supporting 100+ Gbps throughput
 - **Enterprise API Gateway**: Kong-based APILB wrapper for service orchestration, authentication, and rate limiting
+- **Secure Egress Control**: Comprehensive egress proxy with IP/domain/URL blocking, TLS interception, and threat intelligence integration
 - **Service-Centric**: Designed for service-to-service communication with granular access control and cluster isolation
 - **Production Ready**: Comprehensive monitoring (Prometheus/Grafana), distributed tracing (Jaeger), and zero-downtime configuration updates
 - **Modern Architecture**: gRPC for inter-container communication, REST APIs for external integration, React-based management interface
@@ -74,6 +75,7 @@ docker-compose ps
 - ✅ Specialized proxy modules:
   - NLB: L3/L4 load balancing with 100+ Gbps throughput
   - ALB: L7 application proxy with 40+ Gbps throughput
+  - **Egress: Secure egress traffic control with threat intelligence**
   - DBLB: Database load balancing
   - AILB: Artificial Intelligence load balancing
   - RTMP: Media streaming support
@@ -164,7 +166,7 @@ kubectl apply -f examples/simple-marchproxy.yaml
 ## ✨ Features
 
 ### Core Features
-- **Multiple Specialized Proxies**: NLB (L3/L4), ALB (L7), DBLB (database), AILB (AI), RTMP (media) modules
+- **Multiple Specialized Proxies**: NLB (L3/L4), ALB (L7), Egress (secure egress), DBLB (database), AILB (AI), RTMP (media) modules
 - **High-Performance**: Multi-protocol support (TCP, UDP, ICMP, HTTP/HTTPS, WebSocket, QUIC/HTTP3, RTMP)
 - **eBPF Acceleration**: Kernel-level packet processing across all proxy modules
 - **Kong API Gateway**: APILB wrapper for service orchestration, request routing, and authentication
@@ -172,6 +174,14 @@ kubectl apply -f examples/simple-marchproxy.yaml
 - **Multi-Cluster Support**: Enterprise-grade cluster management and isolation
 - **Real-time Configuration**: Hot-reload configuration without downtime
 - **Comprehensive Monitoring**: Prometheus metrics, Grafana dashboards, Jaeger tracing, and observability
+
+### Egress Proxy Features
+- **Threat Intelligence**: IP/CIDR blocking, domain blocking (with wildcard support), URL pattern matching
+- **TLS Interception**: MITM mode with dynamic cert generation, or preconfigured certificates
+- **L7 Control**: HTTP/1.1, HTTP/2, and HTTP/3 (QUIC) support (**EXPERIMENTAL**)
+- **Access Control**: JWT/Bearer token-based restrictions per destination
+- **DNS Caching**: Resolved domain blocking with TTL-based caching
+- **Real-time Updates**: gRPC streaming and polling for threat feed synchronization
 
 ### Performance Acceleration
 - **eBPF Fast-path**: Programmable kernel-level packet filtering
@@ -271,6 +281,7 @@ MarchProxy features a microservice architecture with independent proxy modules o
 #### Specialized Proxy Modules (Go/eBPF)
 Each module independently scalable based on traffic demands (traffic control handled by NLB):
 - **ALB (Application L7)**: HTTP/HTTPS/gRPC applications, 40+ Gbps throughput
+- **Egress (Secure Egress)**: Egress traffic control with threat intelligence, TLS interception, IP/domain/URL blocking
 - **DBLB (Database)**: Database traffic load balancing with query awareness
 - **AILB (Artificial Intelligence)**: AI model inference routing and optimization
 - **RTMP (Media Streaming)**: x265 codec by default with x264 backwards compatibility
@@ -290,7 +301,7 @@ Each module independently scalable based on traffic demands (traffic control han
 
 ## 💼 Community vs Enterprise
 
-**Community Edition** includes all core proxy modules (NLB, ALB, DBLB, AILB, RTMP) with:
+**Community Edition** includes all core proxy modules (NLB, ALB, Egress, DBLB, AILB, RTMP) with:
 - Up to 3 proxy module instances total
 - Single cluster
 - eBPF acceleration
