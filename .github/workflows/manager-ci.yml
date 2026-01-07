@@ -62,6 +62,11 @@ jobs:
         cache: 'pip'
         cache-dependency-path: 'manager/requirements*.txt'
 
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libxml2-dev libxslt1-dev
+
     - name: Install dependencies
       run: |
         pip install --upgrade pip
@@ -115,8 +120,7 @@ jobs:
 
     - name: Run safety check
       run: |
-        safety check -r requirements.txt --json --output safety-report.json || true
-        cat safety-report.json
+        safety check -r requirements.txt || true
 
     - name: Run bandit security linter
       run: |
