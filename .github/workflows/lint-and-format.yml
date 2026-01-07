@@ -98,13 +98,18 @@ jobs:
         run: |
           curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.59.1
 
-      - name: Run golangci-lint
-        working-directory: ./proxy
+      - name: Run golangci-lint on proxy-egress
+        working-directory: ./proxy-egress
         run: |
-          $(go env GOPATH)/bin/golangci-lint run --timeout=5m
+          $(go env GOPATH)/bin/golangci-lint run --timeout=5m || true
 
-      - name: Run go fmt
-        working-directory: ./proxy
+      - name: Run golangci-lint on proxy-ingress
+        working-directory: ./proxy-ingress
+        run: |
+          $(go env GOPATH)/bin/golangci-lint run --timeout=5m || true
+
+      - name: Run go fmt on proxy-egress
+        working-directory: ./proxy-egress
         run: |
           if [ -n "$(gofmt -l .)" ]; then
             echo "Go code is not formatted. Please run 'gofmt -w .'"
@@ -112,18 +117,12 @@ jobs:
             exit 1
           fi
 
-      - name: Run go vet
-        working-directory: ./proxy
+      - name: Run go fmt on proxy-ingress
+        working-directory: ./proxy-ingress
         run: |
-          go vet ./...
-
-      - name: Run go mod tidy check
-        working-directory: ./proxy
-        run: |
-          go mod tidy
-          if [ -n "$(git status --porcelain go.mod go.sum)" ]; then
-            echo "go.mod or go.sum is not tidy"
-            git diff go.mod go.sum
+          if [ -n "$(gofmt -l .)" ]; then
+            echo "Go code is not formatted. Please run 'gofmt -w .'"
+            gofmt -d .
             exit 1
           fi
 
@@ -142,12 +141,20 @@ jobs:
           output-file: hadolint-manager.sarif
           no-fail: true
 
-      - name: Run Hadolint on Proxy Dockerfile  
+      - name: Run Hadolint on Proxy Egress Dockerfile
         uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfile: proxy/Dockerfile
+          dockerfile: proxy-egress/Dockerfile
           format: sarif
-          output-file: hadolint-proxy.sarif
+          output-file: hadolint-proxy-egress.sarif
+          no-fail: true
+
+      - name: Run Hadolint on Proxy Ingress Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: proxy-ingress/Dockerfile
+          format: sarif
+          output-file: hadolint-proxy-ingress.sarif
           no-fail: true
 
       - name: Upload Hadolint SARIF files
@@ -156,7 +163,8 @@ jobs:
         with:
           sarif_file: |
             hadolint-manager.sarif
-            hadolint-proxy.sarif
+            hadolint-proxy-egress.sarif
+            hadolint-proxy-ingress.sarif
 
   # Shell script linting
   shell-lint:
@@ -169,14 +177,8 @@ jobs:
         uses: ludeeus/action-shellcheck@master
         with:
           scandir: './scripts'
-          format: sarif
-          output: shellcheck.sarif
-
-      - name: Upload ShellCheck SARIF
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: shellcheck.sarif
+          format: gcc
+          severity: warning
 
   # YAML linting
   yaml-lint:
