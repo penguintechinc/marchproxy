@@ -414,12 +414,89 @@ def define_tables():
         Field('config_data', 'json', notnull=True),  # Cached configuration
         Field('generated_at', 'datetime', default=datetime.utcnow),
         Field('expires_at', 'datetime'),  # Cache expiry
-        
+
         # Performance tracking
         Field('fetch_count', 'integer', default=0),
         Field('last_fetched', 'datetime'),
-        
+
         format='Cluster %(cluster_id)s config'
+    )
+
+    # Block rules for threat intelligence and traffic control
+    db.define_table(
+        'block_rules',
+        Field('name', 'string', length=255, notnull=True),
+        Field('description', 'text'),
+        Field('cluster_id', 'reference clusters', notnull=True),
+
+        # Rule type and layer
+        Field('rule_type', 'string', length=20, notnull=True,
+              requires=IS_IN_SET(['ip', 'cidr', 'domain', 'url_pattern', 'port'])),
+        Field('layer', 'string', length=5, notnull=True,
+              requires=IS_IN_SET(['L4', 'L7'])),  # L4 for NLB/Egress, L7 for ALB/Egress
+
+        # Rule value based on type
+        Field('value', 'string', length=1024, notnull=True),  # IP, CIDR, domain, or regex pattern
+
+        # Optional port restrictions (for IP/CIDR rules)
+        Field('ports', 'json'),  # Array of ports or port ranges
+        Field('protocols', 'json', default=['tcp', 'udp']),  # tcp, udp, icmp
+
+        # Domain-specific options
+        Field('wildcard', 'boolean', default=False),  # For domain rules: *.example.com
+
+        # URL pattern options (L7 only)
+        Field('match_type', 'string', length=20, default='exact',
+              requires=IS_IN_SET(['exact', 'prefix', 'suffix', 'regex', 'contains'])),
+
+        # Action and priority
+        # Actions:
+        # - 'deny': Active rejection with response (ICMP unreachable/TCP RST/HTTP 403)
+        #           Recommended for egress proxies so services know they're blocked
+        # - 'drop': Silent drop with no response
+        #           Recommended for ingress proxies (ALB/NLB) for security
+        # - 'allow': Explicit whitelist entry
+        # - 'log': Log only, don't block
+        Field('action', 'string', length=10, default='deny',
+              requires=IS_IN_SET(['deny', 'drop', 'allow', 'log'])),
+        Field('priority', 'integer', default=1000),  # Lower = higher priority
+
+        # Targeting - which proxy types this rule applies to
+        Field('apply_to_alb', 'boolean', default=True),
+        Field('apply_to_nlb', 'boolean', default=True),
+        Field('apply_to_egress', 'boolean', default=True),
+
+        # Source for threat intelligence feeds
+        Field('source', 'string', length=50, default='manual',
+              requires=IS_IN_SET(['manual', 'threat_feed', 'api'])),
+        Field('source_feed_name', 'string', length=255),  # Name of threat feed if applicable
+
+        # Status and lifecycle
+        Field('is_active', 'boolean', default=True),
+        Field('expires_at', 'datetime'),  # Optional expiry for temporary rules
+        Field('hit_count', 'bigint', default=0),  # Number of times rule matched
+        Field('last_hit', 'datetime'),  # Last time rule matched
+
+        # Metadata
+        Field('created_by', 'reference auth_user'),
+        Field('created_at', 'datetime', default=datetime.utcnow),
+        Field('updated_at', 'datetime', default=datetime.utcnow, update=datetime.utcnow),
+
+        format='%(name)s (%(rule_type)s: %(value)s)'
+    )
+
+    # Block rule sync tracking - tracks which proxies have synced which rules
+    db.define_table(
+        'block_rule_sync',
+        Field('proxy_id', 'reference proxy_servers', notnull=True),
+        Field('last_sync_version', 'string', length=64),  # SHA256 of rules at sync time
+        Field('last_sync_at', 'datetime', default=datetime.utcnow),
+        Field('rules_count', 'integer', default=0),
+        Field('sync_status', 'string', length=20, default='pending',
+              requires=IS_IN_SET(['pending', 'synced', 'error'])),
+        Field('sync_error', 'text'),
+
+        format='Proxy %(proxy_id)s sync'
     )
 
 # Execute table definitions
@@ -483,7 +560,19 @@ def create_indexes():
         # Config cache
         db.executesql('CREATE INDEX IF NOT EXISTS idx_config_cache_cluster ON config_cache(cluster_id)')
         db.executesql('CREATE INDEX IF NOT EXISTS idx_config_cache_hash ON config_cache(config_hash)')
-        
+
+        # Block rules
+        db.executesql('CREATE INDEX IF NOT EXISTS idx_block_rules_cluster ON block_rules(cluster_id)')
+        db.executesql('CREATE INDEX IF NOT EXISTS idx_block_rules_active ON block_rules(cluster_id, is_active)')
+        db.executesql('CREATE INDEX IF NOT EXISTS idx_block_rules_type ON block_rules(rule_type)')
+        db.executesql('CREATE INDEX IF NOT EXISTS idx_block_rules_layer ON block_rules(layer)')
+        db.executesql('CREATE INDEX IF NOT EXISTS idx_block_rules_priority ON block_rules(priority)')
+        db.executesql('CREATE INDEX IF NOT EXISTS idx_block_rules_expires ON block_rules(expires_at)')
+
+        # Block rule sync
+        db.executesql('CREATE INDEX IF NOT EXISTS idx_block_rule_sync_proxy ON block_rule_sync(proxy_id)')
+        db.executesql('CREATE INDEX IF NOT EXISTS idx_block_rule_sync_status ON block_rule_sync(sync_status)')
+
     except Exception as e:
         # Indexes may already exist, continue silently
         pass

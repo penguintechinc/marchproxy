@@ -28,6 +28,7 @@ from api.auth import auth_api
 from api.clusters import clusters_api
 from api.proxy import proxy_api
 from api.mtls import mtls_api
+from api.block_rules import block_rules_api
 
 # Configure logging
 logging.basicConfig(
@@ -75,6 +76,7 @@ auth_endpoints = auth_api(db, jwt_manager)
 cluster_endpoints = clusters_api(db, jwt_manager)
 proxy_endpoints = proxy_api(db, jwt_manager)
 mtls_endpoints = mtls_api(db, jwt_manager)
+block_rules_endpoints = block_rules_api(db, jwt_manager)
 
 # Register API routes
 def _call_endpoint(endpoint_func):
@@ -211,6 +213,39 @@ def download_certificate(cert_id):
 def test_mtls_connection():
     return _call_endpoint(mtls_endpoints['test_mtls_connection'])
 
+# Block rules routes
+@application.route('/api/v1/clusters/<int:cluster_id>/block-rules', methods=['GET', 'POST'])
+def cluster_block_rules(cluster_id):
+    if request.method == 'GET':
+        return _call_endpoint(lambda: block_rules_endpoints['list_block_rules'](cluster_id))
+    else:
+        return _call_endpoint(lambda: block_rules_endpoints['create_block_rule'](cluster_id))
+
+@application.route('/api/v1/clusters/<int:cluster_id>/block-rules/<int:rule_id>', methods=['GET', 'PUT', 'DELETE'])
+def cluster_block_rule_detail(cluster_id, rule_id):
+    if request.method == 'GET':
+        return _call_endpoint(lambda: block_rules_endpoints['get_block_rule'](cluster_id, rule_id))
+    elif request.method == 'PUT':
+        return _call_endpoint(lambda: block_rules_endpoints['update_block_rule'](cluster_id, rule_id))
+    else:
+        return _call_endpoint(lambda: block_rules_endpoints['delete_block_rule'](cluster_id, rule_id))
+
+@application.route('/api/v1/clusters/<int:cluster_id>/block-rules/bulk', methods=['POST'])
+def cluster_block_rules_bulk(cluster_id):
+    return _call_endpoint(lambda: block_rules_endpoints['bulk_create_block_rules'](cluster_id))
+
+@application.route('/api/v1/clusters/<int:cluster_id>/threat-feed', methods=['GET'])
+def cluster_threat_feed(cluster_id):
+    return _call_endpoint(lambda: block_rules_endpoints['get_threat_feed'](cluster_id))
+
+@application.route('/api/v1/clusters/<int:cluster_id>/block-rules/version', methods=['GET'])
+def cluster_block_rules_version(cluster_id):
+    return _call_endpoint(lambda: block_rules_endpoints['get_rules_version'](cluster_id))
+
+@application.route('/api/v1/clusters/<int:cluster_id>/block-rules/sync-status', methods=['GET'])
+def cluster_block_rules_sync_status(cluster_id):
+    return _call_endpoint(lambda: block_rules_endpoints['get_sync_status'](cluster_id))
+
 # Health and status endpoints
 @application.route('/healthz', methods=['GET'])
 @enable_cors()
@@ -345,7 +380,9 @@ def index():
             "clusters": "/api/clusters/*",
             "proxies": "/api/proxies/*",
             "proxy_api": "/api/proxy/*",
-            "mtls": "/api/mtls/*"
+            "mtls": "/api/mtls/*",
+            "block_rules": "/api/v1/clusters/{cluster_id}/block-rules",
+            "threat_feed": "/api/v1/clusters/{cluster_id}/threat-feed"
         }
     }
 
