@@ -387,8 +387,17 @@ func (sc *SpanCollector) GetMetrics() *CollectorMetrics {
 	sc.metrics.mutex.RLock()
 	defer sc.metrics.mutex.RUnlock()
 
-	metricsCopy := *sc.metrics
-	return &metricsCopy
+	// Return a copy without the mutex to avoid copying a lock value
+	return &CollectorMetrics{
+		SpansCollected:   sc.metrics.SpansCollected,
+		SpansExported:    sc.metrics.SpansExported,
+		SpansDropped:     sc.metrics.SpansDropped,
+		SpansFiltered:    sc.metrics.SpansFiltered,
+		ExportErrors:     sc.metrics.ExportErrors,
+		ProcessingErrors: sc.metrics.ProcessingErrors,
+		AverageLatency:   sc.metrics.AverageLatency,
+		TotalLatency:     sc.metrics.TotalLatency,
+	}
 }
 
 func (cm *CollectorMetrics) recordCollected() {

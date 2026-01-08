@@ -313,8 +313,18 @@ func (ce *CacheEngine) GetMetrics() *Metrics {
 	ce.metrics.mutex.RLock()
 	defer ce.metrics.mutex.RUnlock()
 
-	metricsCopy := *ce.metrics
-	return &metricsCopy
+	// Return a copy without the mutex to avoid copying a lock value
+	return &Metrics{
+		Hits:                ce.metrics.Hits,
+		Misses:              ce.metrics.Misses,
+		Sets:                ce.metrics.Sets,
+		Deletes:             ce.metrics.Deletes,
+		Evictions:           ce.metrics.Evictions,
+		Errors:              ce.metrics.Errors,
+		TotalRequests:       ce.metrics.TotalRequests,
+		TotalResponseTime:   ce.metrics.TotalResponseTime,
+		AverageResponseTime: ce.metrics.AverageResponseTime,
+	}
 }
 
 func (ce *CacheEngine) getStore() Store {

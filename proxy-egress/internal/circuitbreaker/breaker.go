@@ -435,8 +435,19 @@ func (cb *CircuitBreaker) updateResponseTime(duration time.Duration) {
 func (cb *CircuitBreaker) Statistics() Statistics {
 	cb.mutex.RLock()
 	defer cb.mutex.RUnlock()
-	
-	return cb.stats
+
+	// Return a copy without the sync.Map to avoid copying a lock value
+	return Statistics{
+		TotalRequests:        cb.stats.TotalRequests,
+		TotalSuccesses:       cb.stats.TotalSuccesses,
+		TotalFailures:        cb.stats.TotalFailures,
+		TotalTimeouts:        cb.stats.TotalTimeouts,
+		TotalFallbacks:       cb.stats.TotalFallbacks,
+		TotalRejections:      cb.stats.TotalRejections,
+		StateChanges:         cb.stats.StateChanges,
+		LastStateChange:      cb.stats.LastStateChange,
+		AverageResponseTime:  cb.stats.AverageResponseTime,
+	}
 }
 
 func (cb *CircuitBreaker) Reset() {
