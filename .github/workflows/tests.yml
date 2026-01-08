@@ -38,8 +38,11 @@ jobs:
       - name: Install dependencies
         run: |
           cd api-server
+          pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements-test.txt
+          # Ensure pydantic v2 is installed (override any v1 pulled by dependencies)
+          pip install --upgrade 'pydantic>=2.5.0' 'pydantic-settings>=2.1.0'
 
       - name: Run integration tests
         env:
