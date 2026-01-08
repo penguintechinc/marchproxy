@@ -207,7 +207,7 @@ jobs:
         export MANAGER_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/manager:${{ needs.validate-release.outputs.tag }}
         export PROXY_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/proxy:${{ needs.validate-release.outputs.tag }}
 
-        docker-compose -f docker-compose.yml -f docker-compose.ci.yml up -d
+        docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d
 
         # Wait for services
         sleep 60
@@ -218,7 +218,7 @@ jobs:
         curl -f http://localhost:8090/metrics || exit 1
 
         # Cleanup
-        docker-compose down -v
+        docker compose down -v
 
   create-github-release:
     name: Create GitHub Release

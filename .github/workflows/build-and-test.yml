@@ -92,7 +92,7 @@ jobs:
       - name: Run gosec security scanner
         working-directory: ./proxy-egress
         run: |
-          go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
           gosec -fmt json -out gosec-report.json ./... || true
           cat gosec-report.json
 
@@ -287,22 +287,22 @@ jobs:
 
       - name: Run integration tests
         run: |
-          # Update docker-compose to use built images
+          # Update docker compose to use built images
           export MANAGER_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME_MANAGER }}:${{ github.ref_name }}"
           export PROXY_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME_PROXY }}:${{ github.ref_name }}"
-          
+
           # Start services
-          docker-compose -f docker-compose.yml -f docker-compose.ci.yml up -d
-          
+          docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d
+
           # Wait for services to be healthy
-          timeout 300s bash -c 'until docker-compose ps | grep -q "healthy"; do sleep 10; done'
+          timeout 300s bash -c 'until docker compose ps | grep -q "healthy"; do sleep 10; done'
           
           # Run basic connectivity tests
           curl -f http://localhost:8000/healthz || exit 1
           curl -f http://localhost:8081/healthz || exit 1
           
           # Cleanup
-          docker-compose down -v
+          docker compose down -v
 
   # Security scanning
   security-scan:
@@ -368,9 +368,9 @@ jobs:
           \`\`\`bash
           # Download docker-compose.yml
           curl -L -O https://raw.githubusercontent.com/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')/$VERSION/docker-compose.yml
-          
+
           # Start MarchProxy
-          docker-compose up -d
+          docker compose up -d
           
           # Access web interface
           open http://localhost:8000

@@ -113,7 +113,7 @@ jobs:
 
     - name: Run gosec security scanner for Go
       run: |
-        go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+        go install github.com/securego/gosec/v2/cmd/gosec@latest
         cd proxy-egress && gosec -fmt sarif -out gosec-results-egress.sarif ./... || true
         cd ../proxy-ingress && gosec -fmt sarif -out gosec-results-ingress.sarif ./... || true
 
@@ -165,13 +165,13 @@ jobs:
       run: |
         export MANAGER_IMAGE=marchproxy/manager:test
         export PROXY_IMAGE=marchproxy/proxy:test
-        docker-compose -f docker-compose.yml -f docker-compose.ci.yml up -d
+        docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d
 
         # Wait for services to be healthy
         timeout 300 bash -c '
-          until docker-compose ps | grep -q "Up (healthy)" || docker-compose ps | grep -q "Up"; do
+          until docker compose ps | grep -q "Up (healthy)" || docker compose ps | grep -q "Up"; do
             echo "Waiting for services to become healthy..."
-            docker-compose ps
+            docker compose ps
             sleep 10
           done
         '
@@ -200,9 +200,9 @@ jobs:
       if: failure()
       run: |
         mkdir -p test-logs
-        docker-compose logs manager > test-logs/manager.log
-        docker-compose logs proxy > test-logs/proxy.log
-        docker-compose logs postgres > test-logs/postgres.log
+        docker compose logs manager > test-logs/manager.log
+        docker compose logs proxy > test-logs/proxy.log
+        docker compose logs postgres > test-logs/postgres.log
 
     - name: Upload logs
       if: failure()
@@ -214,7 +214,7 @@ jobs:
     - name: Cleanup
       if: always()
       run: |
-        docker-compose -f docker-compose.yml -f docker-compose.ci.yml down -v
+        docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v
 
   build-production:
     name: Build Production Images
@@ -299,11 +299,11 @@ jobs:
       run: |
         export MANAGER_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/manager:${{ github.sha }}
         export PROXY_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/proxy:${{ github.sha }}
-        docker-compose -f docker-compose.yml -f docker-compose.ci.yml up -d
+        docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d
 
         # Wait for services
         timeout 300 bash -c '
-          until docker-compose ps | grep -q "Up"; do
+          until docker compose ps | grep -q "Up"; do
             echo "Waiting for services..."
             sleep 10
           done
@@ -328,7 +328,7 @@ jobs:
     - name: Cleanup performance test
       if: always()
       run: |
-        docker-compose -f docker-compose.yml -f docker-compose.ci.yml down -v
+        docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v
 
   release:
     name: Create Release
