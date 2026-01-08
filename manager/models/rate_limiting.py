@@ -311,7 +311,7 @@ class XDPRateLimitModel:
             Field('priority', type='integer', default=100),  # Lower number = higher priority
 
             # Metadata and tracking
-            Field('created_by', type='reference auth_user', required=True),
+            Field('created_by', type='reference users', required=True),
             Field('created_at', type='datetime', default=datetime.utcnow),
             Field('updated_at', type='datetime', update=datetime.utcnow),
             Field('is_active', type='boolean', default=True),
@@ -358,7 +358,7 @@ class XDPRateLimitModel:
             Field('description', type='text'),
             Field('whitelist_type', type='string', length=32, default='manual'),  # manual, automatic, temporary
             Field('expires_at', type='datetime'),  # For temporary whitelisting
-            Field('created_by', type='reference auth_user', required=True),
+            Field('created_by', type='reference users', required=True),
             Field('created_at', type='datetime', default=datetime.utcnow),
             Field('is_active', type='boolean', default=True),
         )

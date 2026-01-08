@@ -189,7 +189,7 @@ class APITokenManager:
                 Field('token_id', type='string', unique=True, required=True, length=64),
                 Field('name', type='string', required=True, length=100),
                 Field('token_hash', type='string', required=True, length=255),
-                Field('user_id', type='reference auth_user'),
+                Field('user_id', type='reference users'),
                 Field('service_id', type='integer'),  # Will be foreign key when services table exists
                 Field('cluster_id', type='integer'),  # Will be foreign key when clusters table exists
                 Field('permissions', type='json'),

@@ -11,7 +11,7 @@ import base64
 import httpx
 import hashlib
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -50,7 +50,7 @@ class CertificateModel:
             Field('last_renewal_attempt', type='datetime'),
             Field('renewal_error', type='text'),
             Field('is_active', type='boolean', default=True),
-            Field('created_by', type='reference auth_user', required=True),
+            Field('created_by', type='reference users', required=True),
             Field('created_at', type='datetime', default=datetime.utcnow),
             Field('updated_at', type='datetime', update=datetime.utcnow),
             Field('metadata', type='json'),
@@ -589,7 +589,7 @@ class TLSProxyCAModel:
             Field('license_validated', type='boolean', default=False),
 
             # Management
-            Field('created_by', type='reference auth_user', required=True),
+            Field('created_by', type='reference users', required=True),
             Field('created_at', type='datetime', default=datetime.utcnow),
             Field('updated_at', type='datetime', update=datetime.utcnow),
             Field('is_active', type='boolean', default=True),
@@ -628,7 +628,7 @@ class TLSProxyCAModel:
             Field('license_validated', type='boolean', default=False),
 
             # Management
-            Field('created_by', type='reference auth_user', required=True),
+            Field('created_by', type='reference users', required=True),
             Field('created_at', type='datetime', default=datetime.utcnow),
             Field('updated_at', type='datetime', update=datetime.utcnow),
             Field('is_active', type='boolean', default=True),

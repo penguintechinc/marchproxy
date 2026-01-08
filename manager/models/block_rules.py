@@ -29,6 +29,35 @@ class BlockRuleModel:
     VALID_SOURCES = ['manual', 'threat_feed', 'api']
 
     @staticmethod
+    def define_table(db: DAL):
+        """Define block_rules table in database"""
+        return db.define_table(
+            'block_rules',
+            Field('name', type='string', required=True, length=100),
+            Field('description', type='text'),
+            Field('cluster_id', type='reference clusters', required=True),
+            Field('rule_type', type='string', required=True, length=20),
+            Field('layer', type='string', required=True, length=10),
+            Field('value', type='string', required=True, length=255),
+            Field('ports', type='json'),
+            Field('protocols', type='json'),
+            Field('wildcard', type='boolean', default=False),
+            Field('match_type', type='string', default='exact', length=20),
+            Field('action', type='string', default='deny', length=20),
+            Field('priority', type='integer', default=1000),
+            Field('apply_to_alb', type='boolean', default=True),
+            Field('apply_to_nlb', type='boolean', default=True),
+            Field('apply_to_egress', type='boolean', default=True),
+            Field('source', type='string', default='manual', length=20),
+            Field('source_feed_name', type='string', length=100),
+            Field('expires_at', type='datetime'),
+            Field('is_active', type='boolean', default=True),
+            Field('created_by', type='reference users'),
+            Field('created_at', type='datetime', default=datetime.utcnow),
+            Field('updated_at', type='datetime', update=datetime.utcnow),
+        )
+
+    @staticmethod
     def validate_ip(value: str) -> bool:
         """Validate IPv4 or IPv6 address"""
         import ipaddress

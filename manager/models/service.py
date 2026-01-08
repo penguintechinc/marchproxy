@@ -39,7 +39,7 @@ class ServiceModel:
             Field('health_check_path', type='string', length=255),
             Field('health_check_interval', type='integer', default=30),
             Field('is_active', type='boolean', default=True),
-            Field('created_by', type='reference auth_user', required=True),
+            Field('created_by', type='reference users', required=True),
             Field('created_at', type='datetime', default=datetime.utcnow),
             Field('updated_at', type='datetime', update=datetime.utcnow),
             Field('metadata', type='json'),
@@ -184,7 +184,7 @@ class ServiceModel:
         # If user_id provided, filter by user assignments
         if user_id:
             # Check if user is admin
-            user = db.auth_user[user_id]
+            user = db.users[user_id]
             if not user or not user.get('is_admin', False):
                 # Filter by user service assignments
                 query = query & (
@@ -259,9 +259,9 @@ class UserServiceAssignmentModel:
         """Define user service assignment table"""
         return db.define_table(
             'user_service_assignments',
-            Field('user_id', type='reference auth_user', required=True),
+            Field('user_id', type='reference users', required=True),
             Field('service_id', type='reference services', required=True),
-            Field('assigned_by', type='reference auth_user', required=True),
+            Field('assigned_by', type='reference users', required=True),
             Field('assigned_at', type='datetime', default=datetime.utcnow),
             Field('is_active', type='boolean', default=True),
         )
@@ -325,7 +325,7 @@ class UserServiceAssignmentModel:
     def check_user_service_access(db: DAL, user_id: int, service_id: int) -> bool:
         """Check if user has access to service"""
         # Check if user is admin
-        user = db.auth_user[user_id]
+        user = db.users[user_id]
         if user and user.get('is_admin', False):
             return True
 

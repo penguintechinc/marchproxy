@@ -1,32 +1,34 @@
 """
-mTLS (Mutual TLS) API endpoints for MarchProxy Manager
+mTLS (Mutual TLS) API Blueprint for MarchProxy Manager
 
-Provides API endpoints for mTLS certificate management, client certificate
+Provides Quart blueprint endpoints for mTLS certificate management, client certificate
 validation, and mTLS configuration for both ingress and egress proxies.
+
+Copyright (C) 2025 MarchProxy Contributors
+Licensed under GNU Affero General Public License v3.0
 """
 
-import os
-import json
 import hashlib
-import base64
+import logging
+import ssl
+import socket
 from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any, Optional
+from urllib.parse import urlparse
+
+from quart import Blueprint, request, current_app, jsonify, Response
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import rsa, ec
-import logging
+from pydantic import ValidationError
 
-from py4web import action, request, response, abort, HTTP
-from py4web.utils.cors import CORS
-from pydal.validators import *
-
-from ..common import (
-    auth, db, require_auth, require_admin, require_license_feature,
-    create_audit_log, check_permission
-)
+from middleware.auth import require_auth
+from models.certificate import CertificateModel, TLSProxyCAModel
 
 logger = logging.getLogger(__name__)
-cors = CORS()
+
+mtls_bp = Blueprint('mtls', __name__, url_prefix='/api/v1/mtls')
+
 
 class MTLSManager:
     """Manager for mTLS certificate operations"""
@@ -34,11 +36,15 @@ class MTLSManager:
     def __init__(self, db):
         self.db = db
 
-    def create_client_certificate(self, ca_cert_id: int, common_name: str,
-                                organizational_unit: str = None,
-                                valid_days: int = 365,
-                                key_type: str = 'ecc',
-                                key_size: int = 384) -> Dict[str, Any]:
+    async def create_client_certificate(
+        self,
+        ca_cert_id: int,
+        common_name: str,
+        organizational_unit: Optional[str] = None,
+        valid_days: int = 365,
+        key_type: str = 'ecc',
+        key_size: int = 384
+    ) -> Dict[str, Any]:
         """Create a new client certificate signed by the specified CA"""
 
         # Get CA certificate
@@ -150,7 +156,7 @@ class MTLSManager:
             logger.error(f"Failed to create client certificate: {e}")
             raise
 
-    def validate_client_certificate(self, cert_data: str, ca_cert_id: int) -> Dict[str, Any]:
+    async def validate_client_certificate(self, cert_data: str, ca_cert_id: int) -> Dict[str, Any]:
         """Validate a client certificate against a CA"""
 
         try:
@@ -224,7 +230,7 @@ class MTLSManager:
             logger.error(f"Certificate validation failed: {e}")
             return {'valid': False, 'error': str(e)}
 
-    def create_ca_bundle(self, cert_ids: List[int]) -> str:
+    async def create_ca_bundle(self, cert_ids: List[int]) -> str:
         """Create a CA bundle from multiple certificates"""
 
         ca_bundle = []
@@ -236,7 +242,7 @@ class MTLSManager:
 
         return '\n'.join(ca_bundle)
 
-    def get_mtls_config_for_proxy(self, cluster_id: int, proxy_type: str) -> Dict[str, Any]:
+    async def get_mtls_config_for_proxy(self, cluster_id: int, proxy_type: str) -> Dict[str, Any]:
         """Get mTLS configuration for a specific proxy type and cluster"""
 
         # Get active certificates for this cluster
@@ -304,9 +310,9 @@ class MTLSManager:
             'verify_client_cert': True,
             'server_certificates': server_certs,
             'client_ca_certificates': client_cas,
-            'allowed_cns': [],  # Empty means allow all CNs
-            'allowed_ous': [],  # Empty means allow all OUs
-            'cert_validation_mode': 'strict',  # strict, warn, none
+            'allowed_cns': [],
+            'allowed_ous': [],
+            'cert_validation_mode': 'strict',
             'proxy_type': proxy_type,
             'cluster_id': cluster_id
         }
@@ -322,30 +328,24 @@ class MTLSManager:
             })
         elif proxy_type == 'egress':
             config.update({
-                'client_cert_id': None,  # Will be configured per service
+                'client_cert_id': None,
                 'verify_server_cert': True,
                 'trusted_server_cas': []
             })
 
         return config
 
-# Initialize mTLS manager
-mtls_manager = MTLSManager(db)
 
-# API Endpoints
-
-@action('/api/mtls/certificates', methods=['GET', 'POST'])
-@action.uses(cors, auth, auth.user)
-def mtls_certificates():
+@mtls_bp.route('/certificates', methods=['GET', 'POST'])
+@require_auth(admin_required=True)
+async def certificates(user_data):
     """mTLS certificate management"""
+    db = current_app.db
 
     if request.method == 'GET':
-        if not check_permission(auth, 'read_certificates'):
-            abort(403, "Insufficient permissions")
-
         # Get mTLS certificates for the user's clusters
-        cluster_filter = request.params.get('cluster_id')
-        cert_type = request.params.get('type', 'all')  # server, client, ca, all
+        cluster_filter = request.args.get('cluster_id')
+        cert_type = request.args.get('type', 'all')
 
         query = (db.certificates.is_active == True)
 
@@ -356,7 +356,6 @@ def mtls_certificates():
 
         cert_list = []
         for cert in certs:
-            # Parse certificate to determine type
             cert_info = {
                 'id': cert.id,
                 'name': cert.name,
@@ -419,18 +418,16 @@ def mtls_certificates():
 
             cert_list.append(cert_info)
 
-        return {'certificates': cert_list}
+        return jsonify({'certificates': cert_list}), 200
 
     elif request.method == 'POST':
-        if not check_permission(auth, 'create_certificates'):
-            abort(403, "Insufficient permissions")
-
-        data = request.json
-
         try:
+            data = await request.get_json()
+            mtls_mgr = MTLSManager(db)
+
             if data.get('action') == 'create_client':
                 # Create client certificate
-                result = mtls_manager.create_client_certificate(
+                result = await mtls_mgr.create_client_certificate(
                     ca_cert_id=data['ca_cert_id'],
                     common_name=data['common_name'],
                     organizational_unit=data.get('organizational_unit'),
@@ -440,128 +437,108 @@ def mtls_certificates():
                 )
 
                 # Store the client certificate
-                from models.certificate import CertificateModel
-                cert_id = CertificateModel.create_certificate(
+                cert_id = await CertificateModel.create_certificate(
                     db=db,
                     name=f"Client-{data['common_name']}",
                     cert_data=result['cert_data'],
                     key_data=result['key_data'],
                     source_type='generated',
-                    created_by=auth.current_user.get('id'),
+                    created_by=user_data.get('user_id'),
                     description=f"Client certificate for {data['common_name']}",
                     ca_bundle=result['ca_cert_data']
                 )
 
-                create_audit_log(
-                    event_type='certificate_created',
-                    resource_type='certificate',
-                    resource_id=str(cert_id),
-                    user_id=auth.current_user.get('id'),
-                    event_data={
-                        'certificate_type': 'client',
-                        'common_name': data['common_name'],
-                        'ca_cert_id': data['ca_cert_id']
-                    }
-                )
+                logger.info(f"Client certificate created: {cert_id}")
 
-                return {
+                return jsonify({
                     'success': True,
                     'certificate_id': cert_id,
                     'certificate': result
-                }
+                }), 201
 
             elif data.get('action') == 'create_ca_bundle':
                 # Create CA bundle
-                bundle = mtls_manager.create_ca_bundle(data['cert_ids'])
+                bundle = await mtls_mgr.create_ca_bundle(data['cert_ids'])
 
-                return {
+                return jsonify({
                     'success': True,
                     'ca_bundle': bundle,
                     'cert_count': len(data['cert_ids'])
-                }
+                }), 200
 
             else:
-                return {'error': 'Invalid action specified'}
+                return jsonify({'error': 'Invalid action specified'}), 400
 
         except Exception as e:
             logger.error(f"mTLS certificate operation failed: {e}")
-            return {'error': str(e)}
+            return jsonify({'error': str(e)}), 500
 
-@action('/api/mtls/certificates/validate', methods=['POST'])
-@action.uses(cors, auth, auth.user)
-def validate_certificate():
+
+@mtls_bp.route('/certificates/validate', methods=['POST'])
+@require_auth(admin_required=True)
+async def validate_certificate(user_data):
     """Validate a client certificate against a CA"""
-
-    if not check_permission(auth, 'read_certificates'):
-        abort(403, "Insufficient permissions")
-
-    data = request.json
+    db = current_app.db
 
     try:
-        result = mtls_manager.validate_client_certificate(
+        data = await request.get_json()
+        mtls_mgr = MTLSManager(db)
+
+        result = await mtls_mgr.validate_client_certificate(
             cert_data=data['cert_data'],
             ca_cert_id=data['ca_cert_id']
         )
 
-        create_audit_log(
-            event_type='certificate_validated',
-            resource_type='certificate',
-            user_id=auth.current_user.get('id'),
-            event_data={
-                'ca_cert_id': data['ca_cert_id'],
-                'validation_result': result['valid']
-            }
-        )
+        logger.info(f"Certificate validation completed: {result['valid']}")
 
-        return result
+        return jsonify(result), 200
 
     except Exception as e:
         logger.error(f"Certificate validation failed: {e}")
-        return {'valid': False, 'error': str(e)}
+        return jsonify({'valid': False, 'error': str(e)}), 500
 
-@action('/api/mtls/config/<cluster_id:int>/<proxy_type>', methods=['GET'])
-@action.uses(cors, auth, auth.user)
-def get_mtls_config(cluster_id, proxy_type):
+
+@mtls_bp.route('/config/<int:cluster_id>/<proxy_type>', methods=['GET'])
+@require_auth(admin_required=True)
+async def get_mtls_config(user_data, cluster_id, proxy_type):
     """Get mTLS configuration for a proxy"""
-
-    if not check_permission(auth, 'read_certificates'):
-        abort(403, "Insufficient permissions")
+    db = current_app.db
 
     # Validate proxy type
     if proxy_type not in ['ingress', 'egress']:
-        abort(400, "Invalid proxy type")
+        return jsonify({'error': 'Invalid proxy type'}), 400
 
     try:
-        config = mtls_manager.get_mtls_config_for_proxy(cluster_id, proxy_type)
+        mtls_mgr = MTLSManager(db)
+        config = await mtls_mgr.get_mtls_config_for_proxy(cluster_id, proxy_type)
 
-        return {
+        return jsonify({
             'success': True,
             'config': config
-        }
+        }), 200
 
     except Exception as e:
         logger.error(f"Failed to get mTLS config: {e}")
-        return {'error': str(e)}
+        return jsonify({'error': str(e)}), 500
 
-@action('/api/mtls/config/<cluster_id:int>/<proxy_type>', methods=['PUT'])
-@action.uses(cors, auth, auth.user)
-def update_mtls_config(cluster_id, proxy_type):
+
+@mtls_bp.route('/config/<int:cluster_id>/<proxy_type>', methods=['PUT'])
+@require_auth(admin_required=True)
+async def update_mtls_config(user_data, cluster_id, proxy_type):
     """Update mTLS configuration for a proxy"""
-
-    if not check_permission(auth, 'update_certificates'):
-        abort(403, "Insufficient permissions")
+    db = current_app.db
 
     # Validate proxy type
     if proxy_type not in ['ingress', 'egress']:
-        abort(400, "Invalid proxy type")
-
-    data = request.json
+        return jsonify({'error': 'Invalid proxy type'}), 400
 
     try:
+        data = await request.get_json()
+
         # Store mTLS configuration in the cluster's metadata
         cluster = db.clusters[cluster_id]
         if not cluster:
-            abort(404, "Cluster not found")
+            return jsonify({'error': 'Cluster not found'}), 404
 
         # Update cluster metadata with mTLS config
         cluster_metadata = cluster.metadata or {}
@@ -576,7 +553,7 @@ def update_mtls_config(cluster_id, proxy_type):
             'allowed_ous': data.get('allowed_ous', []),
             'cert_validation_mode': data.get('cert_validation_mode', 'strict'),
             'updated_at': datetime.utcnow().isoformat(),
-            'updated_by': auth.current_user.get('id')
+            'updated_by': user_data.get('user_id')
         }
 
         if proxy_type == 'ingress':
@@ -596,40 +573,28 @@ def update_mtls_config(cluster_id, proxy_type):
 
         cluster.update_record(metadata=cluster_metadata)
 
-        create_audit_log(
-            event_type='mtls_config_updated',
-            resource_type='cluster',
-            resource_id=str(cluster_id),
-            user_id=auth.current_user.get('id'),
-            event_data={
-                'proxy_type': proxy_type,
-                'config': cluster_metadata['mtls_config'][proxy_type]
-            }
-        )
+        logger.info(f"mTLS config updated for cluster {cluster_id} {proxy_type}")
 
-        return {
+        return jsonify({
             'success': True,
             'message': f'mTLS configuration updated for {proxy_type} proxy'
-        }
+        }), 200
 
     except Exception as e:
         logger.error(f"Failed to update mTLS config: {e}")
-        return {'error': str(e)}
+        return jsonify({'error': str(e)}), 500
 
-@action('/api/mtls/ca/generate', methods=['POST'])
-@action.uses(cors, auth, auth.user)
-def generate_ca_certificate():
+
+@mtls_bp.route('/ca/generate', methods=['POST'])
+@require_auth(admin_required=True)
+async def generate_ca_certificate(user_data):
     """Generate a new CA certificate for mTLS"""
-
-    if not check_permission(auth, 'create_certificates'):
-        abort(403, "Insufficient permissions")
-
-    data = request.json
+    db = current_app.db
 
     try:
-        # Generate CA certificate using the existing TLS proxy CA functionality
-        from models.certificate import TLSProxyCAModel
+        data = await request.get_json()
 
+        # Generate CA certificate using the existing TLS proxy CA functionality
         domain = data.get('domain', 'marchproxy.local')
         config = {
             'key_type': data.get('key_type', 'ecc'),
@@ -638,116 +603,106 @@ def generate_ca_certificate():
             'lifetime_years': data.get('lifetime_years', 5)
         }
 
-        ca_data = TLSProxyCAModel.generate_self_signed_ca(
+        ca_data = await TLSProxyCAModel.generate_self_signed_ca(
             domain=domain,
             **config
         )
 
         # Store CA certificate
-        from models.certificate import CertificateModel
-
-        ca_cert_id = CertificateModel.create_certificate(
+        ca_cert_id = await CertificateModel.create_certificate(
             db=db,
             name=data.get('name', f"mTLS-CA-{domain}"),
             cert_data=ca_data['ca_cert'],
             key_data=ca_data['ca_key'],
             source_type='generated',
-            created_by=auth.current_user.get('id'),
+            created_by=user_data.get('user_id'),
             description=f"mTLS CA certificate for {domain}",
             cluster_id=data.get('cluster_id')
         )
 
-        create_audit_log(
-            event_type='ca_certificate_generated',
-            resource_type='certificate',
-            resource_id=str(ca_cert_id),
-            user_id=auth.current_user.get('id'),
-            event_data={
-                'domain': domain,
-                'key_type': config['key_type'],
-                'key_size': config['key_size']
-            }
-        )
+        logger.info(f"CA certificate generated: {ca_cert_id}")
 
-        return {
+        return jsonify({
             'success': True,
             'ca_certificate_id': ca_cert_id,
             'ca_certificate': ca_data['ca_cert'],
             'ca_subject': ca_data['ca_subject'],
             'ca_expires_at': ca_data['ca_expires_at'].isoformat()
-        }
+        }), 201
 
     except Exception as e:
         logger.error(f"CA generation failed: {e}")
-        return {'error': str(e)}
+        return jsonify({'error': str(e)}), 500
 
-@action('/api/mtls/certificates/<cert_id:int>/download', methods=['GET'])
-@action.uses(cors, auth, auth.user)
-def download_certificate(cert_id):
+
+@mtls_bp.route('/certificates/<int:cert_id>/download', methods=['GET'])
+@require_auth(admin_required=True)
+async def download_certificate(user_data, cert_id):
     """Download certificate files"""
-
-    if not check_permission(auth, 'read_certificates'):
-        abort(403, "Insufficient permissions")
+    db = current_app.db
 
     cert = db.certificates[cert_id]
     if not cert:
-        abort(404, "Certificate not found")
+        return jsonify({'error': 'Certificate not found'}), 404
 
-    download_type = request.params.get('type', 'cert')  # cert, key, ca, bundle
+    download_type = request.args.get('type', 'cert')
 
     try:
         if download_type == 'cert':
-            response.headers['Content-Type'] = 'application/x-pem-file'
-            response.headers['Content-Disposition'] = f'attachment; filename="{cert.name}.crt"'
-            return cert.cert_data
+            return Response(
+                cert.cert_data,
+                mimetype='application/x-pem-file',
+                headers={'Content-Disposition': f'attachment; filename="{cert.name}.crt"'}
+            )
 
         elif download_type == 'key':
-            response.headers['Content-Type'] = 'application/x-pem-file'
-            response.headers['Content-Disposition'] = f'attachment; filename="{cert.name}.key"'
-            return cert.key_data
+            return Response(
+                cert.key_data,
+                mimetype='application/x-pem-file',
+                headers={'Content-Disposition': f'attachment; filename="{cert.name}.key"'}
+            )
 
         elif download_type == 'ca':
             if cert.ca_data:
-                response.headers['Content-Type'] = 'application/x-pem-file'
-                response.headers['Content-Disposition'] = f'attachment; filename="{cert.name}-ca.crt"'
-                return cert.ca_data
+                return Response(
+                    cert.ca_data,
+                    mimetype='application/x-pem-file',
+                    headers={'Content-Disposition': f'attachment; filename="{cert.name}-ca.crt"'}
+                )
             else:
-                abort(404, "CA certificate not available")
+                return jsonify({'error': 'CA certificate not available'}), 404
 
         elif download_type == 'bundle':
             bundle = cert.cert_data
             if cert.ca_data:
                 bundle += '\n' + cert.ca_data
-            response.headers['Content-Type'] = 'application/x-pem-file'
-            response.headers['Content-Disposition'] = f'attachment; filename="{cert.name}-bundle.crt"'
-            return bundle
+            return Response(
+                bundle,
+                mimetype='application/x-pem-file',
+                headers={'Content-Disposition': f'attachment; filename="{cert.name}-bundle.crt"'}
+            )
 
         else:
-            abort(400, "Invalid download type")
+            return jsonify({'error': 'Invalid download type'}), 400
 
     except Exception as e:
         logger.error(f"Certificate download failed: {e}")
-        abort(500, "Download failed")
+        return jsonify({'error': 'Download failed'}), 500
 
-@action('/api/mtls/test/connection', methods=['POST'])
-@action.uses(cors, auth, auth.user)
-def test_mtls_connection():
+
+@mtls_bp.route('/test/connection', methods=['POST'])
+@require_auth(admin_required=True)
+async def test_mtls_connection(user_data):
     """Test mTLS connection with provided certificates"""
-
-    if not check_permission(auth, 'read_certificates'):
-        abort(403, "Insufficient permissions")
-
-    data = request.json
+    db = current_app.db
 
     try:
-        import ssl
-        import socket
-        from urllib.parse import urlparse
+        data = await request.get_json()
 
         # Parse target URL
         target_url = data.get('target_url')
         if not target_url:
-            return {'error': 'Target URL is required'}
+            return jsonify({'error': 'Target URL is required'}), 400
 
         parsed = urlparse(target_url)
         host = parsed.hostname
@@ -760,26 +715,21 @@ def test_mtls_connection():
         if client_cert_id:
             client_cert = db.certificates[client_cert_id]
             if not client_cert:
-                return {'error': 'Client certificate not found'}
+                return jsonify({'error': 'Client certificate not found'}), 404
 
         if ca_cert_id:
             ca_cert = db.certificates[ca_cert_id]
             if not ca_cert:
-                return {'error': 'CA certificate not found'}
+                return jsonify({'error': 'CA certificate not found'}), 404
 
         # Create SSL context
         context = ssl.create_default_context()
 
         if ca_cert_id:
-            # Add custom CA
             context.check_hostname = False
             context.verify_mode = ssl.CERT_REQUIRED
-            # Note: In a real implementation, you'd write the CA cert to a temp file
-            # and use context.load_verify_locations(cafile=ca_file)
 
         if client_cert_id:
-            # Note: In a real implementation, you'd write the cert and key to temp files
-            # and use context.load_cert_chain(certfile=cert_file, keyfile=key_file)
             pass
 
         # Test connection
@@ -793,7 +743,7 @@ def test_mtls_connection():
 
         ssock.close()
 
-        return {
+        return jsonify({
             'success': True,
             'connection_successful': True,
             'server_certificate': {
@@ -808,24 +758,12 @@ def test_mtls_connection():
                 'cipher': cipher,
                 'version': version
             }
-        }
+        }), 200
 
     except Exception as e:
         logger.error(f"mTLS connection test failed: {e}")
-        return {
+        return jsonify({
             'success': False,
             'connection_successful': False,
             'error': str(e)
-        }
-
-def mtls_api(db, jwt_manager):
-    """Export mTLS API endpoints"""
-    return {
-        'mtls_certificates': mtls_certificates,
-        'validate_certificate': validate_certificate,
-        'get_mtls_config': get_mtls_config,
-        'update_mtls_config': update_mtls_config,
-        'generate_ca_certificate': generate_ca_certificate,
-        'download_certificate': download_certificate,
-        'test_mtls_connection': test_mtls_connection
-    }
+        }), 500

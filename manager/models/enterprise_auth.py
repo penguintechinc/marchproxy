@@ -17,10 +17,18 @@ from urllib.parse import urlencode, parse_qs
 import httpx
 from pydal import DAL, Field
 from pydantic import BaseModel, validator, EmailStr
-from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT
-from saml2.client import Saml2Client
-from saml2.config import Config as Saml2Config
 import logging
+
+# Optional SAML2 support - import lazily
+try:
+    from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT
+    from saml2.client import Saml2Client
+    from saml2.config import Config as Saml2Config
+    SAML2_AVAILABLE = True
+except ImportError:
+    SAML2_AVAILABLE = False
+    BINDING_HTTP_POST = BINDING_HTTP_REDIRECT = None
+    Saml2Client = Saml2Config = None
 
 logger = logging.getLogger(__name__)
 

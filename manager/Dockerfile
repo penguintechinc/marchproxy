@@ -1,13 +1,15 @@
 # MarchProxy Manager Dockerfile
-# Python/py4web management server
+# Python/Quart async management server
 
 # Build stage
 FROM python:3.12-slim AS builder
 
 # Install build dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
+    libxml2-dev \
+    libxslt1-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
@@ -26,8 +28,10 @@ COPY . .
 FROM python:3.12-slim AS production
 
 # Install runtime dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
+    libxml2 \
+    libxslt1.1 \
     curl \
     dumb-init \
     && rm -rf /var/lib/apt/lists/*
@@ -57,12 +61,10 @@ ENV PYTHONPATH="/app"
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1
-ENV PY4WEB_APPS_FOLDER=/app/apps
-ENV PY4WEB_SERVICE_FOLDER=/app
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:8000/healthz || exit 1
 
 # Expose port
 EXPOSE 8000
@@ -70,8 +72,8 @@ EXPOSE 8000
 # Switch to non-root user
 USER marchproxy
 
-# Start command
-CMD ["dumb-init", "python", "-m", "py4web", "run", "apps", "--host", "0.0.0.0", "--port", "8000"]
+# Start command - Quart with Hypercorn ASGI server
+CMD ["dumb-init", "hypercorn", "quart_app:create_app()", "--bind", "0.0.0.0:8000", "--workers", "4"]
 
 # Development stage
 FROM production AS development
@@ -83,12 +85,13 @@ USER root
 RUN pip install --no-cache-dir \
     pytest \
     pytest-cov \
+    pytest-asyncio \
     black \
     flake8 \
     mypy
 
 # Install development tools
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     vim \
     less \
@@ -97,8 +100,8 @@ RUN apt-get update && apt-get install -y \
 # Switch back to marchproxy user
 USER marchproxy
 
-# Override command for development
-CMD ["dumb-init", "python", "-m", "py4web", "run", "apps", "--host", "0.0.0.0", "--port", "8000", "--debug"]
+# Override command for development with auto-reload
+CMD ["dumb-init", "hypercorn", "quart_app:create_app()", "--bind", "0.0.0.0:8000", "--reload"]
 
 # Testing stage
 FROM development AS testing

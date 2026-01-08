@@ -30,7 +30,7 @@ class MappingModel:
             Field('auth_required', type='boolean', default=True),
             Field('priority', type='integer', default=100),
             Field('is_active', type='boolean', default=True),
-            Field('created_by', type='reference auth_user', required=True),
+            Field('created_by', type='reference users', required=True),
             Field('created_at', type='datetime', default=datetime.utcnow),
             Field('updated_at', type='datetime', update=datetime.utcnow),
             Field('comments', type='text'),
