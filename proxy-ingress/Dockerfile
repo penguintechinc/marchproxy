@@ -37,17 +37,21 @@ RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo \
     -tags netgo,osusergo \
     -o marchproxy-ingress ./cmd/proxy
 
-# Build health check binary
-RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo \
+# Build health check binary if it exists
+RUN if [ -d "./cmd/health" ]; then \
+    CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo \
     -ldflags='-w -s -extldflags "-static"' \
     -tags netgo,osusergo \
-    -o marchproxy-health ./cmd/health
+    -o marchproxy-health ./cmd/health; \
+    fi
 
-# Build metrics binary
-RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo \
+# Build metrics binary if it exists
+RUN if [ -d "./cmd/metrics" ]; then \
+    CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo \
     -ldflags='-w -s -extldflags "-static"' \
     -tags netgo,osusergo \
-    -o marchproxy-metrics ./cmd/metrics
+    -o marchproxy-metrics ./cmd/metrics; \
+    fi
 
 # Production stage - using debian:12-slim as standard
 FROM debian:12-slim AS production
@@ -75,18 +79,11 @@ WORKDIR /app
 
 # Copy binaries from builder
 COPY --from=builder /build/marchproxy-ingress /app/
-COPY --from=builder /build/marchproxy-health /app/
-COPY --from=builder /build/marchproxy-metrics /app/
-
-# Copy configuration files
-COPY --chown=marchproxy:marchproxy configs/ /app/configs/
 
 # Create necessary directories
-RUN mkdir -p /app/logs /app/certs /app/ebpf && \
-    chown -R marchproxy:marchproxy /app/logs /app/certs /app/ebpf
-
-# Make binaries executable
-RUN chmod +x /app/marchproxy-ingress /app/marchproxy-health /app/marchproxy-metrics
+RUN mkdir -p /app/logs /app/certs /app/ebpf /app/configs && \
+    chown -R marchproxy:marchproxy /app/logs /app/certs /app/ebpf /app/configs && \
+    chmod +x /app/marchproxy-ingress
 
 # Environment variables
 ENV PROXY_TYPE=ingress
@@ -188,13 +185,12 @@ WORKDIR /app
 
 # Copy binary from builder
 COPY --from=builder /build/marchproxy-ingress /app/
-COPY --from=builder /build/marchproxy-health /app/
 
 # Copy configuration
 COPY configs/ /app/configs/
 
 # Make executable
-RUN chmod +x /app/*
+RUN chmod +x /app/marchproxy-ingress
 
 # Debug entrypoint
 CMD ["bash"]

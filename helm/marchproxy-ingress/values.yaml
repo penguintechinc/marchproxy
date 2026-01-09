@@ -1,0 +1,368 @@
+# MarchProxy Ingress Helm Chart Values
+# High-performance reverse proxy with eBPF/XDP acceleration and mTLS
+
+# Global settings
+global:
+  # Global image registry
+  imageRegistry: ""
+  # Global image pull secrets
+  imagePullSecrets: []
+  # Global storage class
+  storageClass: ""
+
+# Image configuration
+image:
+  registry: docker.io
+  repository: marchproxy/proxy-ingress
+  tag: "v1.0.0"
+  pullPolicy: IfNotPresent
+
+# Deployment configuration
+replicaCount: 3
+
+# Update strategy
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+
+# Service configuration
+service:
+  # Service type: LoadBalancer for ingress traffic
+  type: LoadBalancer
+
+  # HTTP port
+  httpPort: 80
+  httpTargetPort: 80
+  httpNodePort: ""
+
+  # HTTPS port
+  httpsPort: 443
+  httpsTargetPort: 443
+  httpsNodePort: ""
+
+  # Admin/metrics port
+  adminPort: 8082
+  adminTargetPort: 8082
+
+  # Health check port
+  healthPort: 8083
+  healthTargetPort: 8083
+
+  # Service annotations for cloud provider load balancer
+  annotations:
+    # AWS NLB annotations
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "tcp"
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-protocol: "http"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-port: "8083"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-path: "/healthz"
+
+    # Azure annotations
+    # service.beta.kubernetes.io/azure-load-balancer-internal: "false"
+
+    # GCP annotations
+    # cloud.google.com/load-balancer-type: "Internal"
+
+  # Load balancer source ranges (restrict access)
+  loadBalancerSourceRanges: []
+  # - 10.0.0.0/8
+  # - 172.16.0.0/12
+  # - 192.168.0.0/16
+
+  # External traffic policy
+  externalTrafficPolicy: Local
+
+  # Session affinity
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+
+# Ingress mode configuration
+ingress:
+  # ALB mode: Application Load Balancer (L7)
+  # NLB mode: Network Load Balancer (L4)
+  mode: "nlb"  # Options: "alb", "nlb"
+
+  # ALB-specific configuration (when mode=alb)
+  alb:
+    enabled: false
+    className: "alb"
+    annotations:
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/backend-protocol: HTTPS
+      alb.ingress.kubernetes.io/healthcheck-path: /healthz
+      alb.ingress.kubernetes.io/healthcheck-port: "8083"
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+      alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS-1-2-2017-01
+    hosts:
+      - host: marchproxy.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: marchproxy-ingress-tls
+        hosts:
+          - marchproxy.example.com
+
+# Proxy configuration
+config:
+  # Log level: debug, info, warn, error
+  logLevel: "info"
+
+  # Proxy type
+  proxyType: "ingress"
+
+  # Configuration paths
+  configPath: "/app/configs"
+  logPath: "/app/logs"
+  certPath: "/app/certs"
+
+  # mTLS configuration
+  mtls:
+    enabled: true
+    serverCertPath: "/app/certs/ingress-server.crt"
+    serverKeyPath: "/app/certs/ingress-server.key"
+    clientCaPath: "/app/certs/client-ca-bundle.crt"
+    verifyClient: true
+
+  # eBPF/XDP acceleration
+  ebpf:
+    enabled: true
+  xdp:
+    enabled: false
+    interface: "eth0"
+
+  # Rate limiting
+  rateLimit:
+    enabled: true
+    requestsPerSecond: 10000
+    burstSize: 20000
+
+  # Health check
+  healthCheck:
+    enabled: true
+    interval: "10s"
+    timeout: "5s"
+    unhealthyThreshold: 3
+
+  # Connection settings
+  connection:
+    maxIdleConns: 1000
+    maxIdleConnsPerHost: 100
+    idleConnTimeout: "90s"
+    tlsHandshakeTimeout: "10s"
+    expectContinueTimeout: "1s"
+
+# Resources
+resources:
+  requests:
+    cpu: 1000m
+    memory: 1Gi
+  limits:
+    cpu: 4000m
+    memory: 4Gi
+
+# Horizontal Pod Autoscaler
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 60
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 30
+        - type: Pods
+          value: 4
+          periodSeconds: 30
+      selectPolicy: Max
+
+# Security context
+securityContext:
+  pod:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  container:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      add:
+        - NET_ADMIN
+        - NET_RAW
+      drop:
+        - ALL
+
+# Service account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# RBAC configuration
+rbac:
+  create: true
+  rules:
+    - apiGroups: [""]
+      resources: ["configmaps"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: [""]
+      resources: ["secrets"]
+      verbs: ["get", "list", "watch"]
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+# Health checks
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8083
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: 8083
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# Startup probe (for slow-starting containers)
+startupProbe:
+  httpGet:
+    path: /healthz
+    port: 8083
+  initialDelaySeconds: 0
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 30
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity rules
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/component
+                operator: In
+                values:
+                  - ingress
+          topologyKey: kubernetes.io/hostname
+
+# Priority class
+priorityClassName: ""
+
+# TLS certificates (if not using cert-manager)
+tls:
+  # Create TLS secret from values
+  createSecret: false
+  # Secret name
+  secretName: marchproxy-ingress-tls
+  # Certificate data (base64 encoded)
+  cert: ""
+  key: ""
+  # CA bundle for mTLS client verification
+  clientCa: ""
+
+# Certificates from cert-manager
+certManager:
+  enabled: false
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  commonName: marchproxy.example.com
+  dnsNames:
+    - marchproxy.example.com
+
+# ConfigMap for additional configuration
+configMap:
+  create: true
+  data: {}
+  # Custom configuration files can be added here
+
+# Monitoring and metrics
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    scrapeTimeout: 10s
+    labels: {}
+  prometheusRule:
+    enabled: false
+    rules: []
+
+# Persistence for logs (optional)
+persistence:
+  enabled: false
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  mountPath: /app/logs
+
+# Extra environment variables
+extraEnv: []
+# - name: CUSTOM_VAR
+#   value: "custom-value"
+
+# Extra volumes
+extraVolumes: []
+# - name: custom-volume
+#   configMap:
+#     name: custom-config
+
+# Extra volume mounts
+extraVolumeMounts: []
+# - name: custom-volume
+#   mountPath: /custom/path
+
+# Pod annotations
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8082"
+  prometheus.io/path: "/metrics"
+
+# Pod labels
+podLabels: {}
+
+# Lifecycle hooks
+lifecycle: {}
+# preStop:
+#   exec:
+#     command: ["/bin/sh", "-c", "sleep 15"]

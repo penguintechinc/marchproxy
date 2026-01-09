@@ -48,23 +48,29 @@ RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo \
     -tags netgo,osusergo \
     -o marchproxy-egress ./cmd/proxy
 
-# Build health check binary
-RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo \
+# Build health check binary if it exists
+RUN if [ -d "./cmd/health" ]; then \
+    CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo \
     -ldflags='-w -s -extldflags "-static"' \
     -tags netgo,osusergo \
-    -o marchproxy-health ./cmd/health
+    -o marchproxy-health ./cmd/health; \
+    fi
 
-# Build metrics binary
-RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo \
+# Build metrics binary if it exists
+RUN if [ -d "./cmd/metrics" ]; then \
+    CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo \
     -ldflags='-w -s -extldflags "-static"' \
     -tags netgo,osusergo \
-    -o marchproxy-metrics ./cmd/metrics
+    -o marchproxy-metrics ./cmd/metrics; \
+    fi
 
-# Build test client for testing
-RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo \
+# Build test client for testing if it exists
+RUN if [ -d "./cmd/test-client" ]; then \
+    CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo \
     -ldflags='-w -s -extldflags "-static"' \
     -tags netgo,osusergo \
-    -o test-client ./cmd/test-client
+    -o test-client ./cmd/test-client; \
+    fi
 
 # Production stage - using Envoy as base for L7 support
 ARG ENVOY_VERSION=v1.28-latest
@@ -74,10 +80,10 @@ FROM envoyproxy/envoy:${ENVOY_VERSION} AS production
 USER root
 
 # Install runtime dependencies for eBPF and networking
+# Note: libbpf1 not available in Ubuntu Focal (Envoy base), skip for now
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     tzdata \
-    libbpf1 \
     libelf1 \
     dumb-init \
     curl \
@@ -96,8 +102,7 @@ WORKDIR /app
 
 # Copy binaries from builder
 COPY --from=builder /build/marchproxy-egress /app/
-COPY --from=builder /build/marchproxy-health /app/
-COPY --from=builder /build/marchproxy-metrics /app/
+COPY --from=builder /build/test-client /app/
 
 # Copy configuration files
 COPY --chown=marchproxy:marchproxy configs/ /app/configs/
@@ -108,10 +113,8 @@ COPY --chown=marchproxy:marchproxy envoy/bootstrap.yaml /etc/envoy/envoy.yaml
 # Create necessary directories
 RUN mkdir -p /app/logs /app/certs /app/ebpf /etc/envoy && \
     chown -R marchproxy:marchproxy /app/logs /app/certs /app/ebpf && \
-    chown -R marchproxy:marchproxy /etc/envoy
-
-# Make binaries executable
-RUN chmod +x /app/marchproxy-egress /app/marchproxy-health /app/marchproxy-metrics
+    chown -R marchproxy:marchproxy /etc/envoy && \
+    chmod +x /app/marchproxy-egress /app/test-client
 
 # Environment variables - L4 proxy
 ENV PROXY_TYPE=egress
@@ -284,14 +287,16 @@ WORKDIR /app
 
 # Copy binary from builder
 COPY --from=builder /build/marchproxy-egress /app/
-COPY --from=builder /build/marchproxy-health /app/
 COPY --from=builder /build/test-client /app/
 
 # Copy configuration
 COPY configs/ /app/configs/
 
+# Copy Envoy configuration
+COPY envoy/bootstrap.yaml /etc/envoy/envoy.yaml
+
 # Make executable
-RUN chmod +x /app/*
+RUN chmod +x /app/marchproxy-egress /app/test-client
 
 # Debug entrypoint
 CMD ["bash"]

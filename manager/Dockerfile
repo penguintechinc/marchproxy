@@ -42,8 +42,9 @@ RUN groupadd -r marchproxy && useradd -r -g marchproxy marchproxy
 # Set working directory
 WORKDIR /app
 
-# Copy Python packages from builder
+# Copy Python packages from builder and set correct permissions
 COPY --from=builder /root/.local /home/marchproxy/.local
+RUN chown -R marchproxy:marchproxy /home/marchproxy/.local
 
 # Copy application code
 COPY --chown=marchproxy:marchproxy . .
@@ -57,7 +58,8 @@ RUN chmod +x scripts/*.sh 2>/dev/null || true
 
 # Set Python path to include user packages
 ENV PATH="/home/marchproxy/.local/bin:$PATH"
-ENV PYTHONPATH="/app"
+ENV PYTHONPATH="/app:/home/marchproxy/.local/lib/python3.12/site-packages:$PYTHONPATH"
+ENV PYTHONUSERBASE="/home/marchproxy"
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1
@@ -73,7 +75,7 @@ EXPOSE 8000
 USER marchproxy
 
 # Start command - Quart with Hypercorn ASGI server
-CMD ["dumb-init", "hypercorn", "quart_app:create_app()", "--bind", "0.0.0.0:8000", "--workers", "4"]
+CMD ["dumb-init", "/home/marchproxy/.local/bin/hypercorn", "quart_app:create_app()", "--bind", "0.0.0.0:8000", "--workers", "4"]
 
 # Development stage
 FROM production AS development

@@ -52,8 +52,9 @@ def create_app(config: Optional[dict] = None) -> Quart:
     """
     app = Quart(__name__)
 
-    # Apply CORS - allow all origins for now
-    app = cors(app, allow_origin="*")
+    # Apply CORS - get allowed origins from environment or use default
+    cors_origins = os.getenv('CORS_ALLOWED_ORIGINS', 'https://marchproxy.penguintech.io,http://localhost:3000')
+    app = cors(app, allow_origin=cors_origins)
 
     # Load configuration from environment variables
     _load_config(app, config)

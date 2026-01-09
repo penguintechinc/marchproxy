@@ -1,0 +1,419 @@
+# MarchProxy Egress Helm Chart Values
+# High-performance egress proxy with eBPF/XDP, L7 (Envoy), TLS interception, and threat intelligence
+
+# Global settings
+global:
+  # Global image registry
+  imageRegistry: ""
+  # Global image pull secrets
+  imagePullSecrets: []
+  # Global storage class
+  storageClass: ""
+
+# Image configuration
+image:
+  registry: docker.io
+  repository: marchproxy/proxy-egress
+  tag: "v1.0.0"
+  pullPolicy: IfNotPresent
+  # Envoy version (embedded in egress image)
+  envoyVersion: "v1.28-latest"
+
+# Deployment mode: "deployment" or "daemonset"
+deploymentMode: "deployment"
+
+# Deployment configuration (when deploymentMode=deployment)
+replicaCount: 3
+
+# DaemonSet configuration (when deploymentMode=daemonset)
+daemonset:
+  # Update strategy for DaemonSet
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+
+# Update strategy for Deployment
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+
+# Service configuration
+service:
+  # Service type: ClusterIP for egress (internal only)
+  type: ClusterIP
+
+  # L4 TCP proxy port
+  tcpProxyPort: 8080
+  tcpProxyTargetPort: 8080
+
+  # L4 admin/metrics port
+  adminPort: 8081
+  adminTargetPort: 8081
+
+  # L7 HTTP port (Envoy)
+  httpPort: 10000
+  httpTargetPort: 10000
+
+  # L7 HTTPS/QUIC port (Envoy)
+  httpsPort: 10443
+  httpsTargetPort: 10443
+
+  # Envoy admin port
+  envoyAdminPort: 9901
+  envoyAdminTargetPort: 9901
+
+  # External authorization port
+  extAuthPort: 9002
+  extAuthTargetPort: 9002
+
+  # Service annotations
+  annotations: {}
+
+  # Session affinity
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+
+# Proxy configuration
+config:
+  # Log level: debug, info, warn, error
+  logLevel: "info"
+
+  # Proxy type
+  proxyType: "egress"
+
+  # Configuration paths
+  configPath: "/app/configs"
+  logPath: "/app/logs"
+  certPath: "/app/certs"
+
+  # mTLS configuration
+  mtls:
+    enabled: true
+    serverCertPath: "/app/certs/egress-server.crt"
+    serverKeyPath: "/app/certs/egress-server.key"
+    clientCaPath: "/app/certs/client-ca-bundle.crt"
+    verifyClient: true
+
+  # L7 Envoy configuration
+  l7:
+    enabled: true
+    envoyBinary: "/usr/local/bin/envoy"
+    envoyConfigPath: "/etc/envoy/envoy.yaml"
+    envoyAdminPort: 9901
+    envoyListenPort: 10000
+    envoyHttpsPort: 10443
+    envoyLogLevel: "info"
+    # HTTP/3 (QUIC) - EXPERIMENTAL
+    http3Enabled: false
+
+  # eBPF/XDP acceleration
+  ebpf:
+    enabled: true
+  xdp:
+    enabled: false
+    interface: "eth0"
+
+  # Threat intelligence
+  threatIntel:
+    ipBlockingEnabled: true
+    domainBlockingEnabled: true
+    urlMatchingEnabled: true
+    dnsCacheEnabled: true
+    # Threat intelligence feed URLs (optional)
+    feeds: []
+    # - url: "https://example.com/threat-feed.json"
+    #   type: "ip"
+
+  # TLS interception (MITM mode)
+  tlsInterception:
+    enabled: false
+    mode: "mitm"  # Options: "mitm", "preconfigured"
+    caCertPath: "/app/certs/mitm-ca.crt"
+    caKeyPath: "/app/certs/mitm-ca.key"
+
+  # External authorization
+  extAuth:
+    enabled: true
+    port: 9002
+
+  # Rate limiting
+  rateLimit:
+    enabled: true
+    requestsPerSecond: 5000
+    burstSize: 10000
+
+  # Health check
+  healthCheck:
+    enabled: true
+    interval: "10s"
+    timeout: "5s"
+    unhealthyThreshold: 3
+
+  # Connection settings
+  connection:
+    maxIdleConns: 1000
+    maxIdleConnsPerHost: 100
+    idleConnTimeout: "90s"
+    tlsHandshakeTimeout: "10s"
+    expectContinueTimeout: "1s"
+
+# Resources
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+# Horizontal Pod Autoscaler (only for deployment mode)
+autoscaling:
+  enabled: false
+  minReplicas: 3
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 60
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 30
+        - type: Pods
+          value: 4
+          periodSeconds: 30
+      selectPolicy: Max
+
+# Security context
+securityContext:
+  pod:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  container:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      add:
+        - NET_ADMIN
+        - NET_RAW
+      drop:
+        - ALL
+
+# Service account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# RBAC configuration
+rbac:
+  create: true
+  rules:
+    - apiGroups: [""]
+      resources: ["configmaps"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: [""]
+      resources: ["secrets"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: [""]
+      resources: ["pods"]
+      verbs: ["get", "list"]
+
+# Network policy
+networkPolicy:
+  enabled: true
+  policyTypes:
+    - Egress
+  egress:
+    # Allow DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow all egress (modify as needed)
+    - to:
+        - podSelector: {}
+    # Allow external egress
+    - to:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+        - protocol: UDP
+
+# Pod disruption budget (only for deployment mode)
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Health checks
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8081
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: 8081
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# Additional readiness probe for Envoy
+envoyReadinessProbe:
+  httpGet:
+    path: /ready
+    port: 9901
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# Startup probe (for slow-starting containers)
+startupProbe:
+  httpGet:
+    path: /healthz
+    port: 8081
+  initialDelaySeconds: 0
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 30
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity rules
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/component
+                operator: In
+                values:
+                  - egress
+          topologyKey: kubernetes.io/hostname
+
+# Priority class
+priorityClassName: ""
+
+# TLS certificates (if not using cert-manager)
+tls:
+  # Create TLS secret from values
+  createSecret: false
+  # Secret name
+  secretName: marchproxy-egress-tls
+  # Certificate data (base64 encoded)
+  cert: ""
+  key: ""
+  # CA bundle for mTLS client verification
+  clientCa: ""
+  # MITM CA certificate and key (for TLS interception)
+  mitmCaCert: ""
+  mitmCaKey: ""
+
+# Certificates from cert-manager
+certManager:
+  enabled: false
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  commonName: marchproxy-egress.example.com
+  dnsNames:
+    - marchproxy-egress.example.com
+
+# ConfigMap for additional configuration
+configMap:
+  create: true
+  data: {}
+  # Custom configuration files can be added here
+
+# Envoy configuration
+envoyConfig:
+  create: true
+  bootstrap: |
+    # Custom Envoy bootstrap configuration (YAML)
+    # If not provided, default configuration will be used
+
+# Monitoring and metrics
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    scrapeTimeout: 10s
+    labels: {}
+  prometheusRule:
+    enabled: false
+    rules: []
+
+# Persistence for logs (optional)
+persistence:
+  enabled: false
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  mountPath: /app/logs
+
+# Extra environment variables
+extraEnv: []
+# - name: CUSTOM_VAR
+#   value: "custom-value"
+
+# Extra volumes
+extraVolumes: []
+# - name: custom-volume
+#   configMap:
+#     name: custom-config
+
+# Extra volume mounts
+extraVolumeMounts: []
+# - name: custom-volume
+#   mountPath: /custom/path
+
+# Pod annotations
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8081"
+  prometheus.io/path: "/metrics"
+
+# Pod labels
+podLabels: {}
+
+# Lifecycle hooks
+lifecycle:
+  preStop:
+    exec:
+      command: ["/bin/sh", "-c", "sleep 15"]
