@@ -296,7 +296,11 @@ def log_api_request():
     """Decorator to log API requests with timing"""
     def decorator(func):
         def wrapper(*args, **kwargs):
-            from py4web import request, response
+            try:
+                from py4web import request, response
+            except ImportError:
+                request = None
+                response = None
             import time
 
             start_time = time.time()

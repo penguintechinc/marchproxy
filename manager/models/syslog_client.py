@@ -326,7 +326,10 @@ def log_auth_event(cluster_id: int, event_type: str):
     """Decorator to log authentication events"""
     def decorator(func):
         def wrapper(*args, **kwargs):
-            from py4web import request
+            try:
+                from py4web import request
+            except ImportError:
+                request = None
 
             # Get syslog manager from globals
             syslog_manager = globals().get('syslog_manager')

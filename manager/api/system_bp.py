@@ -10,7 +10,7 @@ Licensed under GNU Affero General Public License v3.0
 import logging
 import os
 from datetime import datetime
-from flask import Blueprint, current_app, jsonify, Response
+from quart import Blueprint, current_app, jsonify, Response
 from prometheus_client import Counter, Gauge, generate_latest, REGISTRY
 
 logger = logging.getLogger(__name__)

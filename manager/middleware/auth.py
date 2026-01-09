@@ -11,7 +11,7 @@ Licensed under GNU Affero General Public License v3.0
 import logging
 from functools import wraps
 from typing import Optional, Callable, Any
-from py4web import request, g, current_app
+from quart import request, g, current_app
 import inspect
 
 logger = logging.getLogger(__name__)
@@ -129,46 +129,34 @@ def require_auth(admin_required: bool = False,
     """
 
     def decorator(handler: Callable) -> Callable:
-        # Support both sync and async handlers
-        is_async = inspect.iscoroutinefunction(handler)
-
-        if is_async:
-            @wraps(handler)
-            async def async_decorated(*args: Any, **kwargs: Any) -> Any:
-                return await _authenticate_and_authorize(
-                    handler, args, kwargs, admin_required, license_feature, True
-                )
-            return async_decorated
-        else:
-            @wraps(handler)
-            def decorated(*args: Any, **kwargs: Any) -> Any:
-                return _authenticate_and_authorize(
-                    handler, args, kwargs, admin_required, license_feature, False
-                )
-            return decorated
+        # Quart routes are all async
+        @wraps(handler)
+        async def async_decorated(*args: Any, **kwargs: Any) -> Any:
+            return await _authenticate_and_authorize_async(
+                handler, args, kwargs, admin_required, license_feature
+            )
+        return async_decorated
 
     return decorator
 
 
-def _authenticate_and_authorize(handler: Callable,
-                                args: tuple,
-                                kwargs: dict,
-                                admin_required: bool,
-                                license_feature: Optional[str],
-                                is_async: bool) -> Any:
+async def _authenticate_and_authorize_async(handler: Callable,
+                                            args: tuple,
+                                            kwargs: dict,
+                                            admin_required: bool,
+                                            license_feature: Optional[str]) -> Any:
     """
-    Perform authentication and authorization checks.
+    Perform authentication and authorization checks (async).
 
     Validates JWT token, checks admin requirements, and verifies
     license features if configured.
 
     Args:
-        handler: The route handler function to call
+        handler: The async route handler function to call
         args: Positional arguments for handler
         kwargs: Keyword arguments for handler
         admin_required: Whether admin access is required
         license_feature: License feature to check (if any)
-        is_async: Whether handler is async
 
     Returns:
         dict: Handler response on success, or error response on failure
@@ -207,14 +195,9 @@ def _authenticate_and_authorize(handler: Callable,
             )
             return ({"error": f"Feature '{license_feature}' not licensed"}, 403)
 
-    # Call the actual handler
+    # Call the actual handler (await since it's async in Quart)
     try:
-        if is_async:
-            # For async handlers, we need to return the coroutine
-            # This should be handled by the calling framework
-            return handler(*args, **kwargs)
-        else:
-            return handler(*args, **kwargs)
+        return await handler(*args, **kwargs)
     except Exception as e:
         logger.error(f"Error in authenticated handler: {e}", exc_info=True)
         return ({"error": "Internal server error"}, 500)

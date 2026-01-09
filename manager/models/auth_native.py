@@ -5,9 +5,15 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-from py4web import Field
-from py4web.utils.auth import Auth
-from py4web.utils.mailer import Mailer
+try:
+    from py4web import Field
+    from py4web.utils.auth import Auth
+    from py4web.utils.mailer import Mailer
+except ImportError:
+    Field = None
+    Auth = None
+    Mailer = None
+
 from pydal import DAL
 import secrets
 import pyotp
@@ -346,8 +352,11 @@ def require_permission(auth: Auth, permission: str):
     def decorator(func):
         def wrapper(*args, **kwargs):
             if not check_permission(auth, permission):
-                from py4web import abort
-                abort(403)
+                try:
+                    from py4web import abort
+                    abort(403)
+                except ImportError:
+                    raise PermissionError("Access denied: permission required")
             return func(*args, **kwargs)
         return wrapper
     return decorator
@@ -359,8 +368,11 @@ def require_admin(auth: Auth):
         def wrapper(*args, **kwargs):
             user = auth.get_user()
             if not user or not user.get('is_admin'):
-                from py4web import abort
-                abort(403)
+                try:
+                    from py4web import abort
+                    abort(403)
+                except ImportError:
+                    raise PermissionError("Access denied: admin access required")
             return func(*args, **kwargs)
         return wrapper
     return decorator

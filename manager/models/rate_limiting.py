@@ -228,7 +228,11 @@ def rate_limit_fixture(endpoint_type: str = 'api_general'):
     """py4web fixture for rate limiting"""
     def decorator(func):
         def wrapper(*args, **kwargs):
-            from py4web import request, response
+            try:
+                from py4web import request, response
+            except ImportError:
+                request = None
+                response = None
 
             # Get rate limit manager from globals
             if 'rate_limit_manager' not in globals():
