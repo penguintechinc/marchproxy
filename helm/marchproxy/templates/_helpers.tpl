@@ -169,3 +169,14 @@ Proxy image
 {{- define "marchproxy.proxy.image" -}}
 {{- printf "%s%s/%s:%s" (include "marchproxy.imageRegistry" .) .Values.proxy.image.registry .Values.proxy.image.repository .Values.proxy.image.tag }}
 {{- end }}
+
+{{/*
+WebUI image
+*/}}
+{{- define "marchproxy.webui.image" -}}
+{{- if .Values.webui.image.registry }}
+{{- printf "%s%s/%s:%s" (include "marchproxy.imageRegistry" .) .Values.webui.image.registry .Values.webui.image.repository .Values.webui.image.tag }}
+{{- else }}
+{{- printf "%s%s:%s" (include "marchproxy.imageRegistry" .) .Values.webui.image.repository .Values.webui.image.tag }}
+{{- end }}
+{{- end }}

@@ -2,7 +2,7 @@
 node_modules/
 
 # Build output
-dist/
+# dist/  # Commented - needed for production builds with pre-built dist
 build/
 .next/
 out/

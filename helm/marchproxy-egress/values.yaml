@@ -165,7 +165,7 @@ config:
 # Resources
 resources:
   requests:
-    cpu: 500m
+    cpu: 350m
     memory: 512Mi
   limits:
     cpu: 2000m
