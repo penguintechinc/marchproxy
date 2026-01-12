@@ -156,7 +156,11 @@ Image registry
 Manager image
 */}}
 {{- define "marchproxy.manager.image" -}}
+{{- if .Values.manager.image.registry }}
 {{- printf "%s%s/%s:%s" (include "marchproxy.imageRegistry" .) .Values.manager.image.registry .Values.manager.image.repository .Values.manager.image.tag }}
+{{- else }}
+{{- printf "%s%s:%s" (include "marchproxy.imageRegistry" .) .Values.manager.image.repository .Values.manager.image.tag }}
+{{- end }}
 {{- end }}
 
 {{/*

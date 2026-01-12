@@ -150,21 +150,28 @@ class DatabaseManager:
             # Create SQLAlchemy engine
             engine = self._create_sqlalchemy_engine()
 
-            # Check if tables already exist
+            # Check if all required tables exist
+            from models.sqlalchemy_schema import Base
             inspector = inspect(engine)
-            existing_tables = inspector.get_table_names()
+            existing_tables = set(inspector.get_table_names())
+            required_tables = set(Base.metadata.tables.keys())
 
-            if existing_tables:
+            # If all required tables exist, skip creation
+            if required_tables.issubset(existing_tables):
                 logger.info(
-                    "Tables already exist, skipping schema creation",
+                    "All required tables already exist, skipping schema creation",
                     extra={'table_count': len(existing_tables)}
                 )
                 return True
 
-            # Create tables using Base metadata
-            # Note: This assumes you have a SQLAlchemy Base with declarative models
-            # For now, we're using PyDAL for schema creation instead
-            logger.info("No existing tables found, will create via PyDAL initialization")
+            # Create missing tables using SQLAlchemy Base metadata
+            missing_tables = required_tables - existing_tables
+            logger.info(
+                f"Creating missing tables via SQLAlchemy",
+                extra={'missing_tables': list(missing_tables)}
+            )
+            Base.metadata.create_all(engine)
+            logger.info("SQLAlchemy schema created successfully")
 
             return True
 

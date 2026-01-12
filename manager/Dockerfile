@@ -49,9 +49,12 @@ RUN chown -R marchproxy:marchproxy /home/marchproxy/.local
 # Copy application code
 COPY --chown=marchproxy:marchproxy . .
 
-# Create necessary directories
+# Create necessary directories, remove Python cache, and fix all permissions
 RUN mkdir -p /app/logs /app/certs && \
-    chown -R marchproxy:marchproxy /app/logs /app/certs
+    find /app -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true && \
+    find /app -type f -name "*.pyc" -delete 2>/dev/null || true && \
+    chown -R marchproxy:marchproxy /app && \
+    chmod -R 755 /app
 
 # Make sure scripts are executable
 RUN chmod +x scripts/*.sh 2>/dev/null || true

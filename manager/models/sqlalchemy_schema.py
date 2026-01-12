@@ -94,7 +94,7 @@ class User(Base):
     last_login = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    metadata = Column(JSON, default={})
+    meta = Column("metadata", JSON, default={})
 
     # Relationships
     sessions = relationship('Session', back_populates='user', cascade='all, delete-orphan')
@@ -150,7 +150,7 @@ class APIToken(Base):
     last_used = Column(DateTime)
     is_active = Column(Boolean, default=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    metadata = Column(JSON, default={})
+    meta = Column("metadata", JSON, default={})
 
     # Relationships
     user = relationship('User', back_populates='api_tokens')
@@ -187,7 +187,7 @@ class Cluster(Base):
     created_by = Column(Integer, ForeignKey('users.id'), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    metadata = Column(JSON, default={})
+    meta = Column("metadata", JSON, default={})
 
     # Relationships
     created_by_user = relationship('User', back_populates='clusters_created', foreign_keys=[created_by])
@@ -252,7 +252,7 @@ class ProxyServer(Base):
     last_config_fetch = Column(DateTime)
     config_version = Column(String(64))
     registered_at = Column(DateTime, default=datetime.utcnow)
-    metadata = Column(JSON, default={})
+    meta = Column("metadata", JSON, default={})
 
     # Relationships
     cluster = relationship('Cluster', back_populates='proxy_servers')
@@ -283,7 +283,7 @@ class ProxyMetric(Base):
     latency_avg = Column(Float)
     latency_p95 = Column(Float)
     errors_per_second = Column(Float)
-    metadata = Column(JSON, default={})
+    meta = Column("metadata", JSON, default={})
 
     # Relationships
     proxy_server = relationship('ProxyServer', back_populates='proxy_metrics')
@@ -323,7 +323,7 @@ class Service(Base):
     created_by = Column(Integer, ForeignKey('users.id'), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    metadata = Column(JSON, default={})
+    meta = Column("metadata", JSON, default={})
 
     # Relationships
     cluster = relationship('Cluster', back_populates='services')
@@ -384,7 +384,7 @@ class Mapping(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     comments = Column(Text)
-    metadata = Column(JSON, default={})
+    meta = Column("metadata", JSON, default={})
 
     # Relationships
     cluster = relationship('Cluster', back_populates='mappings')
@@ -430,7 +430,7 @@ class Certificate(Base):
     created_by = Column(Integer, ForeignKey('users.id'), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    metadata = Column(JSON, default={})
+    meta = Column("metadata", JSON, default={})
 
     # Relationships
     created_by_user = relationship('User', back_populates='certificates_created', foreign_keys=[created_by])
@@ -488,7 +488,7 @@ class TLSProxyCA(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     is_active = Column(Boolean, default=True, index=True)
-    metadata = Column(JSON, default={})
+    meta = Column("metadata", JSON, default={})
 
     # Relationships
     cluster = relationship('Cluster', back_populates='tls_proxy_cas')
@@ -661,7 +661,7 @@ class RateLimit(Base):
     last_request = Column(DateTime, default=datetime.utcnow)
     is_blocked = Column(Boolean, default=False, index=True)
     block_until = Column(DateTime)
-    metadata = Column(JSON, default={})
+    meta = Column("metadata", JSON, default={})
 
     __table_args__ = (
         Index('idx_rate_limits_client_id', 'client_id'),
@@ -712,7 +712,7 @@ class XDPRateLimit(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     is_active = Column(Boolean, default=True, index=True)
-    metadata = Column(JSON, default={})
+    meta = Column("metadata", JSON, default={})
 
     # Relationships
     cluster = relationship('Cluster', back_populates='xdp_rate_limits')
@@ -754,7 +754,7 @@ class XDPRateLimitStats(Base):
     memory_usage_bytes = Column(BigInteger)
     xdp_processing_time_ns = Column(BigInteger)
 
-    metadata = Column(JSON, default={})
+    meta = Column("metadata", JSON, default={})
 
     # Relationships
     rate_limit = relationship('XDPRateLimit', back_populates='stats')

@@ -15,9 +15,9 @@ global:
 manager:
   enabled: true
   image:
-    registry: docker.io
-    repository: marchproxy/manager
-    tag: "v1.0.0"
+    registry: ""
+    repository: registry-dal2.penguintech.io/marchproxy-manager
+    tag: "v1.0.4"
     pullPolicy: IfNotPresent
 
   replicaCount: 2
