@@ -234,7 +234,7 @@ client = TestClient(app)
 response = client.post(
     "/api/v1/auth/login",
     json={
-        "email": "admin@example.com",
+        "email": "admin@localhost.local",
         "password": "securepassword"
     }
 )

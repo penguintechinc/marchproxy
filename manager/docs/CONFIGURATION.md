@@ -37,7 +37,7 @@ export JWT_SECRET
 - Change via API after first login
 
 ```bash
-ADMIN_PASSWORD=SuperSecureAdminPass123!
+ADMIN_PASSWORD=admin123
 ```
 
 **JWT_EXPIRATION_HOURS** (Optional)
@@ -334,7 +334,7 @@ DATABASE_URL=postgres://marchproxy:password@localhost:5432/marchproxy
 
 # Authentication
 JWT_SECRET=your-32-character-minimum-secret-key-here
-ADMIN_PASSWORD=InitialAdminPassword123!
+ADMIN_PASSWORD=admin123
 
 # License
 LICENSE_KEY=PENG-1234-5678-9012-3456-ABCD

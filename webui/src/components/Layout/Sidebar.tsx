@@ -77,7 +77,9 @@ const Sidebar: React.FC<SidebarProps> = ({
             alignItems: 'center',
             justifyContent: 'center',
             width: '100%',
+            cursor: 'pointer',
           }}
+          onClick={() => handleNavigation('/dashboard')}
         >
           <Box
             component="img"

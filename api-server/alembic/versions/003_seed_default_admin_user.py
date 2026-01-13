@@ -5,8 +5,8 @@ Revises: 002
 Create Date: 2025-12-19 15:30:00.000000
 
 This migration creates the default admin user for MarchProxy:
-- Email: admin@localhost.net
-- Password: admin1234
+- Email: admin@localhost.local
+- Password: admin123
 - Role: Administrator
 
 This is for development and testing purposes. In production, you should:
@@ -44,7 +44,7 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Create default admin user."""
     # Hash the password
-    password_hash = get_password_hash("admin1234")
+    password_hash = get_password_hash("admin123")
 
     # Insert default admin user
     op.execute(
@@ -61,7 +61,7 @@ def upgrade() -> None:
             """
         ),
         {
-            "email": "admin@localhost.net",
+            "email": "admin@localhost.local",
             "username": "admin",
             "password_hash": password_hash,
             "first_name": "Admin",
@@ -82,5 +82,5 @@ def downgrade() -> None:
         sa.text(
             "DELETE FROM auth_user WHERE email = :email"
         ),
-        {"email": "admin@localhost.net"}
+        {"email": "admin@localhost.local"}
     )

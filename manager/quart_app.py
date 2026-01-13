@@ -455,7 +455,7 @@ async def _initialize_default_data(app: Quart) -> None:
 
             admin_id = db.users.insert(
                 username='admin',
-                email='admin@localhost',
+                email='admin@localhost.local',
                 password_hash=password_hash,
                 is_admin=True,
                 is_active=True

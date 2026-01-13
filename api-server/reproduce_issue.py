@@ -25,7 +25,7 @@ except ImportError as e:
         return app_context.hash(password)
 
 # 3. Test
-password = "admin1234"
+password = "admin123"
 print(f"Testing password: {password}")
 
 # Generate hash using fallback

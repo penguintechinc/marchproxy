@@ -22,8 +22,8 @@ Authorization: Bearer <JWT_TOKEN>
 
 ```json
 {
-  "email": "admin@example.com",
-  "password": "securepassword",
+  "email": "admin@localhost.local",
+  "password": "admin123",
   "totp_code": "123456"  // Optional if 2FA enabled
 }
 ```
@@ -123,8 +123,8 @@ Authenticate user and obtain JWT tokens.
 **Request:**
 ```json
 {
-  "email": "admin@example.com",
-  "password": "securepassword",
+  "email": "admin@localhost.local",
+  "password": "admin123",
   "totp_code": "123456"
 }
 ```
@@ -138,7 +138,7 @@ Authenticate user and obtain JWT tokens.
   "expires_in": 1800,
   "user": {
     "id": "uuid",
-    "email": "admin@example.com",
+    "email": "admin@localhost.local",
     "username": "admin",
     "is_admin": true
   }
@@ -182,7 +182,7 @@ Get current authenticated user information.
 ```json
 {
   "id": "uuid",
-  "email": "admin@example.com",
+  "email": "admin@localhost.local",
   "username": "admin",
   "full_name": "Administrator",
   "is_admin": true,
@@ -229,7 +229,7 @@ Generate a TOTP secret for two-factor authentication.
 ```json
 {
   "totp_secret": "JBSWY3DPEBLW64TMMQ======",
-  "qr_code_uri": "otpauth://totp/MarchProxy:admin@example.com?secret=...",
+  "qr_code_uri": "otpauth://totp/MarchProxy:admin@localhost.local?secret=...",
   "backup_codes": ["code1", "code2", "code3", ...]
 }
 ```

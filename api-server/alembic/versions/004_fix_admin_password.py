@@ -5,7 +5,7 @@ Revises: 003
 Create Date: 2025-12-19 16:25:00.000000
 
 This migration updates the default admin user's password hash to ensure
-it is valid and matches "admin1234" with the current hashing algorithm.
+it is valid and matches "admin123" with the current hashing algorithm.
 """
 from typing import Sequence, Union
 from alembic import op
@@ -36,8 +36,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Update admin user password."""
-    # Hash the password "admin1234"
-    password_hash = get_password_hash("admin1234")
+    # Hash the password "admin123"
+    password_hash = get_password_hash("admin123")
 
     # Update the admin user
     op.execute(
@@ -50,7 +50,7 @@ def upgrade() -> None:
             """
         ),
         {
-            "email": "admin@localhost.net",
+            "email": "admin@localhost.local",
             "password_hash": password_hash,
             "updated_at": datetime.utcnow(),
         }

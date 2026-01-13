@@ -27,9 +27,9 @@ pip install -r requirements.txt
 curl -X POST http://localhost:8000/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "admin@example.com",
+    "email": "admin@localhost.local",
     "username": "admin",
-    "password": "SecurePass123!",
+    "password": "admin123",
     "full_name": "Administrator"
   }'
 ```
@@ -41,8 +41,8 @@ curl -X POST http://localhost:8000/api/v1/auth/register \
 TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "admin@example.com",
-    "password": "SecurePass123!"
+    "email": "admin@localhost.local",
+    "password": "admin123"
   }' | jq -r '.access_token')
 
 echo $TOKEN
@@ -68,7 +68,7 @@ This workflow shows how to create a cluster and register services.
 # Get token
 TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "admin@example.com", "password": "SecurePass123!"}' \
+  -d '{"email": "admin@localhost.local", "password": "admin123"}' \
   | jq -r '.access_token')
 
 # 1. Create a new cluster
@@ -135,7 +135,7 @@ echo "Cluster setup complete!"
 # Get token
 TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "admin@example.com", "password": "SecurePass123!"}' \
+  -d '{"email": "admin@localhost.local", "password": "admin123"}' \
   | jq -r '.access_token')
 
 # 1. List all users
@@ -177,7 +177,7 @@ curl -s -X PUT "http://localhost:8000/api/v1/users/$USER_ID" \
 # Get token
 TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "admin@example.com", "password": "SecurePass123!"}' \
+  -d '{"email": "admin@localhost.local", "password": "admin123"}' \
   | jq -r '.access_token')
 
 CLUSTER_ID="your-cluster-id"
@@ -223,7 +223,7 @@ curl -s -X PUT "http://localhost:8000/api/v1/certificates/$CERT_ID" \
 # Get token
 TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "admin@example.com", "password": "SecurePass123!"}' \
+  -d '{"email": "admin@localhost.local", "password": "admin123"}' \
   | jq -r '.access_token')
 
 CLUSTER_ID="your-cluster-id"
@@ -262,7 +262,7 @@ done
 # Get token
 TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "admin@example.com", "password": "SecurePass123!"}' \
+  -d '{"email": "admin@localhost.local", "password": "admin123"}' \
   | jq -r '.access_token')
 
 CLUSTER_ID="your-cluster-id"
@@ -302,8 +302,8 @@ curl -s -X POST "http://localhost:8000/api/v1/auth/change-password" \
 curl -s -X POST http://localhost:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "admin@example.com",
-    "password": "SecurePass123!"
+    "email": "admin@localhost.local",
+    "password": "admin123"
   }' | jq -r '.access_token' > token.txt
 
 TOKEN=$(cat token.txt)
@@ -335,8 +335,8 @@ curl -s -X POST "http://localhost:8000/api/v1/auth/2fa/verify" \
 curl -s -X POST http://localhost:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "admin@example.com",
-    "password": "SecurePass123!",
+    "email": "admin@localhost.local",
+    "password": "admin123",
     "totp_code": "123456"
   }' | jq .
 ```
@@ -426,8 +426,8 @@ class MarchProxyClient:
 # Usage example
 client = MarchProxyClient(
     base_url="http://localhost:8000",
-    email="admin@example.com",
-    password="SecurePass123!"
+    email="admin@localhost.local",
+    password="admin123"
 )
 
 # Create cluster
@@ -511,8 +511,8 @@ output "cluster_api_key" {
 ```bash
 # Save to ~/.bashrc or ~/.zshrc
 marchproxy_api_url="http://localhost:8000"
-marchproxy_email="admin@example.com"
-marchproxy_password="SecurePass123!"
+marchproxy_email="admin@localhost.local"
+marchproxy_password="admin123"
 
 # Get token
 mpx_token() {
@@ -565,7 +565,7 @@ echo $TOKEN | cut -d. -f2 | base64 -d | jq .
 # Get new token
 curl -s -X POST http://localhost:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "admin@example.com", "password": "SecurePass123!"}' | jq -r '.access_token'
+  -d '{"email": "admin@localhost.local", "password": "admin123"}' | jq -r '.access_token'
 ```
 
 ### 2FA Code Not Working
