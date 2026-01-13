@@ -61,8 +61,8 @@ RUN chmod +x scripts/*.sh 2>/dev/null || true
 
 # Set Python path to include user packages
 ENV PATH="/home/marchproxy/.local/bin:$PATH"
-ENV PYTHONPATH="/app:/home/marchproxy/.local/lib/python3.12/site-packages:$PYTHONPATH"
-ENV PYTHONUSERBASE="/home/marchproxy"
+ENV PYTHONPATH="/app:$PYTHONPATH"
+ENV PYTHONUSERBASE="/home/marchproxy/.local"
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1

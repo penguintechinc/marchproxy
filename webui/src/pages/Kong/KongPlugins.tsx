@@ -184,7 +184,7 @@ const KongPlugins: React.FC = () => {
       field: 'service',
       headerName: 'Service',
       width: 150,
-      valueGetter: (value) => {
+      valueGetter: (value: any) => {
         const svc = services.find((s) => s.id === value?.id);
         return svc?.name || '-';
       },
@@ -193,7 +193,7 @@ const KongPlugins: React.FC = () => {
       field: 'route',
       headerName: 'Route',
       width: 150,
-      valueGetter: (value) => {
+      valueGetter: (value: any) => {
         const rt = routes.find((r) => r.id === value?.id);
         return rt?.name || '-';
       },

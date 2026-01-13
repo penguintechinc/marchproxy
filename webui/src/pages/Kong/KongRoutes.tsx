@@ -185,7 +185,7 @@ const KongRoutes: React.FC = () => {
       field: 'service',
       headerName: 'Service',
       width: 150,
-      valueGetter: (value) => {
+      valueGetter: (value: any) => {
         const svc = services.find((s) => s.id === value?.id);
         return svc?.name || value?.id || '-';
       },
