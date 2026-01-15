@@ -16,13 +16,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /build
 
 # Copy requirements first for better caching
-COPY requirements.txt requirements-core.txt requirements-dev.txt ./
+COPY manager/requirements.txt manager/requirements-core.txt manager/requirements-dev.txt ./
 
 # Install Python dependencies
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 # Copy manager application
-COPY . .
+COPY manager/ .
 
 # Production stage
 FROM python:3.12-slim AS production
@@ -47,7 +47,7 @@ COPY --from=builder /root/.local /home/marchproxy/.local
 RUN chown -R marchproxy:marchproxy /home/marchproxy/.local
 
 # Copy application code
-COPY --chown=marchproxy:marchproxy . .
+COPY --chown=marchproxy:marchproxy manager/ .
 
 # Create necessary directories, remove Python cache, and fix all permissions
 RUN mkdir -p /app/logs /app/certs && \
@@ -115,7 +115,7 @@ FROM development AS testing
 USER root
 
 # Copy test requirements
-COPY requirements-dev.txt .
+COPY manager/requirements-dev.txt .
 RUN pip install --no-cache-dir -r requirements-dev.txt
 
 # Switch back to marchproxy user
