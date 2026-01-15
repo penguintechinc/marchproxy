@@ -328,6 +328,14 @@ def _register_blueprints(app: Quart) -> None:
     except ImportError as e:
         logger.warning(f"Failed to import enterprise_auth blueprint: {e}")
 
+    # Roles (RBAC) endpoints
+    try:
+        from api.roles_bp import roles_bp
+        app.register_blueprint(roles_bp)
+        logger.info("Registered roles blueprint at /api/v1/roles")
+    except ImportError as e:
+        logger.warning(f"Failed to import roles blueprint: {e}")
+
 
 def _register_error_handlers(app: Quart) -> None:
     """
@@ -436,7 +444,7 @@ def _register_lifecycle_hooks(app: Quart) -> None:
 
 async def _initialize_default_data(app: Quart) -> None:
     """
-    Initialize default admin user and cluster if they don't exist.
+    Initialize default admin user, cluster, and RBAC roles if they don't exist.
 
     Args:
         app: Quart application instance
@@ -444,8 +452,17 @@ async def _initialize_default_data(app: Quart) -> None:
     try:
         from models.auth import UserModel
         from models.cluster import ClusterModel
+        from models.rbac import RBACModel, PermissionScope
 
         db = app.db
+
+        # Initialize RBAC tables and default roles
+        try:
+            RBACModel.define_tables(db)
+            RBACModel.initialize_default_roles(db)
+            logger.info("RBAC tables and default roles initialized")
+        except Exception as e:
+            logger.warning(f"RBAC initialization skipped (may already exist): {e}")
 
         # Create default admin user if not exists
         admin_user = db(db.users.username == 'admin').select().first()
@@ -462,6 +479,18 @@ async def _initialize_default_data(app: Quart) -> None:
             )
 
             logger.info(f"Created default admin user (ID: {admin_id})")
+
+            # Assign Admin role to default admin user
+            try:
+                RBACModel.assign_role(
+                    db,
+                    admin_id,
+                    'admin',
+                    scope=PermissionScope.GLOBAL
+                )
+                logger.info(f"Assigned Admin role to default admin user")
+            except Exception as e:
+                logger.warning(f"Could not assign admin role: {e}")
 
             # Create default cluster for Community edition
             cluster_id, api_key = ClusterModel.create_default_cluster(db, admin_id)
