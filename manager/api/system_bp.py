@@ -80,6 +80,28 @@ async def healthz():
         }), 503
 
 
+@system_bp.route('/healthz/ready', methods=['GET'])
+async def healthz_ready():
+    """Kubernetes readiness probe endpoint."""
+    try:
+        # Test database connectivity
+        db = current_app.db
+        db.executesql('SELECT 1')
+
+        return jsonify({
+            "status": "ready",
+            "timestamp": datetime.utcnow().isoformat()
+        })
+
+    except Exception as e:
+        logger.error(f"Readiness check failed: {e}")
+        return jsonify({
+            "status": "not_ready",
+            "timestamp": datetime.utcnow().isoformat(),
+            "error": str(e)
+        }), 503
+
+
 @system_bp.route('/metrics', methods=['GET'])
 async def metrics():
     """Prometheus metrics endpoint."""
