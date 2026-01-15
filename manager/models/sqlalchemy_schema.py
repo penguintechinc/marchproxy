@@ -109,6 +109,8 @@ class User(Base):
     xdp_rate_limits = relationship('XDPRateLimit', back_populates='created_by_user', foreign_keys='XDPRateLimit.created_by')
     xdp_whitelist = relationship('XDPRateLimitWhitelist', back_populates='created_by_user', foreign_keys='XDPRateLimitWhitelist.created_by')
     tls_proxy_cas = relationship('TLSProxyCA', back_populates='created_by_user', foreign_keys='TLSProxyCA.created_by')
+    user_roles = relationship('UserRole', back_populates='user', foreign_keys='UserRole.user_id', cascade='all, delete-orphan')
+    permission_cache = relationship('UserPermissionCache', back_populates='user', uselist=False, cascade='all, delete-orphan')
 
 
 class Session(Base):
@@ -790,6 +792,80 @@ class XDPRateLimitWhitelist(Base):
         Index('idx_xdp_rate_limit_whitelist_rate_limit_id', 'rate_limit_id'),
         Index('idx_xdp_rate_limit_whitelist_created_by', 'created_by'),
         Index('idx_xdp_rate_limit_whitelist_is_active', 'is_active'),
+    )
+# ============================================================================
+# RBAC (Role-Based Access Control) Tables
+# ============================================================================
+
+class Role(Base):
+    """Roles with OAuth2-style scoped permissions"""
+    __tablename__ = 'roles'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(50), nullable=False, unique=True)
+    display_name = Column(String(100), nullable=False)
+    description = Column(Text)
+    scope = Column(String(20), nullable=False)  # global, cluster, service
+    permissions = Column(JSON, default=[])  # List of permission scopes
+    is_system = Column(Boolean, default=False)  # System role (cannot be deleted)
+    is_active = Column(Boolean, default=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    user_roles = relationship('UserRole', back_populates='role')
+
+    __table_args__ = (
+        Index('idx_roles_name', 'name'),
+        Index('idx_roles_scope', 'scope'),
+        Index('idx_roles_is_active', 'is_active'),
+    )
+
+
+class UserRole(Base):
+    """User role assignments with scope"""
+    __tablename__ = 'user_roles'
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
+    role_id = Column(Integer, ForeignKey('roles.id'), nullable=False, index=True)
+    scope = Column(String(20), nullable=False)  # global, cluster, service
+    resource_id = Column(Integer)  # Cluster or Service ID (null for global)
+    granted_by = Column(Integer, ForeignKey('users.id'))
+    granted_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime)  # Optional expiration
+    is_active = Column(Boolean, default=True, index=True)
+
+    # Relationships
+    user = relationship('User', foreign_keys=[user_id], back_populates='user_roles')
+    role = relationship('Role', back_populates='user_roles')
+    granted_by_user = relationship('User', foreign_keys=[granted_by])
+
+    __table_args__ = (
+        Index('idx_user_roles_user_id', 'user_id'),
+        Index('idx_user_roles_role_id', 'role_id'),
+        Index('idx_user_roles_scope', 'scope'),
+        Index('idx_user_roles_resource_id', 'resource_id'),
+        Index('idx_user_roles_is_active', 'is_active'),
+    )
+
+
+class UserPermissionCache(Base):
+    """Denormalized permission cache for performance"""
+    __tablename__ = 'user_permissions_cache'
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False, unique=True, index=True)
+    global_permissions = Column(JSON, default=[])  # List of global permissions
+    cluster_permissions = Column(JSON, default={})  # {cluster_id: [perms]}
+    service_permissions = Column(JSON, default={})  # {service_id: [perms]}
+    last_updated = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    user = relationship('User', back_populates='permission_cache')
+
+    __table_args__ = (
+        Index('idx_user_permissions_cache_user_id', 'user_id'),
     )
 
 
