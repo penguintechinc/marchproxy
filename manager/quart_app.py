@@ -458,14 +458,36 @@ async def _initialize_default_data(app: Quart) -> None:
 
         # Initialize RBAC tables and default roles
         try:
+            # Define tables (idempotent - safe to call multiple times)
             RBACModel.define_tables(db)
-            RBACModel.initialize_default_roles(db)
-            logger.info("RBAC tables and default roles initialized")
+            db.commit()
+
+            # Check if roles table exists and has data
+            try:
+                role_count = db(db.roles).count()
+                if role_count == 0:
+                    # Tables exist but are empty - initialize default roles
+                    RBACModel.initialize_default_roles(db)
+                    db.commit()
+                    logger.info("RBAC default roles initialized")
+                else:
+                    logger.info(f"RBAC tables already initialized ({role_count} roles exist)")
+            except Exception as roles_error:
+                logger.error(f"Error checking/initializing RBAC roles: {roles_error}")
+                db.rollback()
+
         except Exception as e:
-            logger.warning(f"RBAC initialization skipped (may already exist): {e}")
+            logger.error(f"RBAC table definition failed: {e}", exc_info=True)
+            db.rollback()
 
         # Create default admin user if not exists
-        admin_user = db(db.users.username == 'admin').select().first()
+        try:
+            admin_user = db(db.users.username == 'admin').select().first()
+        except Exception as e:
+            logger.error(f"Error checking for admin user: {e}")
+            db.rollback()
+            admin_user = None
+
         if not admin_user:
             admin_password = app.config['ADMIN_PASSWORD']
             password_hash = UserModel.hash_password(admin_password)
