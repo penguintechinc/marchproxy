@@ -78,7 +78,7 @@ EXPOSE 8000
 USER marchproxy
 
 # Start command - Quart with Hypercorn ASGI server
-CMD ["dumb-init", "/home/marchproxy/.local/bin/hypercorn", "quart_app:create_app()", "--bind", "0.0.0.0:8000", "--workers", "4"]
+CMD ["dumb-init", "python3.12", "-m", "hypercorn", "quart_app:create_app()", "--bind", "0.0.0.0:8000", "--workers", "4"]
 
 # Development stage
 FROM production AS development
