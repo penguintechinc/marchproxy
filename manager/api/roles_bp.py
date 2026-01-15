@@ -40,7 +40,7 @@ class RoleCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=50)
     display_name: str = Field(..., min_length=1, max_length=100)
     description: str = Field(default="")
-    scope: str = Field(..., regex=f"^({'|'.join([s.value for s in PermissionScope])})$")
+    scope: str = Field(..., pattern=f"^({'|'.join([s.value for s in PermissionScope])})$")
     permissions: List[str] = Field(default=[])
 
 
