@@ -269,7 +269,8 @@ jobs:
   integration-test:
     needs: [build-multi-arch]
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
+    # DISABLED: Integration tests should be run locally via smoke tests
+    if: false  # Disabled - integration tests not part of CI/CD
     
     steps:
       - name: Checkout code

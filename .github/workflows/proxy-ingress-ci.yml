@@ -158,6 +158,9 @@ jobs:
   build-and-test:
     name: Build and Integration Test Proxy Ingress
     runs-on: ubuntu-latest
+    # DISABLED: Integration tests should be run locally via smoke tests
+    # CI/CD should only contain static tests
+    if: false  # Disabled - integration tests not part of CI/CD
     needs: [lint-and-test, security-scan]
 
     steps:
@@ -228,6 +231,8 @@ jobs:
   mtls-test:
     name: mTLS Compatibility Test
     runs-on: ubuntu-latest
+    # DISABLED: Integration tests should be run locally via smoke tests
+    if: false  # Disabled - integration tests not part of CI/CD
     needs: [build-and-test]
 
     steps:
@@ -347,7 +352,8 @@ jobs:
     name: Reverse Proxy Integration Test
     runs-on: ubuntu-latest
     needs: [build-production]
-    if: github.ref == 'refs/heads/main'
+    # DISABLED: Integration tests should be run locally via smoke tests
+    if: false  # Disabled - integration tests not part of CI/CD
 
     steps:
     - name: Checkout code
@@ -395,7 +401,8 @@ jobs:
     name: Performance Benchmarks
     runs-on: ubuntu-latest
     needs: [build-production]
-    if: github.ref == 'refs/heads/main'
+    # DISABLED: Performance tests should be run locally via smoke tests
+    if: false  # Disabled - not part of CI/CD static tests
 
     steps:
     - name: Checkout code

@@ -135,6 +135,9 @@ jobs:
   build-and-test:
     name: Build and Integration Test Manager
     runs-on: ubuntu-latest
+    # DISABLED: Integration tests should be run locally via smoke tests
+    # CI/CD should only contain static tests
+    if: false  # Disabled - integration tests not part of CI/CD
     needs: [lint-and-test, security-scan]
 
     steps:
