@@ -265,7 +265,7 @@ async def test_provider(provider_id, user_data):
             # Test OAuth2 token endpoint
             import httpx
             config = provider.config
-            async with httpx.AsyncClient(verify=False) as client:
+            async with httpx.AsyncClient(verify=True) as client:
                 try:
                     resp = await client.post(
                         config['token_url'],
@@ -296,7 +296,7 @@ async def test_provider(provider_id, user_data):
             # Test SCIM endpoint
             import httpx
             config = provider.config
-            async with httpx.AsyncClient(verify=False) as client:
+            async with httpx.AsyncClient(verify=True) as client:
                 try:
                     resp = await client.get(
                         f"{config['scim_endpoint']}/ServiceProviderConfig",

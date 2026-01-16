@@ -71,7 +71,7 @@ async def validate_license(user_data):
             return jsonify(response.dict(exclude_none=True)), 200
 
         # Call license server
-        async with httpx.AsyncClient(verify=False) as client:
+        async with httpx.AsyncClient(verify=True) as client:
             resp = await client.post(
                 f"{license_server_url}/api/v2/validate",
                 json={"license_key": license_key},
@@ -206,7 +206,7 @@ async def send_keepalive(user_data):
             "usage_stats": data.usage_stats or {}
         }
 
-        async with httpx.AsyncClient(verify=False) as client:
+        async with httpx.AsyncClient(verify=True) as client:
             resp = await client.post(
                 f"{license_server_url}/api/v2/keepalive",
                 json=payload,
