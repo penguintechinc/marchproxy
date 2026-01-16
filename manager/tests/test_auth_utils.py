@@ -129,7 +129,7 @@ class TestLicenseValidation(unittest.TestCase):
             for part in parts[1:]:
                 if len(part) != 4:
                     return False
-                if not all(c.isalnum() and c.isupper() for c in part):
+                if not all(c.isupper() or c.isdigit() for c in part):
                     return False
 
             return True
