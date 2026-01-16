@@ -35,12 +35,15 @@ Before committing, run in this order (or use `./scripts/pre-commit/pre-commit.sh
 - [ ] **No secrets**: Verify no credentials, API keys, or tokens in code
 
 ### Build & Integration Verification
-- [ ] **Build & Run**: Verify code compiles and containers start successfully
-- [ ] **Smoke tests** (mandatory, <2 min): `make smoke-test`
+- [ ] **Alpha Smoke Tests** (mandatory, <5 min): `./tests/smoke/alpha/run-all.sh`
+  - **REQUIRED before every commit** - full end-to-end testing
   - All containers build without errors
   - All containers start and remain healthy
   - All API health endpoints respond with 200 status
-  - All web pages load without JavaScript errors
+  - All web pages and tabs load without JavaScript errors
+  - Security scans (bandit, gosec, npm audit) pass
+  - Linters (flake8, golangci-lint, eslint) pass
+  - Results logged to `/tmp/marchproxy-smoke-alpha-<timestamp>/`
   - See: [Testing Documentation - Smoke Tests](TESTING.md#smoke-tests)
 
 ### Feature Testing & Documentation
