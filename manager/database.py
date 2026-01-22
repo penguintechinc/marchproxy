@@ -29,6 +29,7 @@ from models.license import LicenseCacheModel
 from models.rate_limiting import RateLimitModel
 from models.block_rules import BlockRuleModel
 from models.enterprise_auth import EnterpriseAuthProviderModel
+from models.media_settings import MediaSettingsModel, MediaStreamModel
 
 logger = logging.getLogger(__name__)
 
@@ -338,9 +339,13 @@ class DatabaseManager:
             # Enterprise authentication tables
             EnterpriseAuthProviderModel.define_table(db)
 
+            # Media settings tables
+            MediaSettingsModel.define_table(db)
+            MediaStreamModel.define_table(db)
+
             logger.info(
                 "All database tables defined successfully",
-                extra={'table_count': 13}
+                extra={'table_count': 15}
             )
 
         except Exception as e:

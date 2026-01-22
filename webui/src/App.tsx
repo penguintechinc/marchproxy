@@ -16,6 +16,8 @@ import Tracing from '@pages/Observability/Tracing';
 import Metrics from '@pages/Observability/Metrics';
 import Alerts from '@pages/Observability/Alerts';
 import KongIndex from '@pages/Kong';
+import MediaDashboard from '@pages/Media/MediaDashboard';
+import AdminMediaSettings from '@pages/Admin/MediaSettings';
 
 const App: React.FC = () => {
   const { isLoading, loadUser } = useAuthStore();
@@ -60,6 +62,8 @@ const App: React.FC = () => {
         <Route path="observability/metrics" element={<Metrics />} />
         <Route path="observability/alerts" element={<Alerts />} />
         <Route path="kong/*" element={<KongIndex />} />
+        <Route path="media" element={<MediaDashboard />} />
+        <Route path="admin/media" element={<AdminMediaSettings />} />
         <Route path="settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>

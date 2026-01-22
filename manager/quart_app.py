@@ -336,6 +336,22 @@ def _register_blueprints(app: Quart) -> None:
     except ImportError as e:
         logger.warning(f"Failed to import roles blueprint: {e}")
 
+    # Media module endpoints
+    try:
+        from api.media_bp import media_bp
+        app.register_blueprint(media_bp)
+        logger.info("Registered media blueprint at /api/v1/modules/rtmp")
+    except ImportError as e:
+        logger.warning(f"Failed to import media blueprint: {e}")
+
+    # Admin media settings endpoints (super admin only)
+    try:
+        from api.admin_media_bp import admin_media_bp
+        app.register_blueprint(admin_media_bp)
+        logger.info("Registered admin_media blueprint at /api/v1/admin/media")
+    except ImportError as e:
+        logger.warning(f"Failed to import admin_media blueprint: {e}")
+
 
 def _register_error_handlers(app: Quart) -> None:
     """

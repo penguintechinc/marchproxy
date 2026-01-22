@@ -1,0 +1,294 @@
+syntax = "proto3";
+
+package marchproxy;
+
+option go_package = "github.com/penguintech/marchproxy/proto/marchproxy;marchproxy";
+
+import "marchproxy/types.proto";
+import "google/protobuf/timestamp.proto";
+
+// MediaService provides RTMP/Media module specific operations.
+// This extends the base ModuleService with media-specific functionality.
+service MediaService {
+  // Hardware and Capability Management
+
+  // GetCapabilities returns the hardware capabilities of this media instance
+  rpc GetCapabilities(GetCapabilitiesRequest) returns (GetCapabilitiesResponse);
+
+  // GetEffectiveLimits returns the effective resolution/bitrate limits
+  // considering both hardware capabilities and admin policy
+  rpc GetEffectiveLimits(GetEffectiveLimitsRequest) returns (GetEffectiveLimitsResponse);
+
+  // Policy Management (from Manager/Admin)
+
+  // UpdatePolicy updates the media policy from the Manager service
+  rpc UpdatePolicy(UpdatePolicyRequest) returns (UpdatePolicyResponse);
+
+  // GetPolicy returns the current media policy
+  rpc GetPolicy(GetPolicyRequest) returns (GetPolicyResponse);
+
+  // Stream Management
+
+  // ListStreams returns all active streams
+  rpc ListStreams(ListStreamsRequest) returns (ListStreamsResponse);
+
+  // GetStream returns details of a specific stream
+  rpc GetStream(GetStreamRequest) returns (GetStreamResponse);
+
+  // StopStream terminates a specific stream
+  rpc StopStream(StopStreamRequest) returns (StopStreamResponse);
+
+  // GetStreamStats returns statistics for a specific stream
+  rpc GetStreamStats(GetStreamStatsRequest) returns (GetStreamStatsResponse);
+
+  // Transcode Ladder Management
+
+  // GetBitrateProfiles returns configured bitrate profiles
+  rpc GetBitrateProfiles(GetBitrateProfilesRequest) returns (GetBitrateProfilesResponse);
+
+  // SetBitrateProfiles configures the transcode ladder
+  rpc SetBitrateProfiles(SetBitrateProfilesRequest) returns (SetBitrateProfilesResponse);
+
+  // Restreaming
+
+  // AddRestreamDestination adds a restream destination (Twitch, YouTube, etc.)
+  rpc AddRestreamDestination(AddRestreamDestinationRequest) returns (AddRestreamDestinationResponse);
+
+  // RemoveRestreamDestination removes a restream destination
+  rpc RemoveRestreamDestination(RemoveRestreamDestinationRequest) returns (RemoveRestreamDestinationResponse);
+
+  // ListRestreamDestinations lists all configured restream destinations
+  rpc ListRestreamDestinations(ListRestreamDestinationsRequest) returns (ListRestreamDestinationsResponse);
+
+  // StartRestream starts restreaming to a destination
+  rpc StartRestream(StartRestreamRequest) returns (StartRestreamResponse);
+
+  // StopRestream stops restreaming to a destination
+  rpc StopRestream(StopRestreamRequest) returns (StopRestreamResponse);
+
+  // Media Statistics
+
+  // GetMediaStats returns media-specific statistics
+  rpc GetMediaStats(GetMediaStatsRequest) returns (GetMediaStatsResponse);
+
+  // StreamMediaStats streams real-time media statistics
+  rpc StreamMediaStats(StreamMediaStatsRequest) returns (stream StreamMediaStatsResponse);
+}
+
+// ==============================================================================
+// Hardware and Capability Messages
+// ==============================================================================
+
+message GetCapabilitiesRequest {
+  string instance_id = 1;
+}
+
+message GetCapabilitiesResponse {
+  MediaCapabilities capabilities = 1;
+  google.protobuf.Timestamp detected_at = 2;
+}
+
+message GetEffectiveLimitsRequest {
+  string instance_id = 1;
+}
+
+message GetEffectiveLimitsResponse {
+  int32 effective_max_resolution = 1;     // min(hardware, admin)
+  int32 effective_max_bitrate_kbps = 2;
+  int32 hardware_max_resolution = 3;
+  optional int32 admin_max_resolution = 4;
+  string limit_reason = 5;                // "hardware" or "admin_policy"
+  MediaCapabilities capabilities = 6;
+}
+
+// ==============================================================================
+// Policy Management Messages
+// ==============================================================================
+
+message UpdatePolicyRequest {
+  string instance_id = 1;
+  MediaPolicyUpdate policy_update = 2;
+}
+
+message UpdatePolicyResponse {
+  bool success = 1;
+  string message = 2;
+  MediaPolicy applied_policy = 3;
+  Error error = 4;
+}
+
+message GetPolicyRequest {
+  string instance_id = 1;
+}
+
+message GetPolicyResponse {
+  MediaPolicy policy = 1;
+  google.protobuf.Timestamp last_updated = 2;
+  string updated_by = 3;
+}
+
+// ==============================================================================
+// Stream Management Messages
+// ==============================================================================
+
+message ListStreamsRequest {
+  string instance_id = 1;
+  Query query = 2;                        // Optional filtering and pagination
+  MediaStreamProtocol protocol_filter = 3; // Optional: filter by protocol
+  string status_filter = 4;               // Optional: filter by status
+}
+
+message ListStreamsResponse {
+  repeated MediaStream streams = 1;
+  int32 total_streams = 2;
+  Pagination pagination = 3;
+}
+
+message GetStreamRequest {
+  string instance_id = 1;
+  string stream_key = 2;
+}
+
+message GetStreamResponse {
+  MediaStream stream = 1;
+  bool found = 2;
+}
+
+message StopStreamRequest {
+  string instance_id = 1;
+  string stream_key = 2;
+  bool graceful = 3;                      // Graceful stop (flush buffers)
+}
+
+message StopStreamResponse {
+  bool success = 1;
+  string message = 2;
+  Error error = 3;
+}
+
+message GetStreamStatsRequest {
+  string instance_id = 1;
+  string stream_key = 2;
+}
+
+message GetStreamStatsResponse {
+  MediaStream stream = 1;
+  int64 duration_seconds = 2;
+  double avg_bitrate_kbps = 3;
+  int64 dropped_frames = 4;
+  double buffer_health_percent = 5;
+  map<string, string> encoder_stats = 6;
+}
+
+// ==============================================================================
+// Transcode Ladder Messages
+// ==============================================================================
+
+message GetBitrateProfilesRequest {
+  string instance_id = 1;
+}
+
+message GetBitrateProfilesResponse {
+  repeated BitrateProfile profiles = 1;
+  repeated int32 enabled_resolutions = 2;  // Which resolutions are enabled
+}
+
+message SetBitrateProfilesRequest {
+  string instance_id = 1;
+  repeated BitrateProfile profiles = 2;
+  repeated int32 enabled_resolutions = 3;
+}
+
+message SetBitrateProfilesResponse {
+  bool success = 1;
+  string message = 2;
+  Error error = 3;
+}
+
+// ==============================================================================
+// Restreaming Messages
+// ==============================================================================
+
+message AddRestreamDestinationRequest {
+  string instance_id = 1;
+  string stream_key = 2;                  // Source stream key
+  RestreamDestination destination = 3;
+}
+
+message AddRestreamDestinationResponse {
+  bool success = 1;
+  string message = 2;
+  string destination_id = 3;
+  Error error = 4;
+}
+
+message RemoveRestreamDestinationRequest {
+  string instance_id = 1;
+  string stream_key = 2;
+  string destination_id = 3;
+}
+
+message RemoveRestreamDestinationResponse {
+  bool success = 1;
+  string message = 2;
+  Error error = 3;
+}
+
+message ListRestreamDestinationsRequest {
+  string instance_id = 1;
+  string stream_key = 2;                  // Optional: filter by stream
+}
+
+message ListRestreamDestinationsResponse {
+  repeated RestreamDestination destinations = 1;
+  int32 total_destinations = 2;
+}
+
+message StartRestreamRequest {
+  string instance_id = 1;
+  string stream_key = 2;
+  string destination_id = 3;
+}
+
+message StartRestreamResponse {
+  bool success = 1;
+  string message = 2;
+  Error error = 3;
+}
+
+message StopRestreamRequest {
+  string instance_id = 1;
+  string stream_key = 2;
+  string destination_id = 3;
+}
+
+message StopRestreamResponse {
+  bool success = 1;
+  string message = 2;
+  Error error = 3;
+}
+
+// ==============================================================================
+// Media Statistics Messages
+// ==============================================================================
+
+message GetMediaStatsRequest {
+  string instance_id = 1;
+  bool reset_counters = 2;
+}
+
+message GetMediaStatsResponse {
+  MediaModuleStats stats = 1;
+  MediaCapabilities capabilities = 2;
+}
+
+message StreamMediaStatsRequest {
+  string instance_id = 1;
+  int32 interval_seconds = 2;             // Streaming interval (default 5s)
+}
+
+message StreamMediaStatsResponse {
+  MediaModuleStats stats = 1;
+  repeated MediaStream active_streams = 2;
+  google.protobuf.Timestamp timestamp = 3;
+}

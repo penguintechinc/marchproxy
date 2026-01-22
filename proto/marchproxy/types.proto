@@ -51,6 +51,10 @@ enum Protocol {
   PROTOCOL_RTMPS = 14;
   PROTOCOL_HLS = 15;
   PROTOCOL_DASH = 16;
+  PROTOCOL_SRT = 17;       // Secure Reliable Transport
+  PROTOCOL_WEBRTC = 18;    // WebRTC (WHIP/WHEP)
+  PROTOCOL_WHIP = 19;      // WebRTC-HTTP Ingestion Protocol
+  PROTOCOL_WHEP = 20;      // WebRTC-HTTP Egress Protocol
 }
 
 // Health status enumeration
@@ -229,4 +233,127 @@ message Query {
   string sort_by = 2;               // Sort field
   bool sort_desc = 3;               // Sort descending
   Pagination pagination = 4;        // Pagination parameters
+}
+
+// ==============================================================================
+// Media/RTMP Module Types
+// ==============================================================================
+
+// GPU type enumeration for media encoding
+enum GPUType {
+  GPU_TYPE_UNSPECIFIED = 0;
+  GPU_TYPE_NONE = 1;       // CPU-only encoding
+  GPU_TYPE_NVIDIA = 2;     // NVIDIA (NVENC)
+  GPU_TYPE_AMD = 3;        // AMD (AMF)
+  GPU_TYPE_INTEL = 4;      // Intel (QuickSync)
+}
+
+// Video codec enumeration
+enum VideoCodec {
+  VIDEO_CODEC_UNSPECIFIED = 0;
+  VIDEO_CODEC_H264 = 1;    // H.264/AVC
+  VIDEO_CODEC_H265 = 2;    // H.265/HEVC
+  VIDEO_CODEC_AV1 = 3;     // AV1 (next-gen)
+  VIDEO_CODEC_VP9 = 4;     // VP9
+}
+
+// Media stream protocol enumeration (ingress/egress)
+enum MediaStreamProtocol {
+  MEDIA_STREAM_PROTOCOL_UNSPECIFIED = 0;
+  MEDIA_STREAM_PROTOCOL_RTMP = 1;
+  MEDIA_STREAM_PROTOCOL_SRT = 2;
+  MEDIA_STREAM_PROTOCOL_WEBRTC = 3;
+  MEDIA_STREAM_PROTOCOL_HLS = 4;
+  MEDIA_STREAM_PROTOCOL_DASH = 5;
+}
+
+// Hardware capabilities for media encoding
+message MediaCapabilities {
+  GPUType gpu_type = 1;                   // Type of GPU (none, nvidia, amd)
+  string gpu_model = 2;                   // GPU model name (e.g., "RTX 4080")
+  int32 vram_gb = 3;                      // GPU VRAM in gigabytes
+  int32 hardware_max_resolution = 4;      // Maximum resolution (e.g., 4320 for 8K)
+  bool av1_supported = 5;                 // Hardware AV1 encoding supported
+  bool supports_8k = 6;                   // Can handle 8K encoding
+  repeated VideoCodec supported_codecs = 7;  // List of supported codecs
+  int32 max_concurrent_encodes = 8;       // Maximum concurrent encode sessions
+  map<string, string> metadata = 9;       // Additional capability metadata
+}
+
+// Admin-defined media policy (resolution/bitrate caps)
+message MediaPolicy {
+  optional int32 admin_max_resolution = 1;     // Admin override for max resolution (null = hardware default)
+  optional int32 admin_max_bitrate_kbps = 2;   // Admin override for max bitrate
+  optional string enforce_codec = 3;           // Force specific codec (null = auto)
+  repeated int32 transcode_ladder = 4;         // Required output resolutions [360, 540, 720, 1080]
+  bool enable_srt = 5;                         // Enable SRT protocol
+  bool enable_webrtc = 6;                      // Enable WebRTC (WHIP/WHEP)
+  bool prefer_av1 = 7;                         // Prefer AV1 when available
+}
+
+// Update message for media policy changes
+message MediaPolicyUpdate {
+  MediaPolicy policy = 1;
+  string updated_by = 2;                       // User ID who made the change
+  google.protobuf.Timestamp updated_at = 3;
+}
+
+// Active media stream information
+message MediaStream {
+  string stream_id = 1;                        // Unique stream identifier
+  string stream_key = 2;                       // Stream key
+  MediaStreamProtocol ingress_protocol = 3;   // Ingress protocol (RTMP, SRT, WebRTC)
+  VideoCodec input_codec = 4;                  // Input video codec
+  VideoCodec output_codec = 5;                 // Output/transcode codec
+  int32 input_width = 6;                       // Input video width
+  int32 input_height = 7;                      // Input video height
+  int32 input_bitrate_kbps = 8;                // Input bitrate
+  int32 output_bitrate_kbps = 9;               // Output bitrate
+  double framerate = 10;                       // Frames per second
+  string status = 11;                          // Stream status (active, idle, error)
+  google.protobuf.Timestamp started_at = 12;
+  int64 bytes_received = 13;                   // Total bytes received
+  int64 bytes_sent = 14;                       // Total bytes sent
+  string client_ip = 15;                       // Client IP address
+  string user_agent = 16;                      // Client user agent
+  map<string, string> metadata = 17;           // Additional stream metadata
+}
+
+// Media module statistics
+message MediaModuleStats {
+  int32 active_streams = 1;                    // Currently active streams
+  int32 total_streams = 2;                     // Total streams processed
+  int64 total_bytes_received = 3;              // Total bytes received
+  int64 total_bytes_sent = 4;                  // Total bytes sent
+  double avg_bitrate_kbps = 5;                 // Average bitrate
+  int32 rtmp_connections = 6;                  // Active RTMP connections
+  int32 srt_connections = 7;                   // Active SRT connections
+  int32 webrtc_connections = 8;                // Active WebRTC connections
+  double gpu_utilization_percent = 9;          // GPU encoder utilization
+  double cpu_utilization_percent = 10;         // CPU utilization
+  map<string, int32> codec_usage = 11;         // Usage by codec (h264: 5, av1: 2)
+  map<string, int32> protocol_usage = 12;      // Usage by protocol
+  google.protobuf.Timestamp since = 13;        // Stats collection start time
+}
+
+// Bitrate profile for transcode ladder
+message BitrateProfile {
+  int32 height = 1;                            // Output height (e.g., 720, 1080)
+  int32 width = 2;                             // Output width
+  int32 video_bitrate_kbps = 3;                // Video bitrate
+  int32 audio_bitrate_kbps = 4;                // Audio bitrate
+  double framerate = 5;                        // Target framerate
+  string profile = 6;                          // Encoder profile (main, high, etc.)
+}
+
+// Restream destination configuration
+message RestreamDestination {
+  string destination_id = 1;                   // Unique destination ID
+  string platform = 2;                         // Platform name (twitch, youtube, custom)
+  string rtmp_url = 3;                         // RTMP server URL
+  string stream_key = 4;                       // Platform stream key
+  int32 quality_height = 5;                    // Which transcode variant to send (720, 1080)
+  bool enabled = 6;                            // Enable/disable this destination
+  string status = 7;                           // Connection status
+  google.protobuf.Timestamp last_connected = 8;
 }

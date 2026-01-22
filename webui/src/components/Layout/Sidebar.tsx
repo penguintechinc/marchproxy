@@ -22,6 +22,7 @@ import {
   NotificationsActive as AlertsIcon,
   People as UsersIcon,
   Api as ApiIcon,
+  Videocam as MediaIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -44,6 +45,7 @@ const menuItems: MenuItem[] = [
   { text: 'Services', icon: <ServiceIcon />, path: '/services' },
   { text: 'Proxies', icon: <ProxyIcon />, path: '/proxies' },
   { text: 'Kong Gateway', icon: <ApiIcon />, path: '/kong' },
+  { text: 'Media Streaming', icon: <MediaIcon />, path: '/media' },
   { text: 'Certificates', icon: <CertificateIcon />, path: '/certificates' },
   { text: 'Users', icon: <UsersIcon />, path: '/users' },
   { text: 'Tracing', icon: <TracingIcon />, path: '/observability/tracing' },
