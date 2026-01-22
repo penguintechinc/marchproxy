@@ -53,30 +53,39 @@ async def admin_media_settings(user_data):
         effective_max = min(admin_max, hardware_max) if admin_max else hardware_max
 
         ladder_default = [360, 540, 720, 1080]
-        return jsonify({
-            "settings": {
-                "admin_max_resolution": admin_max,
-                "admin_max_bitrate_kbps": (
-                    settings.get("admin_max_bitrate_kbps") if settings else None
-                ),
-                "enforce_codec": settings.get("enforce_codec") if settings else None,
-                "transcode_ladder_enabled": (
-                    settings.get("transcode_ladder_enabled", True) if settings else True
-                ),
-                "transcode_ladder_resolutions": (
-                    settings.get("transcode_ladder_resolutions", ladder_default)
-                    if settings
-                    else ladder_default
-                ),
-                "updated_at": (
-                    settings.get("updated_at").isoformat()
-                    if settings and settings.get("updated_at")
-                    else None
-                ),
-            },
-            "hardware_capabilities": hardware_caps,
-            "effective_max_resolution": effective_max,
-        }), 200
+        return (
+            jsonify(
+                {
+                    "settings": {
+                        "admin_max_resolution": admin_max,
+                        "admin_max_bitrate_kbps": (
+                            settings.get("admin_max_bitrate_kbps") if settings else None
+                        ),
+                        "enforce_codec": (
+                            settings.get("enforce_codec") if settings else None
+                        ),
+                        "transcode_ladder_enabled": (
+                            settings.get("transcode_ladder_enabled", True)
+                            if settings
+                            else True
+                        ),
+                        "transcode_ladder_resolutions": (
+                            settings.get("transcode_ladder_resolutions", ladder_default)
+                            if settings
+                            else ladder_default
+                        ),
+                        "updated_at": (
+                            settings.get("updated_at").isoformat()
+                            if settings and settings.get("updated_at")
+                            else None
+                        ),
+                    },
+                    "hardware_capabilities": hardware_caps,
+                    "effective_max_resolution": effective_max,
+                }
+            ),
+            200,
+        )
 
     elif request.method == "PUT":
         try:

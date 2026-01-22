@@ -10,9 +10,15 @@ from pydantic import ValidationError
 import logging
 from datetime import datetime
 from models.auth import (
-    UserModel, SessionModel, JWTManager,
-    LoginRequest, RegisterRequest, Enable2FARequest, Verify2FARequest,
-    TokenResponse, UserResponse
+    UserModel,
+    SessionModel,
+    JWTManager,
+    LoginRequest,
+    RegisterRequest,
+    Enable2FARequest,
+    Verify2FARequest,
+    TokenResponse,
+    UserResponse,
 )
 from middleware.auth import require_auth
 
