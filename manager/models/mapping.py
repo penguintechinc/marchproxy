@@ -362,8 +362,8 @@ class MappingModel:
 
         matching = []
         for mapping in mappings:
-            if (MappingModel._service_matches(source_service_id, mapping.source_services, cluster_id) and
-                MappingModel._service_matches(dest_service_id, mapping.dest_services, cluster_id) and
+            if (MappingModel._service_matches(db, source_service_id, mapping.source_services, cluster_id) and
+                MappingModel._service_matches(db, dest_service_id, mapping.dest_services, cluster_id) and
                 protocol in mapping.protocols and
                 MappingModel._port_matches(port, mapping.ports)):
 
@@ -377,7 +377,7 @@ class MappingModel:
         return matching
 
     @staticmethod
-    def _service_matches(service_id: int, service_refs: List[Dict[str, Any]], cluster_id: int) -> bool:
+    def _service_matches(db: DAL, service_id: int, service_refs: List[Dict[str, Any]], cluster_id: int) -> bool:
         """Check if service ID matches any service reference"""
         for ref in service_refs:
             if ref['type'] == 'all':

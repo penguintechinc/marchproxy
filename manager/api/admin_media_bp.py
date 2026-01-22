@@ -21,10 +21,10 @@ from middleware.auth import require_auth
 
 logger = logging.getLogger(__name__)
 
-admin_media_bp = Blueprint('admin_media', __name__, url_prefix='/api/v1/admin/media')
+admin_media_bp = Blueprint("admin_media", __name__, url_prefix="/api/v1/admin/media")
 
 
-@admin_media_bp.route('/settings', methods=['GET', 'PUT'])
+@admin_media_bp.route("/settings", methods=["GET", "PUT"])
 @require_auth(admin_required=True)
 async def admin_media_settings(user_data):
     """
@@ -36,10 +36,10 @@ async def admin_media_settings(user_data):
     db = current_app.db
 
     # Verify super admin (not just cluster admin)
-    if not user_data.get('is_admin', False):
+    if not user_data.get("is_admin", False):
         return jsonify({"error": "Super admin access required"}), 403
 
-    if request.method == 'GET':
+    if request.method == "GET":
         # Get current settings
         settings = MediaSettingsModel.get_settings(db)
 
@@ -48,24 +48,37 @@ async def admin_media_settings(user_data):
         hardware_caps = await get_hardware_capabilities()
 
         # Calculate effective max
-        admin_max = settings.get('admin_max_resolution') if settings else None
-        hardware_max = hardware_caps.get('hardware_max_resolution', 1440)
+        admin_max = settings.get("admin_max_resolution") if settings else None
+        hardware_max = hardware_caps.get("hardware_max_resolution", 1440)
         effective_max = min(admin_max, hardware_max) if admin_max else hardware_max
 
+        ladder_default = [360, 540, 720, 1080]
         return jsonify({
-            'settings': {
-                'admin_max_resolution': admin_max,
-                'admin_max_bitrate_kbps': settings.get('admin_max_bitrate_kbps') if settings else None,
-                'enforce_codec': settings.get('enforce_codec') if settings else None,
-                'transcode_ladder_enabled': settings.get('transcode_ladder_enabled', True) if settings else True,
-                'transcode_ladder_resolutions': settings.get('transcode_ladder_resolutions', [360, 540, 720, 1080]) if settings else [360, 540, 720, 1080],
-                'updated_at': settings.get('updated_at').isoformat() if settings and settings.get('updated_at') else None,
+            "settings": {
+                "admin_max_resolution": admin_max,
+                "admin_max_bitrate_kbps": (
+                    settings.get("admin_max_bitrate_kbps") if settings else None
+                ),
+                "enforce_codec": settings.get("enforce_codec") if settings else None,
+                "transcode_ladder_enabled": (
+                    settings.get("transcode_ladder_enabled", True) if settings else True
+                ),
+                "transcode_ladder_resolutions": (
+                    settings.get("transcode_ladder_resolutions", ladder_default)
+                    if settings
+                    else ladder_default
+                ),
+                "updated_at": (
+                    settings.get("updated_at").isoformat()
+                    if settings and settings.get("updated_at")
+                    else None
+                ),
             },
-            'hardware_capabilities': hardware_caps,
-            'effective_max_resolution': effective_max,
+            "hardware_capabilities": hardware_caps,
+            "effective_max_resolution": effective_max,
         }), 200
 
-    elif request.method == 'PUT':
+    elif request.method == "PUT":
         try:
             data_json = await request.get_json()
             data = UpdateMediaSettingsRequest(**data_json)
@@ -76,7 +89,7 @@ async def admin_media_settings(user_data):
             # Update settings
             settings = MediaSettingsModel.update_settings(
                 db,
-                updated_by=user_data['user_id'],
+                updated_by=user_data["user_id"],
                 admin_max_resolution=data.admin_max_resolution,
                 admin_max_bitrate_kbps=data.admin_max_bitrate_kbps,
                 enforce_codec=data.enforce_codec,
@@ -90,8 +103,8 @@ async def admin_media_settings(user_data):
             logger.info(f"Media settings updated by admin {user_data['user_id']}")
 
             return jsonify({
-                'status': 'updated',
-                'settings': settings,
+                "status": "updated",
+                "settings": settings,
             }), 200
 
         except Exception as e:
@@ -99,7 +112,7 @@ async def admin_media_settings(user_data):
             return jsonify({"error": "Failed to update settings"}), 500
 
 
-@admin_media_bp.route('/settings/reset', methods=['POST'])
+@admin_media_bp.route("/settings/reset", methods=["POST"])
 @require_auth(admin_required=True)
 async def reset_admin_override(user_data):
     """
@@ -110,24 +123,25 @@ async def reset_admin_override(user_data):
     """
     db = current_app.db
 
-    if not user_data.get('is_admin', False):
+    if not user_data.get("is_admin", False):
         return jsonify({"error": "Super admin access required"}), 403
 
     try:
         settings = MediaSettingsModel.clear_admin_override(
-            db,
-            updated_by=user_data['user_id']
+            db, updated_by=user_data["user_id"]
         )
 
         # Notify proxy-rtmp
         await notify_rtmp_config_change(settings)
 
-        logger.info(f"Media settings reset to hardware default by admin {user_data['user_id']}")
+        logger.info(
+            f"Media settings reset to hardware default by admin {user_data['user_id']}"
+        )
 
         return jsonify({
-            'status': 'reset',
-            'message': 'Resolution limit reset to hardware default',
-            'settings': settings,
+            "status": "reset",
+            "message": "Resolution limit reset to hardware default",
+            "settings": settings,
         }), 200
 
     except Exception as e:
@@ -135,7 +149,7 @@ async def reset_admin_override(user_data):
         return jsonify({"error": "Failed to reset settings"}), 500
 
 
-@admin_media_bp.route('/capabilities', methods=['GET'])
+@admin_media_bp.route("/capabilities", methods=["GET"])
 @require_auth(admin_required=True)
 async def admin_capabilities(user_data):
     """
@@ -143,7 +157,7 @@ async def admin_capabilities(user_data):
 
     Includes GPU information, VRAM, supported codecs, and resolution limits.
     """
-    if not user_data.get('is_admin', False):
+    if not user_data.get("is_admin", False):
         return jsonify({"error": "Super admin access required"}), 403
 
     hardware_caps = await get_hardware_capabilities()
@@ -151,26 +165,29 @@ async def admin_capabilities(user_data):
     # Add detailed resolution support info
     resolutions = []
     for height in [360, 480, 540, 720, 1080, 1440, 2160, 4320]:
+        hw_max = hardware_caps.get("hardware_max_resolution", 1440)
         res_info = {
-            'height': height,
-            'label': get_resolution_label(height),
-            'supported': height <= hardware_caps.get('hardware_max_resolution', 1440),
-            'requires_gpu': height > 1440,
+            "height": height,
+            "label": get_resolution_label(height),
+            "supported": height <= hw_max,
+            "requires_gpu": height > 1440,
         }
 
         # Add reason if not supported
-        if not res_info['supported']:
-            if hardware_caps.get('gpu_type') == 'none':
-                res_info['disabled_reason'] = 'Requires GPU hardware acceleration'
-            elif height > hardware_caps.get('hardware_max_resolution', 1440):
-                res_info['disabled_reason'] = f"GPU does not support {height}p (requires more VRAM)"
+        if not res_info["supported"]:
+            if hardware_caps.get("gpu_type") == "none":
+                res_info["disabled_reason"] = "Requires GPU hardware acceleration"
+            elif height > hw_max:
+                res_info["disabled_reason"] = (
+                    f"GPU does not support {height}p (requires more VRAM)"
+                )
 
         resolutions.append(res_info)
 
     return jsonify({
-        'hardware': hardware_caps,
-        'resolutions': resolutions,
-        'supported_codecs': get_supported_codecs(hardware_caps),
+        "hardware": hardware_caps,
+        "resolutions": resolutions,
+        "supported_codecs": get_supported_codecs(hardware_caps),
     }), 200
 
 
@@ -183,13 +200,13 @@ async def get_hardware_capabilities() -> dict:
     """
     # Mock response - replace with actual gRPC call
     return {
-        'gpu_type': 'nvidia',
-        'gpu_model': 'NVIDIA GeForce RTX 4080',
-        'vram_gb': 16,
-        'hardware_max_resolution': 4320,  # 8K capable
-        'av1_supported': True,
-        'supports_8k': True,
-        'supports_4k': True,
+        "gpu_type": "nvidia",
+        "gpu_model": "NVIDIA GeForce RTX 4080",
+        "vram_gb": 16,
+        "hardware_max_resolution": 4320,  # 8K capable
+        "av1_supported": True,
+        "supports_8k": True,
+        "supports_4k": True,
     }
 
 
@@ -207,23 +224,40 @@ async def notify_rtmp_config_change(settings: dict):
 def get_resolution_label(height: int) -> str:
     """Get human-readable label for resolution"""
     labels = {
-        360: '360p',
-        480: '480p (SD)',
-        540: '540p',
-        720: '720p (HD)',
-        1080: '1080p (Full HD)',
-        1440: '1440p (2K)',
-        2160: '2160p (4K)',
-        4320: '4320p (8K)',
+        360: "360p",
+        480: "480p (SD)",
+        540: "540p",
+        720: "720p (HD)",
+        1080: "1080p (Full HD)",
+        1440: "1440p (2K)",
+        2160: "2160p (4K)",
+        4320: "4320p (8K)",
     }
-    return labels.get(height, f'{height}p')
+    return labels.get(height, f"{height}p")
 
 
 def get_supported_codecs(hardware_caps: dict) -> list:
     """Get list of supported codecs based on hardware"""
+    has_gpu = hardware_caps.get("gpu_type") != "none"
+    av1_ok = hardware_caps.get("av1_supported", False)
     codecs = [
-        {'name': 'H.264', 'id': 'h264', 'supported': True, 'hardware_accelerated': hardware_caps.get('gpu_type') != 'none'},
-        {'name': 'H.265/HEVC', 'id': 'h265', 'supported': True, 'hardware_accelerated': hardware_caps.get('gpu_type') != 'none'},
-        {'name': 'AV1', 'id': 'av1', 'supported': hardware_caps.get('av1_supported', False), 'hardware_accelerated': hardware_caps.get('av1_supported', False)},
+        {
+            "name": "H.264",
+            "id": "h264",
+            "supported": True,
+            "hardware_accelerated": has_gpu,
+        },
+        {
+            "name": "H.265/HEVC",
+            "id": "h265",
+            "supported": True,
+            "hardware_accelerated": has_gpu,
+        },
+        {
+            "name": "AV1",
+            "id": "av1",
+            "supported": av1_ok,
+            "hardware_accelerated": av1_ok,
+        },
     ]
     return codecs
