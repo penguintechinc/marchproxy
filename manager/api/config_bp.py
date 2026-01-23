@@ -125,16 +125,12 @@ async def license_config():
                 os.getenv("LICENSE_KEY", "")[-4:], "****"
             )
             release_mode = os.getenv("RELEASE_MODE", "false").lower() == "true"
-            license_server_url = os.getenv(
-                "LICENSE_SERVER_URL", "https://license.penguintech.io"
-            )
+            license_server_url = os.getenv("LICENSE_SERVER_URL", "https://license.penguintech.io")
 
             return (
                 jsonify(
                     {
-                        "license_key": (
-                            license_key if os.getenv("LICENSE_KEY") else None
-                        ),
+                        "license_key": (license_key if os.getenv("LICENSE_KEY") else None),
                         "release_mode": release_mode,
                         "license_server_url": license_server_url,
                         "license_mode": "strict" if release_mode else "permissive",
@@ -186,9 +182,7 @@ async def license_config():
             except Exception as e:
                 logger.error(f"Error updating license config: {str(e)}")
                 return (
-                    jsonify(
-                        {"error": "Failed to update license config", "details": str(e)}
-                    ),
+                    jsonify({"error": "Failed to update license config", "details": str(e)}),
                     500,
                 )
 
@@ -240,11 +234,7 @@ async def logging_config():
                 valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
                 if log_level not in valid_levels:
                     return (
-                        jsonify(
-                            {
-                                "error": f"Invalid log level. Must be one of: {valid_levels}"
-                            }
-                        ),
+                        jsonify({"error": f"Invalid log level. Must be one of: {valid_levels}"}),
                         400,
                     )
 
@@ -267,9 +257,7 @@ async def logging_config():
             except Exception as e:
                 logger.error(f"Error updating logging config: {str(e)}")
                 return (
-                    jsonify(
-                        {"error": "Failed to update logging config", "details": str(e)}
-                    ),
+                    jsonify({"error": "Failed to update logging config", "details": str(e)}),
                     500,
                 )
 

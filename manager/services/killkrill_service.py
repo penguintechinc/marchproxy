@@ -192,9 +192,7 @@ class KillKrillService:
         self.log_buffer.clear()
 
         # Send in background thread to avoid blocking
-        threading.Thread(
-            target=self._send_log_batch, args=(batch,), daemon=True
-        ).start()
+        threading.Thread(target=self._send_log_batch, args=(batch,), daemon=True).start()
 
     def _flush_metrics(self):
         """Internal metrics flush (must hold metric_lock)"""
@@ -205,16 +203,12 @@ class KillKrillService:
         self.metric_buffer.clear()
 
         # Send in background thread to avoid blocking
-        threading.Thread(
-            target=self._send_metric_batch, args=(batch,), daemon=True
-        ).start()
+        threading.Thread(target=self._send_metric_batch, args=(batch,), daemon=True).start()
 
     def _send_log_batch(self, batch: Dict[str, Any]):
         """Send log batch to KillKrill"""
         try:
-            response = self.session.post(
-                self.log_endpoint, json=batch, timeout=self.timeout
-            )
+            response = self.session.post(self.log_endpoint, json=batch, timeout=self.timeout)
             response.raise_for_status()
         except Exception as e:
             logging.warning(f"Failed to send log batch to KillKrill: {e}")
@@ -223,9 +217,7 @@ class KillKrillService:
     def _send_metric_batch(self, batch: Dict[str, Any]):
         """Send metric batch to KillKrill"""
         try:
-            response = self.session.post(
-                self.metrics_endpoint, json=batch, timeout=self.timeout
-            )
+            response = self.session.post(self.metrics_endpoint, json=batch, timeout=self.timeout)
             response.raise_for_status()
         except Exception as e:
             logging.warning(f"Failed to send metric batch to KillKrill: {e}")
@@ -357,9 +349,7 @@ def get_killkrill_service() -> Optional[KillKrillService]:
     return _killkrill_service
 
 
-def setup_killkrill_logging(
-    logger: logging.Logger, killkrill_service: KillKrillService
-):
+def setup_killkrill_logging(logger: logging.Logger, killkrill_service: KillKrillService):
     """Setup KillKrill logging for a logger"""
     if killkrill_service and killkrill_service.enabled:
         handler = KillKrillLogHandler(killkrill_service)

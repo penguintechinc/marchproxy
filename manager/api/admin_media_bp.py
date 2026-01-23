@@ -61,13 +61,9 @@ async def admin_media_settings(user_data):
                         "admin_max_bitrate_kbps": (
                             settings.get("admin_max_bitrate_kbps") if settings else None
                         ),
-                        "enforce_codec": (
-                            settings.get("enforce_codec") if settings else None
-                        ),
+                        "enforce_codec": (settings.get("enforce_codec") if settings else None),
                         "transcode_ladder_enabled": (
-                            settings.get("transcode_ladder_enabled", True)
-                            if settings
-                            else True
+                            settings.get("transcode_ladder_enabled", True) if settings else True
                         ),
                         "transcode_ladder_resolutions": (
                             settings.get("transcode_ladder_resolutions", ladder_default)
@@ -141,16 +137,12 @@ async def reset_admin_override(user_data):
         return jsonify({"error": "Super admin access required"}), 403
 
     try:
-        settings = MediaSettingsModel.clear_admin_override(
-            db, updated_by=user_data["user_id"]
-        )
+        settings = MediaSettingsModel.clear_admin_override(db, updated_by=user_data["user_id"])
 
         # Notify proxy-rtmp
         await notify_rtmp_config_change(settings)
 
-        logger.info(
-            f"Media settings reset to hardware default by admin {user_data['user_id']}"
-        )
+        logger.info(f"Media settings reset to hardware default by admin {user_data['user_id']}")
 
         return (
             jsonify(
@@ -197,9 +189,7 @@ async def admin_capabilities(user_data):
             if hardware_caps.get("gpu_type") == "none":
                 res_info["disabled_reason"] = "Requires GPU hardware acceleration"
             elif height > hw_max:
-                res_info[
-                    "disabled_reason"
-                ] = f"GPU does not support {height}p (requires more VRAM)"
+                res_info["disabled_reason"] = f"GPU does not support {height}p (requires more VRAM)"
 
         resolutions.append(res_info)
 

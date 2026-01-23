@@ -58,9 +58,7 @@ class MTLSManager:
             ca_key_bytes = ca_cert_record.key_data.encode("utf-8")
 
             ca_cert = x509.load_pem_x509_certificate(ca_cert_bytes)
-            ca_private_key = serialization.load_pem_private_key(
-                ca_key_bytes, password=None
-            )
+            ca_private_key = serialization.load_pem_private_key(ca_key_bytes, password=None)
 
             # Generate client private key
             if key_type == "ecc":
@@ -88,9 +86,7 @@ class MTLSManager:
                     x509.NameAttribute(x509.oid.NameOID.COUNTRY_NAME, "US"),
                     x509.NameAttribute(x509.oid.NameOID.STATE_OR_PROVINCE_NAME, "CA"),
                     x509.NameAttribute(x509.oid.NameOID.LOCALITY_NAME, "San Francisco"),
-                    x509.NameAttribute(
-                        x509.oid.NameOID.ORGANIZATION_NAME, "MarchProxy"
-                    ),
+                    x509.NameAttribute(x509.oid.NameOID.ORGANIZATION_NAME, "MarchProxy"),
                     x509.NameAttribute(
                         x509.oid.NameOID.ORGANIZATIONAL_UNIT_NAME,
                         organizational_unit or "Client Certificate",
@@ -137,9 +133,7 @@ class MTLSManager:
             )
 
             # Serialize certificates and keys
-            client_cert_pem = client_cert.public_bytes(
-                serialization.Encoding.PEM
-            ).decode("utf-8")
+            client_cert_pem = client_cert.public_bytes(serialization.Encoding.PEM).decode("utf-8")
             client_key_pem = client_private_key.private_bytes(
                 encoding=serialization.Encoding.PEM,
                 format=serialization.PrivateFormat.PKCS8,
@@ -169,9 +163,7 @@ class MTLSManager:
             logger.error(f"Failed to create client certificate: {e}")
             raise
 
-    async def validate_client_certificate(
-        self, cert_data: str, ca_cert_id: int
-    ) -> Dict[str, Any]:
+    async def validate_client_certificate(self, cert_data: str, ca_cert_id: int) -> Dict[str, Any]:
         """Validate a client certificate against a CA"""
 
         try:
@@ -201,9 +193,7 @@ class MTLSManager:
 
             # Check validity period
             now = datetime.utcnow()
-            time_valid = (
-                client_cert.not_valid_before <= now <= client_cert.not_valid_after
-            )
+            time_valid = client_cert.not_valid_before <= now <= client_cert.not_valid_after
 
             # Extract certificate information
             common_name = None
@@ -221,9 +211,7 @@ class MTLSManager:
                 eku_ext = client_cert.extensions.get_extension_for_oid(
                     x509.oid.ExtensionOID.EXTENDED_KEY_USAGE
                 )
-                has_client_auth = (
-                    x509.oid.ExtendedKeyUsageOID.CLIENT_AUTH in eku_ext.value
-                )
+                has_client_auth = x509.oid.ExtendedKeyUsageOID.CLIENT_AUTH in eku_ext.value
             except x509.ExtensionNotFound:
                 pass
 
@@ -263,9 +251,7 @@ class MTLSManager:
 
         return "\n".join(ca_bundle)
 
-    async def get_mtls_config_for_proxy(
-        self, cluster_id: int, proxy_type: str
-    ) -> Dict[str, Any]:
+    async def get_mtls_config_for_proxy(self, cluster_id: int, proxy_type: str) -> Dict[str, Any]:
         """Get mTLS configuration for a specific proxy type and cluster"""
 
         # Get active certificates for this cluster
@@ -299,9 +285,7 @@ class MTLSManager:
                     eku_ext = x509_cert.extensions.get_extension_for_oid(
                         x509.oid.ExtensionOID.EXTENDED_KEY_USAGE
                     )
-                    is_server_cert = (
-                        x509.oid.ExtendedKeyUsageOID.SERVER_AUTH in eku_ext.value
-                    )
+                    is_server_cert = x509.oid.ExtendedKeyUsageOID.SERVER_AUTH in eku_ext.value
                 except x509.ExtensionNotFound:
                     pass
 
@@ -350,9 +334,7 @@ class MTLSManager:
         if proxy_type == "ingress":
             config.update(
                 {
-                    "default_server_cert_id": (
-                        server_certs[0]["id"] if server_certs else None
-                    ),
+                    "default_server_cert_id": (server_certs[0]["id"] if server_certs else None),
                     "sni_enabled": True,
                     "client_cert_header": "X-Client-Cert",
                     "client_cn_header": "X-Client-CN",
@@ -430,12 +412,8 @@ async def certificates(user_data):
                     eku_ext = x509_cert.extensions.get_extension_for_oid(
                         x509.oid.ExtensionOID.EXTENDED_KEY_USAGE
                     )
-                    is_server = (
-                        x509.oid.ExtendedKeyUsageOID.SERVER_AUTH in eku_ext.value
-                    )
-                    is_client = (
-                        x509.oid.ExtendedKeyUsageOID.CLIENT_AUTH in eku_ext.value
-                    )
+                    is_server = x509.oid.ExtendedKeyUsageOID.SERVER_AUTH in eku_ext.value
+                    is_client = x509.oid.ExtendedKeyUsageOID.CLIENT_AUTH in eku_ext.value
                 except x509.ExtensionNotFound:
                     pass
 
@@ -606,9 +584,7 @@ async def update_mtls_config(user_data, cluster_id, proxy_type):
                 {
                     "default_server_cert_id": data.get("default_server_cert_id"),
                     "sni_enabled": data.get("sni_enabled", True),
-                    "client_cert_header": data.get(
-                        "client_cert_header", "X-Client-Cert"
-                    ),
+                    "client_cert_header": data.get("client_cert_header", "X-Client-Cert"),
                     "client_cn_header": data.get("client_cn_header", "X-Client-CN"),
                     "client_ou_header": data.get("client_ou_header", "X-Client-OU"),
                 }
@@ -710,18 +686,14 @@ async def download_certificate(user_data, cert_id):
             return Response(
                 cert.cert_data,
                 mimetype="application/x-pem-file",
-                headers={
-                    "Content-Disposition": f'attachment; filename="{cert.name}.crt"'
-                },
+                headers={"Content-Disposition": f'attachment; filename="{cert.name}.crt"'},
             )
 
         elif download_type == "key":
             return Response(
                 cert.key_data,
                 mimetype="application/x-pem-file",
-                headers={
-                    "Content-Disposition": f'attachment; filename="{cert.name}.key"'
-                },
+                headers={"Content-Disposition": f'attachment; filename="{cert.name}.key"'},
             )
 
         elif download_type == "ca":
@@ -729,9 +701,7 @@ async def download_certificate(user_data, cert_id):
                 return Response(
                     cert.ca_data,
                     mimetype="application/x-pem-file",
-                    headers={
-                        "Content-Disposition": f'attachment; filename="{cert.name}-ca.crt"'
-                    },
+                    headers={"Content-Disposition": f'attachment; filename="{cert.name}-ca.crt"'},
                 )
             else:
                 return jsonify({"error": "CA certificate not available"}), 404
@@ -743,9 +713,7 @@ async def download_certificate(user_data, cert_id):
             return Response(
                 bundle,
                 mimetype="application/x-pem-file",
-                headers={
-                    "Content-Disposition": f'attachment; filename="{cert.name}-bundle.crt"'
-                },
+                headers={"Content-Disposition": f'attachment; filename="{cert.name}-bundle.crt"'},
             )
 
         else:
@@ -831,8 +799,6 @@ async def test_mtls_connection(user_data):
     except Exception as e:
         logger.error(f"mTLS connection test failed: {e}")
         return (
-            jsonify(
-                {"success": False, "connection_successful": False, "error": str(e)}
-            ),
+            jsonify({"success": False, "connection_successful": False, "error": str(e)}),
             500,
         )

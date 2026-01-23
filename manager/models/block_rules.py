@@ -83,9 +83,7 @@ class BlockRuleModel:
     def validate_domain(value: str) -> bool:
         """Validate domain name"""
         # Allow wildcards like *.example.com
-        pattern = (
-            r"^(\*\.)?([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$"
-        )
+        pattern = r"^(\*\.)?([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$"
         return bool(re.match(pattern, value))
 
     @staticmethod
@@ -333,11 +331,7 @@ class BlockRuleModel:
         ports = None
         if rule.ports:
             try:
-                ports = (
-                    json.loads(rule.ports)
-                    if isinstance(rule.ports, str)
-                    else rule.ports
-                )
+                ports = json.loads(rule.ports) if isinstance(rule.ports, str) else rule.ports
             except (json.JSONDecodeError, TypeError):
                 ports = rule.ports
 
@@ -424,9 +418,7 @@ class BlockRuleSyncModel:
         return {
             "proxy_id": sync.proxy_id,
             "last_sync_version": sync.last_sync_version,
-            "last_sync_at": (
-                sync.last_sync_at.isoformat() if sync.last_sync_at else None
-            ),
+            "last_sync_at": (sync.last_sync_at.isoformat() if sync.last_sync_at else None),
             "rules_count": sync.rules_count,
             "sync_status": sync.sync_status,
             "sync_error": sync.sync_error,
@@ -508,9 +500,7 @@ class UpdateBlockRuleRequest(BaseModel):
     ports: Optional[List[int]] = None
     protocols: Optional[List[str]] = None
     wildcard: Optional[bool] = None
-    match_type: Optional[
-        Literal["exact", "prefix", "suffix", "regex", "contains"]
-    ] = None
+    match_type: Optional[Literal["exact", "prefix", "suffix", "regex", "contains"]] = None
     action: Optional[Literal["deny", "drop", "allow", "log"]] = None
     priority: Optional[int] = None
     apply_to_alb: Optional[bool] = None

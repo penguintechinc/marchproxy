@@ -222,10 +222,7 @@ class APITokenModel:
         # Try to find token by checking hash
         for token_record in db(
             (db.api_tokens.is_active == True)
-            & (
-                (db.api_tokens.expires_at == None)
-                | (db.api_tokens.expires_at > datetime.utcnow())
-            )
+            & ((db.api_tokens.expires_at == None) | (db.api_tokens.expires_at > datetime.utcnow()))
         ).select():
             if APITokenModel.verify_token(token, token_record.token_hash):
                 # Update last used

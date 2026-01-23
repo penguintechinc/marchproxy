@@ -40,9 +40,7 @@ class ConfigManager:
 
         # Check cache first
         current_time = time.time()
-        if (
-            current_time - self._last_cache_update
-        ) < self._cache_ttl and key in self._config_cache:
+        if (current_time - self._last_cache_update) < self._cache_ttl and key in self._config_cache:
             return self._config_cache[key]
 
         # Try database first
@@ -122,15 +120,9 @@ class ConfigManager:
     def get_database_config(self) -> Dict[str, Any]:
         """Get database configuration with fallbacks"""
         return {
-            "host": self.get_config(
-                "db_host", os.getenv("DB_HOST", "postgres"), "database"
-            ),
-            "port": int(
-                self.get_config("db_port", os.getenv("DB_PORT", 5432), "database")
-            ),
-            "database": self.get_config(
-                "db_name", os.getenv("DB_NAME", "marchproxy"), "database"
-            ),
+            "host": self.get_config("db_host", os.getenv("DB_HOST", "postgres"), "database"),
+            "port": int(self.get_config("db_port", os.getenv("DB_PORT", 5432), "database")),
+            "database": self.get_config("db_name", os.getenv("DB_NAME", "marchproxy"), "database"),
             "username": self.get_config(
                 "db_username", os.getenv("DB_USERNAME", "marchproxy"), "database"
             ),
@@ -141,32 +133,20 @@ class ConfigManager:
                 "db_ssl_mode", os.getenv("DB_SSL_MODE", "prefer"), "database"
             ),
             "pool_size": int(
-                self.get_config(
-                    "db_pool_size", os.getenv("DB_POOL_SIZE", 20), "database"
-                )
+                self.get_config("db_pool_size", os.getenv("DB_POOL_SIZE", 20), "database")
             ),
             "max_overflow": int(
-                self.get_config(
-                    "db_max_overflow", os.getenv("DB_MAX_OVERFLOW", 10), "database"
-                )
+                self.get_config("db_max_overflow", os.getenv("DB_MAX_OVERFLOW", 10), "database")
             ),
         }
 
     def get_smtp_config(self) -> Dict[str, Any]:
         """Get SMTP configuration with fallbacks"""
         return {
-            "host": self.get_config(
-                "smtp_host", os.getenv("SMTP_HOST", "localhost"), "smtp"
-            ),
-            "port": int(
-                self.get_config("smtp_port", os.getenv("SMTP_PORT", 587), "smtp")
-            ),
-            "username": self.get_config(
-                "smtp_username", os.getenv("SMTP_USERNAME", ""), "smtp"
-            ),
-            "password": self.get_config(
-                "smtp_password", os.getenv("SMTP_PASSWORD", ""), "smtp"
-            ),
+            "host": self.get_config("smtp_host", os.getenv("SMTP_HOST", "localhost"), "smtp"),
+            "port": int(self.get_config("smtp_port", os.getenv("SMTP_PORT", 587), "smtp")),
+            "username": self.get_config("smtp_username", os.getenv("SMTP_USERNAME", ""), "smtp"),
+            "password": self.get_config("smtp_password", os.getenv("SMTP_PASSWORD", ""), "smtp"),
             "from_address": self.get_config(
                 "smtp_from", os.getenv("SMTP_FROM", "marchproxy@company.com"), "smtp"
             ),
@@ -196,21 +176,15 @@ class ConfigManager:
                     "syslog",
                 )
             ),
-            "host": self.get_config(
-                "syslog_host", os.getenv("SYSLOG_HOST", "localhost"), "syslog"
-            ),
-            "port": int(
-                self.get_config("syslog_port", os.getenv("SYSLOG_PORT", 514), "syslog")
-            ),
+            "host": self.get_config("syslog_host", os.getenv("SYSLOG_HOST", "localhost"), "syslog"),
+            "port": int(self.get_config("syslog_port", os.getenv("SYSLOG_PORT", 514), "syslog")),
             "protocol": self.get_config(
                 "syslog_protocol", os.getenv("SYSLOG_PROTOCOL", "udp"), "syslog"
             ),
             "facility": self.get_config(
                 "syslog_facility", os.getenv("SYSLOG_FACILITY", "local0"), "syslog"
             ),
-            "tag": self.get_config(
-                "syslog_tag", os.getenv("SYSLOG_TAG", "marchproxy"), "syslog"
-            ),
+            "tag": self.get_config("syslog_tag", os.getenv("SYSLOG_TAG", "marchproxy"), "syslog"),
         }
 
     def get_monitoring_config(self) -> Dict[str, Any]:
@@ -237,9 +211,7 @@ class ConfigManager:
                 ),
                 "performance_email": self.get_config(
                     "alert_email_performance",
-                    os.getenv(
-                        "ALERT_EMAIL_PERFORMANCE", "performance-team@company.com"
-                    ),
+                    os.getenv("ALERT_EMAIL_PERFORMANCE", "performance-team@company.com"),
                     "monitoring",
                 ),
                 "security_email": self.get_config(
@@ -284,19 +256,11 @@ class ConfigManager:
     def get_redis_config(self) -> Dict[str, Any]:
         """Get Redis configuration with fallbacks"""
         return {
-            "host": self.get_config(
-                "redis_host", os.getenv("REDIS_HOST", "redis"), "redis"
-            ),
-            "port": int(
-                self.get_config("redis_port", os.getenv("REDIS_PORT", 6379), "redis")
-            ),
-            "password": self.get_config(
-                "redis_password", os.getenv("REDIS_PASSWORD", ""), "redis"
-            ),
+            "host": self.get_config("redis_host", os.getenv("REDIS_HOST", "redis"), "redis"),
+            "port": int(self.get_config("redis_port", os.getenv("REDIS_PORT", 6379), "redis")),
+            "password": self.get_config("redis_password", os.getenv("REDIS_PASSWORD", ""), "redis"),
             "database": int(
-                self.get_config(
-                    "redis_database", os.getenv("REDIS_DATABASE", 0), "redis"
-                )
+                self.get_config("redis_database", os.getenv("REDIS_DATABASE", 0), "redis")
             ),
             "ssl": bool(
                 self.get_config(
@@ -306,9 +270,7 @@ class ConfigManager:
                 )
             ),
             "pool_size": int(
-                self.get_config(
-                    "redis_pool_size", os.getenv("REDIS_POOL_SIZE", 10), "redis"
-                )
+                self.get_config("redis_pool_size", os.getenv("REDIS_POOL_SIZE", 10), "redis")
             ),
         }
 
@@ -380,9 +342,7 @@ class ConfigManager:
     def get_license_config(self) -> Dict[str, Any]:
         """Get license configuration"""
         return {
-            "key": self.get_config(
-                "license_key", os.getenv("LICENSE_KEY", ""), "license"
-            ),
+            "key": self.get_config("license_key", os.getenv("LICENSE_KEY", ""), "license"),
             "server_url": self.get_config(
                 "license_server_url",
                 os.getenv("LICENSE_SERVER_URL", "https://license.penguintech.io"),

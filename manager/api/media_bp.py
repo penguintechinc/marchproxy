@@ -61,11 +61,7 @@ async def media_config(user_data):
                 for res in data_json["transcode_ladder_resolutions"]:
                     if res not in valid_res:
                         return (
-                            jsonify(
-                                {
-                                    "error": f"Invalid resolution {res}. Valid: {valid_res}"
-                                }
-                            ),
+                            jsonify({"error": f"Invalid resolution {res}. Valid: {valid_res}"}),
                             400,
                         )
 
@@ -77,9 +73,7 @@ async def media_config(user_data):
                 db,
                 updated_by=user_data["user_id"],
                 transcode_ladder_enabled=data_json.get("transcode_ladder_enabled"),
-                transcode_ladder_resolutions=data_json.get(
-                    "transcode_ladder_resolutions"
-                ),
+                transcode_ladder_resolutions=data_json.get("transcode_ladder_resolutions"),
             )
 
             return jsonify({"config": settings, "status": "updated"}), 200
@@ -215,13 +209,9 @@ async def get_capabilities(user_data):
                 "hardware": hardware,
                 "settings": {
                     "admin_max_resolution": admin_max,
-                    "enforce_codec": (
-                        settings.get("enforce_codec") if settings else None
-                    ),
+                    "enforce_codec": (settings.get("enforce_codec") if settings else None),
                     "transcode_ladder_enabled": (
-                        settings.get("transcode_ladder_enabled", True)
-                        if settings
-                        else True
+                        settings.get("transcode_ladder_enabled", True) if settings else True
                     ),
                     "transcode_ladder_resolutions": (
                         settings.get("transcode_ladder_resolutions", ladder_default)

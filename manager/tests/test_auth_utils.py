@@ -135,9 +135,7 @@ class TestLicenseValidation(unittest.TestCase):
             return True
 
         for valid_key in valid_formats:
-            self.assertTrue(
-                validate_license_format(valid_key), f"Should be valid: {valid_key}"
-            )
+            self.assertTrue(validate_license_format(valid_key), f"Should be valid: {valid_key}")
 
         for invalid_key in invalid_formats:
             self.assertFalse(

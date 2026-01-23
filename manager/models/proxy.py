@@ -81,10 +81,7 @@ class ProxyServerModel:
         existing = (
             db(
                 (db.proxy_servers.name == name)
-                | (
-                    (db.proxy_servers.hostname == hostname)
-                    & (db.proxy_servers.port == port)
-                )
+                | ((db.proxy_servers.hostname == hostname) & (db.proxy_servers.port == port))
             )
             .select()
             .first()
@@ -216,8 +213,7 @@ class ProxyServerModel:
         """Mark proxies as inactive if they haven't sent heartbeat"""
         cutoff_time = datetime.utcnow() - timedelta(minutes=timeout_minutes)
         return db(
-            (db.proxy_servers.last_seen < cutoff_time)
-            & (db.proxy_servers.status == "active")
+            (db.proxy_servers.last_seen < cutoff_time) & (db.proxy_servers.status == "active")
         ).update(status="inactive")
 
     @staticmethod
@@ -306,8 +302,7 @@ class ProxyMetricsModel:
         """Get metrics for proxy within time range"""
         cutoff_time = datetime.utcnow() - timedelta(hours=hours)
         metrics = db(
-            (db.proxy_metrics.proxy_id == proxy_id)
-            & (db.proxy_metrics.timestamp > cutoff_time)
+            (db.proxy_metrics.proxy_id == proxy_id) & (db.proxy_metrics.timestamp > cutoff_time)
         ).select(orderby=db.proxy_metrics.timestamp)
 
         return [dict(metric) for metric in metrics]

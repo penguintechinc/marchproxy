@@ -24,9 +24,7 @@ class RateLimitModel:
         """Define rate limit table in database"""
         return db.define_table(
             "rate_limits",
-            Field(
-                "client_id", type="string", required=True, length=255
-            ),  # IP or user ID
+            Field("client_id", type="string", required=True, length=255),  # IP or user ID
             Field("endpoint", type="string", required=True, length=255),
             Field("request_count", type="integer", default=0),
             Field("window_start", type="datetime", required=True),
@@ -51,10 +49,7 @@ class RateLimitModel:
 
         # Get or create rate limit record
         existing = (
-            db(
-                (db.rate_limits.client_id == client_id)
-                & (db.rate_limits.endpoint == endpoint)
-            )
+            db((db.rate_limits.client_id == client_id) & (db.rate_limits.endpoint == endpoint))
             .select()
             .first()
         )
@@ -106,9 +101,7 @@ class RateLimitModel:
         if existing.request_count >= max_requests:
             # Block client
             block_until = now + timedelta(minutes=block_duration_minutes)
-            existing.update_record(
-                is_blocked=True, block_until=block_until, last_request=now
-            )
+            existing.update_record(is_blocked=True, block_until=block_until, last_request=now)
             return False, {
                 "allowed": False,
                 "error": "Rate limit exceeded",
@@ -118,16 +111,12 @@ class RateLimitModel:
             }
 
         # Increment counter
-        existing.update_record(
-            request_count=existing.request_count + 1, last_request=now
-        )
+        existing.update_record(request_count=existing.request_count + 1, last_request=now)
 
         return True, {
             "allowed": True,
             "requests_remaining": max_requests - existing.request_count,
-            "window_reset": (
-                existing.window_start + timedelta(minutes=window_minutes)
-            ).isoformat(),
+            "window_reset": (existing.window_start + timedelta(minutes=window_minutes)).isoformat(),
             "retry_after": None,
         }
 
@@ -279,15 +268,11 @@ def rate_limit_fixture(endpoint_type: str = "api_general"):
             endpoint = request.path
 
             # Check rate limit
-            allowed, limit_info = rate_manager.check_limit(
-                client_id, endpoint, endpoint_type
-            )
+            allowed, limit_info = rate_manager.check_limit(client_id, endpoint, endpoint_type)
 
             # Add rate limit headers
             if limit_info.get("requests_remaining") is not None:
-                response.headers["X-RateLimit-Remaining"] = str(
-                    limit_info["requests_remaining"]
-                )
+                response.headers["X-RateLimit-Remaining"] = str(limit_info["requests_remaining"])
             if limit_info.get("window_reset"):
                 response.headers["X-RateLimit-Reset"] = limit_info["window_reset"]
 
@@ -328,12 +313,8 @@ class XDPRateLimitModel:
             Field("per_ip_pps_limit", type="integer", default=0),  # 0 = unlimited
             Field("per_ip_enabled", type="boolean", default=True),
             # Timing configuration
-            Field(
-                "window_size_ns", type="bigint", default=1000000000
-            ),  # 1 second in nanoseconds
-            Field(
-                "burst_allowance", type="integer", default=100
-            ),  # Burst packets allowed
+            Field("window_size_ns", type="bigint", default=1000000000),  # 1 second in nanoseconds
+            Field("burst_allowance", type="integer", default=100),  # Burst packets allowed
             # Action configuration
             Field("action", type="integer", default=1),  # 0=PASS, 1=DROP, 2=RATE_LIMIT
             # Network interface configuration
@@ -343,9 +324,7 @@ class XDPRateLimitModel:
             Field("license_validated", type="boolean", default=False),
             Field("license_last_check", type="datetime"),
             # Priority and ordering
-            Field(
-                "priority", type="integer", default=100
-            ),  # Lower number = higher priority
+            Field("priority", type="integer", default=100),  # Lower number = higher priority
             # Metadata and tracking
             Field("created_by", type="reference users", required=True),
             Field("created_at", type="datetime", default=datetime.utcnow),
@@ -385,9 +364,7 @@ class XDPRateLimitModel:
         return db.define_table(
             "xdp_rate_limit_whitelist",
             Field("rate_limit_id", type="reference xdp_rate_limits", required=True),
-            Field(
-                "ip_address", type="string", required=True, length=45
-            ),  # Support IPv4 and IPv6
+            Field("ip_address", type="string", required=True, length=45),  # Support IPv4 and IPv6
             Field("ip_mask", type="integer", default=32),  # CIDR mask
             Field("description", type="text"),
             Field(
@@ -448,8 +425,7 @@ class XDPRateLimitModel:
     def get_cluster_configs(db: DAL, cluster_id: int) -> List[Dict[str, Any]]:
         """Get all XDP rate limiting configurations for a cluster"""
         configs = db(
-            (db.xdp_rate_limits.cluster_id == cluster_id)
-            & (db.xdp_rate_limits.is_active == True)
+            (db.xdp_rate_limits.cluster_id == cluster_id) & (db.xdp_rate_limits.is_active == True)
         ).select(orderby=db.xdp_rate_limits.priority)
 
         result = []
@@ -555,9 +531,7 @@ class XDPRateLimitModel:
         passed_packets = sum(s.passed_packets for s in stats)
         dropped_packets = sum(s.dropped_packets for s in stats)
 
-        drop_rate = (
-            (dropped_packets / total_packets * 100) if total_packets > 0 else 0.0
-        )
+        drop_rate = (dropped_packets / total_packets * 100) if total_packets > 0 else 0.0
 
         # Create time series data
         data_points = []
@@ -608,9 +582,7 @@ class XDPRateLimitManager:
                 if not self.license_manager or not self.license_manager.has_feature(
                     "xdp_rate_limiting"
                 ):
-                    return False, {
-                        "error": "XDP rate limiting requires Enterprise license"
-                    }
+                    return False, {"error": "XDP rate limiting requires Enterprise license"}
 
             # Insert configuration
             rate_limit_id = self.db.xdp_rate_limits.insert(
@@ -661,22 +633,16 @@ class XDPRateLimitManager:
                 if not self.license_manager or not self.license_manager.has_feature(
                     "xdp_rate_limiting"
                 ):
-                    return False, {
-                        "error": "XDP rate limiting requires Enterprise license"
-                    }
+                    return False, {"error": "XDP rate limiting requires Enterprise license"}
 
             # Update configuration
             existing.update_record(
                 name=config.get("name", existing.name),
                 description=config.get("description", existing.description),
                 enabled=config.get("enabled", existing.enabled),
-                global_pps_limit=config.get(
-                    "global_pps_limit", existing.global_pps_limit
-                ),
+                global_pps_limit=config.get("global_pps_limit", existing.global_pps_limit),
                 global_enabled=config.get("global_enabled", existing.global_enabled),
-                per_ip_pps_limit=config.get(
-                    "per_ip_pps_limit", existing.per_ip_pps_limit
-                ),
+                per_ip_pps_limit=config.get("per_ip_pps_limit", existing.per_ip_pps_limit),
                 per_ip_enabled=config.get("per_ip_enabled", existing.per_ip_enabled),
                 window_size_ns=config.get("window_size_ns", existing.window_size_ns),
                 burst_allowance=config.get("burst_allowance", existing.burst_allowance),

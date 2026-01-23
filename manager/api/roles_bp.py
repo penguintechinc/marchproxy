@@ -35,9 +35,7 @@ class RoleCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=50)
     display_name: str = Field(..., min_length=1, max_length=100)
     description: str = Field(default="")
-    scope: str = Field(
-        ..., pattern=f"^({'|'.join([s.value for s in PermissionScope])})$"
-    )
+    scope: str = Field(..., pattern=f"^({'|'.join([s.value for s in PermissionScope])})$")
     permissions: List[str] = Field(default=[])
 
 
@@ -91,9 +89,7 @@ async def list_roles():
                         "scope": role.scope,
                         "permissions": role.permissions or [],
                         "is_system": role.is_system,
-                        "created_at": (
-                            role.created_at.isoformat() if role.created_at else None
-                        ),
+                        "created_at": (role.created_at.isoformat() if role.created_at else None),
                     }
                     for role in roles
                 ]
@@ -119,9 +115,7 @@ async def get_role(role_id: int):
         return jsonify({"error": "Role not found"}), 404
 
     # Get users with this role
-    assignments = db(
-        (db.user_roles.role_id == role_id) & (db.user_roles.is_active == True)
-    ).select(
+    assignments = db((db.user_roles.role_id == role_id) & (db.user_roles.is_active == True)).select(
         db.user_roles.ALL,
         db.users.id,
         db.users.username,
@@ -140,12 +134,8 @@ async def get_role(role_id: int):
                     "scope": role.scope,
                     "permissions": role.permissions or [],
                     "is_system": role.is_system,
-                    "created_at": (
-                        role.created_at.isoformat() if role.created_at else None
-                    ),
-                    "updated_at": (
-                        role.updated_at.isoformat() if role.updated_at else None
-                    ),
+                    "created_at": (role.created_at.isoformat() if role.created_at else None),
+                    "updated_at": (role.updated_at.isoformat() if role.updated_at else None),
                 },
                 "assignments": [
                     {
@@ -155,9 +145,7 @@ async def get_role(role_id: int):
                         "scope": a.user_roles.scope,
                         "resource_id": a.user_roles.resource_id,
                         "granted_at": (
-                            a.user_roles.granted_at.isoformat()
-                            if a.user_roles.granted_at
-                            else None
+                            a.user_roles.granted_at.isoformat() if a.user_roles.granted_at else None
                         ),
                     }
                     for a in assignments
@@ -317,9 +305,7 @@ async def delete_role(role_id: int):
     db(db.user_roles.role_id == role_id).update(is_active=False)
 
     # Invalidate permission cache for affected users
-    assignments = db(db.user_roles.role_id == role_id).select(
-        db.user_roles.user_id, distinct=True
-    )
+    assignments = db(db.user_roles.role_id == role_id).select(db.user_roles.user_id, distinct=True)
     for assignment in assignments:
         RBACModel.invalidate_permission_cache(db, assignment.user_id)
 
@@ -410,10 +396,7 @@ async def revoke_role():
     try:
         RBACModel.revoke_role(db, user_id, role_name, resource_id)
 
-        logger.info(
-            f"Revoked role {role_name} from user {user_id} "
-            f"(resource: {resource_id})"
-        )
+        logger.info(f"Revoked role {role_name} from user {user_id} " f"(resource: {resource_id})")
 
         return jsonify({"message": "Role revoked successfully"}), 200
 

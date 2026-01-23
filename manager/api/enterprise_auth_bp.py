@@ -16,9 +16,7 @@ from middleware.auth import require_auth
 
 logger = logging.getLogger(__name__)
 
-enterprise_auth_bp = Blueprint(
-    "enterprise_auth", __name__, url_prefix="/api/v1/enterprise-auth"
-)
+enterprise_auth_bp = Blueprint("enterprise_auth", __name__, url_prefix="/api/v1/enterprise-auth")
 
 
 class SAMLProviderRequest(BaseModel):
@@ -182,9 +180,7 @@ async def providers_list():
         return await create_provider_handler(user_data={})
 
 
-@enterprise_auth_bp.route(
-    "/providers/<int:provider_id>", methods=["GET", "PUT", "DELETE"]
-)
+@enterprise_auth_bp.route("/providers/<int:provider_id>", methods=["GET", "PUT", "DELETE"])
 async def provider_detail(provider_id):
     """Get, update or delete an enterprise auth provider"""
     db = current_app.db
@@ -263,9 +259,7 @@ async def test_provider(provider_id, user_data):
             config = provider.config
             if all(field in config for field in required_fields):
                 return (
-                    jsonify(
-                        {"success": True, "message": "SAML configuration is valid"}
-                    ),
+                    jsonify({"success": True, "message": "SAML configuration is valid"}),
                     200,
                 )
             else:
@@ -380,9 +374,7 @@ async def test_provider(provider_id, user_data):
 async def get_saml_metadata():
     """Get SAML metadata for service provider"""
     try:
-        sp_entity_id = current_app.config.get(
-            "SAML_SP_ENTITY_ID", "https://marchproxy.local"
-        )
+        sp_entity_id = current_app.config.get("SAML_SP_ENTITY_ID", "https://marchproxy.local")
         acs_url = current_app.config.get(
             "SAML_ACS_URL", "https://marchproxy.local/api/v1/enterprise-auth/saml/acs"
         )

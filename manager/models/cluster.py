@@ -110,10 +110,7 @@ class ClusterModel:
         """Validate cluster API key and return cluster info"""
         api_key_hash = ClusterModel.hash_api_key(api_key)
         cluster = (
-            db(
-                (db.clusters.api_key_hash == api_key_hash)
-                & (db.clusters.is_active == True)
-            )
+            db((db.clusters.api_key_hash == api_key_hash) & (db.clusters.is_active == True))
             .select()
             .first()
         )
@@ -141,9 +138,7 @@ class ClusterModel:
 
         cluster = db.clusters[cluster_id]
         if cluster:
-            cluster.update_record(
-                api_key_hash=new_api_key_hash, updated_at=datetime.utcnow()
-            )
+            cluster.update_record(api_key_hash=new_api_key_hash, updated_at=datetime.utcnow())
             return new_api_key
 
         return None
@@ -179,9 +174,7 @@ class ClusterModel:
     def get_cluster_config(db: DAL, cluster_id: int) -> Optional[Dict[str, Any]]:
         """Get complete cluster configuration for proxy"""
         cluster = (
-            db((db.clusters.id == cluster_id) & (db.clusters.is_active == True))
-            .select()
-            .first()
+            db((db.clusters.id == cluster_id) & (db.clusters.is_active == True)).select().first()
         )
 
         if not cluster:
@@ -289,9 +282,7 @@ class UserClusterAssignmentModel:
         ).select(
             db.user_cluster_assignments.ALL,
             db.clusters.ALL,
-            left=db.clusters.on(
-                db.clusters.id == db.user_cluster_assignments.cluster_id
-            ),
+            left=db.clusters.on(db.clusters.id == db.user_cluster_assignments.cluster_id),
         )
 
         return [
@@ -306,9 +297,7 @@ class UserClusterAssignmentModel:
         ]
 
     @staticmethod
-    def check_user_cluster_access(
-        db: DAL, user_id: int, cluster_id: int
-    ) -> Optional[str]:
+    def check_user_cluster_access(db: DAL, user_id: int, cluster_id: int) -> Optional[str]:
         """Check if user has access to cluster and return role"""
         assignment = (
             db(

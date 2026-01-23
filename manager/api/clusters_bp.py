@@ -49,9 +49,7 @@ async def clusters_list():
 
         if user["is_admin"]:
             # Admin sees all clusters
-            clusters_list = db(db.clusters.is_active == True).select(
-                orderby=db.clusters.name
-            )
+            clusters_list = db(db.clusters.is_active == True).select(orderby=db.clusters.name)
         else:
             # Regular user sees only assigned clusters
             user_clusters = UserClusterAssignmentModel.get_user_clusters(db, user["id"])

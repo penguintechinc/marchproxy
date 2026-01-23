@@ -52,11 +52,7 @@ async def register():
 
     if not proxy_id:
         return (
-            jsonify(
-                {
-                    "error": "Registration failed - invalid API key or proxy limit exceeded"
-                }
-            ),
+            jsonify({"error": "Registration failed - invalid API key or proxy limit exceeded"}),
             400,
         )
 
@@ -134,16 +130,12 @@ async def get_config():
 
     db = current_app.db
 
-    config = ProxyServerModel.get_proxy_config(
-        db, data.proxy_name, data.cluster_api_key
-    )
+    config = ProxyServerModel.get_proxy_config(db, data.proxy_name, data.cluster_api_key)
 
     if not config:
         return (
             jsonify(
-                {
-                    "error": "Configuration retrieval failed - invalid API key or proxy not found"
-                }
+                {"error": "Configuration retrieval failed - invalid API key or proxy not found"}
             ),
             400,
         )

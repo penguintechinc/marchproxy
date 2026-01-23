@@ -68,9 +68,7 @@ class LicenseCacheModel:
                 error_message=validation_data.get("error"),
                 # Initialize keepalive timestamp for enterprise licenses
                 last_keepalive=(
-                    datetime.utcnow()
-                    if is_enterprise and is_valid
-                    else existing.last_keepalive
+                    datetime.utcnow() if is_enterprise and is_valid else existing.last_keepalive
                 ),
             )
         else:
@@ -85,9 +83,7 @@ class LicenseCacheModel:
                 validation_count=1,
                 error_message=validation_data.get("error"),
                 # Initialize keepalive timestamp for enterprise licenses
-                last_keepalive=(
-                    datetime.utcnow() if is_enterprise and is_valid else None
-                ),
+                last_keepalive=(datetime.utcnow() if is_enterprise and is_valid else None),
                 keepalive_count=0,
             )
 
@@ -118,9 +114,7 @@ class LicenseCacheModel:
                     "is_enterprise": False,
                     "max_proxies": 3,  # Fallback to community limits
                     "features": {},
-                    "validation_data": {
-                        "error": "License expired due to missed keepalives"
-                    },
+                    "validation_data": {"error": "License expired due to missed keepalives"},
                     "expires_at": cache_entry.expires_at,
                     "cached_at": cache_entry.last_validated,
                     "keepalive_expired": True,
@@ -248,13 +242,9 @@ class LicenseValidator:
             # During grace period, use last known good validation
             cached = db(db.license_cache.license_key == license_key).select().first()
             if cached and cached.is_valid:
-                grace_cutoff = datetime.utcnow() - timedelta(
-                    hours=self.grace_period_hours
-                )
+                grace_cutoff = datetime.utcnow() - timedelta(hours=self.grace_period_hours)
                 if cached.last_validated > grace_cutoff:
-                    logger.warning(
-                        f"Using cached license validation during grace period"
-                    )
+                    logger.warning(f"Using cached license validation during grace period")
                     return {
                         "is_valid": cached.is_valid,
                         "is_enterprise": cached.is_enterprise,
@@ -297,9 +287,7 @@ class LicenseValidator:
                     "valid": data.get("valid", False),
                     "tier": data.get("tier", "community"),
                     "max_proxies": data.get("limits", {}).get("max_servers", 3),
-                    "features": self._convert_features_to_dict(
-                        data.get("features", [])
-                    ),
+                    "features": self._convert_features_to_dict(data.get("features", [])),
                     "expires_at": data.get("expires_at"),
                     "customer": data.get("customer"),
                     "license_version": data.get("license_version"),
@@ -403,10 +391,7 @@ class LicenseManager:
             # Community edition
             active_proxies = self.db(
                 (self.db.proxy_servers.status == "active")
-                & (
-                    self.db.proxy_servers.last_seen
-                    > datetime.utcnow() - timedelta(minutes=5)
-                )
+                & (self.db.proxy_servers.last_seen > datetime.utcnow() - timedelta(minutes=5))
             ).count()
 
             return {
@@ -430,18 +415,13 @@ class LicenseManager:
         # Count active proxies
         active_proxies = self.db(
             (self.db.proxy_servers.status == "active")
-            & (
-                self.db.proxy_servers.last_seen
-                > datetime.utcnow() - timedelta(minutes=5)
-            )
+            & (self.db.proxy_servers.last_seen > datetime.utcnow() - timedelta(minutes=5))
         ).count()
 
         return {
             "valid": license_data.get("is_valid", False),
             "tier": "enterprise" if license_data.get("is_enterprise") else "community",
-            "edition": (
-                "Enterprise" if license_data.get("is_enterprise") else "Community"
-            ),
+            "edition": ("Enterprise" if license_data.get("is_enterprise") else "Community"),
             "is_enterprise": license_data.get("is_enterprise", False),
             "max_proxies": license_data.get("max_proxies", 3),
             "active_proxies": active_proxies,
@@ -452,9 +432,7 @@ class LicenseManager:
             "grace_period": license_data.get("grace_period", False),
             "server_id": self.server_id,
             "customer": license_data.get("validation_data", {}).get("customer"),
-            "license_version": license_data.get("validation_data", {}).get(
-                "license_version"
-            ),
+            "license_version": license_data.get("validation_data", {}).get("license_version"),
         }
 
     def get_license_status_sync(self) -> Dict[str, Any]:
@@ -463,10 +441,7 @@ class LicenseManager:
             # Community edition
             active_proxies = self.db(
                 (self.db.proxy_servers.status == "active")
-                & (
-                    self.db.proxy_servers.last_seen
-                    > datetime.utcnow() - timedelta(minutes=5)
-                )
+                & (self.db.proxy_servers.last_seen > datetime.utcnow() - timedelta(minutes=5))
             ).count()
 
             return {
@@ -481,9 +456,7 @@ class LicenseManager:
             }
 
         # Get cached license data only (no validation)
-        license_data = LicenseCacheModel.get_cached_validation(
-            self.db, self.license_key
-        )
+        license_data = LicenseCacheModel.get_cached_validation(self.db, self.license_key)
         if not license_data:
             license_data = {
                 "is_valid": False,
@@ -496,18 +469,13 @@ class LicenseManager:
         # Count active proxies
         active_proxies = self.db(
             (self.db.proxy_servers.status == "active")
-            & (
-                self.db.proxy_servers.last_seen
-                > datetime.utcnow() - timedelta(minutes=5)
-            )
+            & (self.db.proxy_servers.last_seen > datetime.utcnow() - timedelta(minutes=5))
         ).count()
 
         return {
             "valid": license_data.get("is_valid", False),
             "tier": "enterprise" if license_data.get("is_enterprise") else "community",
-            "edition": (
-                "Enterprise" if license_data.get("is_enterprise") else "Community"
-            ),
+            "edition": ("Enterprise" if license_data.get("is_enterprise") else "Community"),
             "is_enterprise": license_data.get("is_enterprise", False),
             "max_proxies": license_data.get("max_proxies", 3),
             "active_proxies": active_proxies,
@@ -613,9 +581,7 @@ class LicenseManager:
         self, license_key: str, force_refresh: bool = False
     ) -> Dict[str, Any]:
         """Validate a specific license key"""
-        return await self.validator.validate_license(
-            self.db, license_key, force_refresh
-        )
+        return await self.validator.validate_license(self.db, license_key, force_refresh)
 
     async def check_feature_with_server(self, feature: str) -> Dict[str, Any]:
         """Check specific feature with license server"""
@@ -727,10 +693,7 @@ class LicenseManager:
             # Count active proxies
             active_proxies = self.db(
                 (self.db.proxy_servers.status == "active")
-                & (
-                    self.db.proxy_servers.last_seen
-                    > datetime.utcnow() - timedelta(minutes=5)
-                )
+                & (self.db.proxy_servers.last_seen > datetime.utcnow() - timedelta(minutes=5))
             ).count()
 
             # Count clusters
@@ -796,9 +759,7 @@ class LicenseValidationRequest(BaseModel):
         if not v.startswith("PENG-"):
             raise ValueError("License key must start with PENG-")
         if len(v) != 29:  # PENG-XXXX-XXXX-XXXX-XXXX-ABCD
-            raise ValueError(
-                "License key must be in format PENG-XXXX-XXXX-XXXX-XXXX-ABCD"
-            )
+            raise ValueError("License key must be in format PENG-XXXX-XXXX-XXXX-XXXX-ABCD")
         return v.upper()
 
 

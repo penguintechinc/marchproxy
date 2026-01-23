@@ -36,9 +36,7 @@ class SAMLService:
         # This would typically come from environment variables or database
         return {
             "entity_id": "marchproxy-sp",
-            "assertion_consumer_service_url": URL(
-                "auth/saml/acs", scheme=True, host=True
-            ),
+            "assertion_consumer_service_url": URL("auth/saml/acs", scheme=True, host=True),
             "single_logout_service_url": URL("auth/saml/sls", scheme=True, host=True),
             "metadata_url": URL("auth/saml/metadata", scheme=True, host=True),
             "certificate_file": "certs/saml.crt",
@@ -95,9 +93,7 @@ class SAMLService:
             "id": request_id,
             "timestamp": timestamp,
             "destination": self._get_idp_sso_url(),
-            "assertion_consumer_service_url": self.config[
-                "assertion_consumer_service_url"
-            ],
+            "assertion_consumer_service_url": self.config["assertion_consumer_service_url"],
             "entity_id": self.config["entity_id"],
             "name_id_format": self.config["name_id_format"],
         }
@@ -145,9 +141,7 @@ class SAMLService:
         encoded = base64.b64encode(compressed).decode("utf-8")
         return encoded
 
-    def process_saml_response(
-        self, saml_response: str, relay_state: Optional[str] = None
-    ) -> Dict:
+    def process_saml_response(self, saml_response: str, relay_state: Optional[str] = None) -> Dict:
         """Process SAML Response from IdP"""
         if not self.is_enabled():
             abort(403, "SAML authentication not available")
@@ -213,17 +207,13 @@ class SAMLService:
         now = datetime.utcnow()
 
         if "not_before" in conditions:
-            not_before = datetime.fromisoformat(
-                conditions["not_before"].replace("Z", "+00:00")
-            )
+            not_before = datetime.fromisoformat(conditions["not_before"].replace("Z", "+00:00"))
             if now < not_before:
                 logger.warning("SAML assertion not yet valid")
                 return False
 
         if "not_on_or_after" in conditions:
-            not_after = datetime.fromisoformat(
-                conditions["not_on_or_after"].replace("Z", "+00:00")
-            )
+            not_after = datetime.fromisoformat(conditions["not_on_or_after"].replace("Z", "+00:00"))
             if now >= not_after:
                 logger.warning("SAML assertion expired")
                 return False
@@ -277,8 +267,7 @@ class SAMLService:
         # Check if user exists by email or external_id
         user = (
             self.db(
-                (self.db.auth_user.email == email)
-                | (self.db.auth_user.external_id == external_id)
+                (self.db.auth_user.email == email) | (self.db.auth_user.external_id == external_id)
             )
             .select()
             .first()

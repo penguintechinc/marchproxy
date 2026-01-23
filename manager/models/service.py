@@ -164,9 +164,7 @@ class ServiceModel:
         return service.auth_type == "none"
 
     @staticmethod
-    def create_jwt_token(
-        db: DAL, service_id: int, additional_claims: Dict = None
-    ) -> Optional[str]:
+    def create_jwt_token(db: DAL, service_id: int, additional_claims: Dict = None) -> Optional[str]:
         """Create JWT token for service"""
         service = db.services[service_id]
         if not service or service.auth_type != "jwt":
@@ -186,9 +184,7 @@ class ServiceModel:
         return jwt.encode(payload, service.jwt_secret, algorithm=service.jwt_algorithm)
 
     @staticmethod
-    def get_cluster_services(
-        db: DAL, cluster_id: int, user_id: int = None
-    ) -> List[Dict[str, Any]]:
+    def get_cluster_services(db: DAL, cluster_id: int, user_id: int = None) -> List[Dict[str, Any]]:
         """Get services for cluster (with user access control)"""
         query = (db.services.cluster_id == cluster_id) & (db.services.is_active == True)
 
@@ -225,9 +221,7 @@ class ServiceModel:
     def get_service_config(db: DAL, service_id: int) -> Optional[Dict[str, Any]]:
         """Get complete service configuration for proxy"""
         service = (
-            db((db.services.id == service_id) & (db.services.is_active == True))
-            .select()
-            .first()
+            db((db.services.id == service_id) & (db.services.is_active == True)).select().first()
         )
 
         if not service:
@@ -281,9 +275,7 @@ class UserServiceAssignmentModel:
         )
 
     @staticmethod
-    def assign_user_to_service(
-        db: DAL, user_id: int, service_id: int, assigned_by: int
-    ) -> bool:
+    def assign_user_to_service(db: DAL, user_id: int, service_id: int, assigned_by: int) -> bool:
         """Assign user to service"""
         # Check if assignment already exists
         existing = (
@@ -325,9 +317,7 @@ class UserServiceAssignmentModel:
         ).select(
             db.user_service_assignments.ALL,
             db.services.ALL,
-            left=db.services.on(
-                db.services.id == db.user_service_assignments.service_id
-            ),
+            left=db.services.on(db.services.id == db.user_service_assignments.service_id),
         )
 
         return [

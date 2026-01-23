@@ -219,9 +219,7 @@ async def set_service_auth(service_id, user_data):
     try:
         if data.auth_type == "base64":
             token = ServiceModel.set_base64_auth(db, service_id)
-            response = ServiceAuthResponse(
-                service_id=service_id, auth_type="base64", token=token
-            )
+            response = ServiceAuthResponse(service_id=service_id, auth_type="base64", token=token)
         elif data.auth_type == "jwt":
             jwt_secret = ServiceModel.set_jwt_auth(
                 db,
@@ -345,9 +343,7 @@ async def remove_user_from_service(service_id, user_id, user_data):
     db = current_app.db
 
     try:
-        result = UserServiceAssignmentModel.remove_user_from_service(
-            db, user_id, service_id
-        )
+        result = UserServiceAssignmentModel.remove_user_from_service(db, user_id, service_id)
         if result:
             return jsonify({"message": "User removed from service"}), 200
         else:

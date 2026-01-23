@@ -215,9 +215,7 @@ async def send_keepalive(user_data):
                 jsonify(
                     {
                         "message": "Keepalive sent successfully",
-                        "next_keepalive_due": (
-                            datetime.utcnow() + timedelta(hours=24)
-                        ).isoformat(),
+                        "next_keepalive_due": (datetime.utcnow() + timedelta(hours=24)).isoformat(),
                     }
                 ),
                 200,

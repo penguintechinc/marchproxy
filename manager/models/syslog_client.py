@@ -93,9 +93,7 @@ class SyslogClient:
                 return True
 
         except Exception as e:
-            logger.error(
-                f"Failed to connect to syslog server {self.host}:{self.port}: {e}"
-            )
+            logger.error(f"Failed to connect to syslog server {self.host}:{self.port}: {e}")
             self.connected = False
             return False
 
@@ -134,20 +132,14 @@ class SyslogClient:
                     for k, v in value.items():
                         # Escape special characters
                         escaped_value = (
-                            str(v)
-                            .replace("\\", "\\\\")
-                            .replace('"', '\\"')
-                            .replace("]", "\\]")
+                            str(v).replace("\\", "\\\\").replace('"', '\\"').replace("]", "\\]")
                         )
                         params.append(f'{k}="{escaped_value}"')
                     sd_elements.append(f'[{key} {" ".join(params)}]')
                 else:
                     # Simple key-value pair
                     escaped_value = (
-                        str(value)
-                        .replace("\\", "\\\\")
-                        .replace('"', '\\"')
-                        .replace("]", "\\]")
+                        str(value).replace("\\", "\\\\").replace('"', '\\"').replace("]", "\\]")
                     )
                     sd_elements.append(f'[{key} value="{escaped_value}"]')
 
@@ -173,9 +165,7 @@ class SyslogClient:
             formatted_message = self._format_message(severity, message, structured_data)
             with self._lock:
                 if self.socket:
-                    self.socket.sendto(
-                        formatted_message.encode("utf-8"), (self.host, self.port)
-                    )
+                    self.socket.sendto(formatted_message.encode("utf-8"), (self.host, self.port))
                     return True
         except Exception as e:
             logger.error(f"Failed to send syslog message: {e}")
@@ -245,9 +235,7 @@ class ClusterSyslogManager:
                     return client
 
             except Exception as e:
-                logger.error(
-                    f"Failed to create syslog client for cluster {cluster_id}: {e}"
-                )
+                logger.error(f"Failed to create syslog client for cluster {cluster_id}: {e}")
 
         return None
 
@@ -288,9 +276,7 @@ class ClusterSyslogManager:
         if details:
             structured_data["auth"].update(details)
 
-        message = (
-            f"Authentication event: {event_type} {'succeeded' if success else 'failed'}"
-        )
+        message = f"Authentication event: {event_type} {'succeeded' if success else 'failed'}"
         client.log(severity, message, structured_data)
 
     def log_netflow_event(

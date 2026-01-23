@@ -169,9 +169,7 @@ class RBACModel:
                 requires=lambda v: v in [s.value for s in PermissionScope],
             ),
             Field("permissions", type="json", default=[]),  # List of permission scopes
-            Field(
-                "is_system", type="boolean", default=False
-            ),  # System role (cannot be deleted)
+            Field("is_system", type="boolean", default=False),  # System role (cannot be deleted)
             Field("is_active", type="boolean", default=True),
             Field("created_at", type="datetime", default=datetime.utcnow),
             Field("updated_at", type="datetime", update=datetime.utcnow),
@@ -189,9 +187,7 @@ class RBACModel:
                 length=20,
                 requires=lambda v: v in [s.value for s in PermissionScope],
             ),
-            Field(
-                "resource_id", type="integer"
-            ),  # Cluster or Service ID (null for global)
+            Field("resource_id", type="integer"),  # Cluster or Service ID (null for global)
             Field("granted_by", type="reference users"),
             Field("granted_at", type="datetime", default=datetime.utcnow),
             Field("expires_at", type="datetime"),  # Optional expiration
@@ -203,12 +199,8 @@ class RBACModel:
             "user_permissions_cache",
             Field("user_id", type="reference users", required=True, unique=True),
             Field("global_permissions", type="json", default=[]),
-            Field(
-                "cluster_permissions", type="json", default={}
-            ),  # {cluster_id: [perms]}
-            Field(
-                "service_permissions", type="json", default={}
-            ),  # {service_id: [perms]}
+            Field("cluster_permissions", type="json", default={}),  # {cluster_id: [perms]}
+            Field("service_permissions", type="json", default={}),  # {service_id: [perms]}
             Field("last_updated", type="datetime", default=datetime.utcnow),
         )
 
@@ -285,9 +277,7 @@ class RBACModel:
         return assignment_id
 
     @staticmethod
-    def revoke_role(
-        db: DAL, user_id: int, role_name: str, resource_id: Optional[int] = None
-    ):
+    def revoke_role(db: DAL, user_id: int, role_name: str, resource_id: Optional[int] = None):
         """Revoke role from user"""
 
         role = db(db.roles.name == role_name).select().first()

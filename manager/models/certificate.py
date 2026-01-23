@@ -84,9 +84,7 @@ class CertificateModel:
         # Calculate next renewal check time
         next_renewal_check = None
         if auto_renew and cert_info["expires_at"]:
-            check_date = cert_info["expires_at"] - timedelta(
-                days=renewal_threshold_days
-            )
+            check_date = cert_info["expires_at"] - timedelta(days=renewal_threshold_days)
             next_renewal_check = max(check_date, datetime.utcnow() + timedelta(days=1))
 
         cert_id = db.certificates.insert(
@@ -142,9 +140,7 @@ class CertificateModel:
                 domain_names.insert(0, cn)
 
             # Calculate fingerprint
-            fingerprint = hashlib.sha256(
-                cert.public_bytes(serialization.Encoding.DER)
-            ).hexdigest()
+            fingerprint = hashlib.sha256(cert.public_bytes(serialization.Encoding.DER)).hexdigest()
 
             return {
                 "domain_names": domain_names,
@@ -246,9 +242,7 @@ class CertificateModel:
                 )
 
                 # Schedule next renewal check
-                next_check = cert_info["expires_at"] - timedelta(
-                    days=cert.renewal_threshold_days
-                )
+                next_check = cert_info["expires_at"] - timedelta(days=cert.renewal_threshold_days)
                 update_data["next_renewal_check"] = max(
                     next_check, datetime.utcnow() + timedelta(days=1)
                 )
@@ -259,9 +253,7 @@ class CertificateModel:
 
             # Schedule next attempt (exponential backoff)
             backoff_days = min(1 * (2**cert.renewal_attempts), 7)  # Max 7 days
-            update_data["next_renewal_check"] = datetime.utcnow() + timedelta(
-                days=backoff_days
-            )
+            update_data["next_renewal_check"] = datetime.utcnow() + timedelta(days=backoff_days)
 
         cert.update_record(**update_data)
         return True
@@ -271,8 +263,7 @@ class CertificateModel:
         """Get certificates expiring within specified days"""
         cutoff_date = datetime.utcnow() + timedelta(days=days)
         certs = db(
-            (db.certificates.expires_at <= cutoff_date)
-            & (db.certificates.is_active == True)
+            (db.certificates.expires_at <= cutoff_date) & (db.certificates.is_active == True)
         ).select(orderby=db.certificates.expires_at)
 
         return [
@@ -488,9 +479,7 @@ class CertificateManager:
 
         except Exception as e:
             logger.error(f"Certificate renewal failed for {cert.name}: {e}")
-            CertificateModel.update_renewal_attempt(
-                self.db, cert_id, False, error_message=str(e)
-            )
+            CertificateModel.update_renewal_attempt(self.db, cert_id, False, error_message=str(e))
             return False
 
     async def _renew_from_infisical(self, cert) -> bool:
@@ -620,12 +609,8 @@ class TLSProxyCAModel:
             Field("wildcard_expires_at", type="datetime"),
             Field("wildcard_serial_number", type="string", length=100),
             # Generation Configuration
-            Field(
-                "key_type", type="string", default="ecc", length=20
-            ),  # 'ecc' or 'rsa'
-            Field(
-                "key_size", type="integer", default=384
-            ),  # ECC curve size or RSA key size
+            Field("key_type", type="string", default="ecc", length=20),  # 'ecc' or 'rsa'
+            Field("key_size", type="integer", default=384),  # ECC curve size or RSA key size
             Field("hash_algorithm", type="string", default="sha512", length=20),
             Field("lifetime_years", type="integer", default=10),
             # Usage Configuration
@@ -657,9 +642,7 @@ class TLSProxyCAModel:
             Field(
                 "port_based_detection", type="boolean", default=False
             ),  # Fallback to port detection
-            Field(
-                "target_ports", type="json"
-            ),  # List of ports to monitor (if port-based)
+            Field("target_ports", type="json"),  # List of ports to monitor (if port-based)
             # TLS Proxy Behavior
             Field(
                 "intercept_mode", type="string", default="transparent", length=20
@@ -717,9 +700,7 @@ class TLSProxyCAModel:
             elif key_type == "rsa":
                 if key_size < 2048:
                     raise ValueError("RSA key size must be at least 2048 bits")
-                ca_private_key = rsa.generate_private_key(
-                    public_exponent=65537, key_size=key_size
-                )
+                ca_private_key = rsa.generate_private_key(public_exponent=65537, key_size=key_size)
             else:
                 raise ValueError(f"Unsupported key type: {key_type}")
 
@@ -739,15 +720,9 @@ class TLSProxyCAModel:
                     x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
                     x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "CA"),
                     x509.NameAttribute(NameOID.LOCALITY_NAME, "San Francisco"),
-                    x509.NameAttribute(
-                        NameOID.ORGANIZATION_NAME, "MarchProxy Enterprise"
-                    ),
-                    x509.NameAttribute(
-                        NameOID.ORGANIZATIONAL_UNIT_NAME, "TLS Proxy CA"
-                    ),
-                    x509.NameAttribute(
-                        NameOID.COMMON_NAME, f"MarchProxy TLS Proxy CA ({domain})"
-                    ),
+                    x509.NameAttribute(NameOID.ORGANIZATION_NAME, "MarchProxy Enterprise"),
+                    x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, "TLS Proxy CA"),
+                    x509.NameAttribute(NameOID.COMMON_NAME, f"MarchProxy TLS Proxy CA ({domain})"),
                 ]
             )
 
@@ -758,9 +733,7 @@ class TLSProxyCAModel:
                 .public_key(ca_private_key.public_key())
                 .serial_number(x509.random_serial_number())
                 .not_valid_before(datetime.utcnow())
-                .not_valid_after(
-                    datetime.utcnow() + timedelta(days=365 * lifetime_years)
-                )
+                .not_valid_after(datetime.utcnow() + timedelta(days=365 * lifetime_years))
                 .add_extension(
                     x509.BasicConstraints(ca=True, path_length=0),
                     critical=True,
@@ -806,9 +779,7 @@ class TLSProxyCAModel:
                     x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
                     x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "CA"),
                     x509.NameAttribute(NameOID.LOCALITY_NAME, "San Francisco"),
-                    x509.NameAttribute(
-                        NameOID.ORGANIZATION_NAME, "MarchProxy Enterprise"
-                    ),
+                    x509.NameAttribute(NameOID.ORGANIZATION_NAME, "MarchProxy Enterprise"),
                     x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, "TLS Proxy"),
                     x509.NameAttribute(NameOID.COMMON_NAME, wildcard_domain),
                 ]
@@ -821,9 +792,7 @@ class TLSProxyCAModel:
                 .public_key(wildcard_private_key.public_key())
                 .serial_number(x509.random_serial_number())
                 .not_valid_before(datetime.utcnow())
-                .not_valid_after(
-                    datetime.utcnow() + timedelta(days=365 * lifetime_years)
-                )
+                .not_valid_after(datetime.utcnow() + timedelta(days=365 * lifetime_years))
                 .add_extension(
                     x509.BasicConstraints(ca=False, path_length=None),
                     critical=True,
@@ -864,18 +833,16 @@ class TLSProxyCAModel:
             )
 
             # Serialize certificates and keys
-            ca_cert_pem = ca_cert.public_bytes(serialization.Encoding.PEM).decode(
-                "utf-8"
-            )
+            ca_cert_pem = ca_cert.public_bytes(serialization.Encoding.PEM).decode("utf-8")
             ca_key_pem = ca_private_key.private_bytes(
                 encoding=serialization.Encoding.PEM,
                 format=serialization.PrivateFormat.PKCS8,
                 encryption_algorithm=serialization.NoEncryption(),
             ).decode("utf-8")
 
-            wildcard_cert_pem = wildcard_cert.public_bytes(
-                serialization.Encoding.PEM
-            ).decode("utf-8")
+            wildcard_cert_pem = wildcard_cert.public_bytes(serialization.Encoding.PEM).decode(
+                "utf-8"
+            )
             wildcard_key_pem = wildcard_private_key.private_bytes(
                 encoding=serialization.Encoding.PEM,
                 format=serialization.PrivateFormat.PKCS8,
@@ -949,9 +916,7 @@ class TLSProxyCAModel:
                 wildcard_serial_number=ca_data["wildcard_serial"],
                 key_type=config.get("key_type", "ecc") if config else "ecc",
                 key_size=config.get("key_size", 384) if config else 384,
-                hash_algorithm=(
-                    config.get("hash_algorithm", "sha512") if config else "sha512"
-                ),
+                hash_algorithm=(config.get("hash_algorithm", "sha512") if config else "sha512"),
                 lifetime_years=config.get("lifetime_years", 10) if config else 10,
                 auto_generated=auto_generated,
                 requires_enterprise=True,
@@ -1033,9 +998,7 @@ class TLSProxyConfigManager:
         """Create TLS proxy configuration"""
         try:
             # Validate Enterprise license
-            if not self.license_manager or not self.license_manager.has_feature(
-                "tls_proxy"
-            ):
+            if not self.license_manager or not self.license_manager.has_feature("tls_proxy"):
                 return False, {"error": "TLS proxying requires Enterprise license"}
 
             # Validate CA exists and belongs to cluster
@@ -1057,21 +1020,15 @@ class TLSProxyConfigManager:
                 preserve_sni=config.get("preserve_sni", True),
                 log_connections=config.get("log_connections", True),
                 log_decrypted_content=config.get("log_decrypted_content", False),
-                max_concurrent_connections=config.get(
-                    "max_concurrent_connections", 10000
-                ),
-                connection_timeout_seconds=config.get(
-                    "connection_timeout_seconds", 300
-                ),
+                max_concurrent_connections=config.get("max_concurrent_connections", 10000),
+                connection_timeout_seconds=config.get("connection_timeout_seconds", 300),
                 buffer_size_kb=config.get("buffer_size_kb", 64),
                 requires_enterprise=True,
                 license_validated=True,
                 created_by=user_id,
             )
 
-            logger.info(
-                f"Created TLS proxy config {config_id} for cluster {cluster_id}"
-            )
+            logger.info(f"Created TLS proxy config {config_id} for cluster {cluster_id}")
             return True, {"id": config_id}
 
         except Exception as e:
@@ -1095,9 +1052,7 @@ class TLSProxyConfigManager:
             return {
                 "enabled": False,
                 "enterprise_available": (
-                    self.license_manager.has_feature("tls_proxy")
-                    if self.license_manager
-                    else False
+                    self.license_manager.has_feature("tls_proxy") if self.license_manager else False
                 ),
             }
 

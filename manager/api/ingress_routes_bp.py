@@ -14,9 +14,7 @@ from middleware.auth import require_auth
 
 logger = logging.getLogger(__name__)
 
-ingress_routes_bp = Blueprint(
-    "ingress_routes", __name__, url_prefix="/api/v1/ingress-routes"
-)
+ingress_routes_bp = Blueprint("ingress_routes", __name__, url_prefix="/api/v1/ingress-routes")
 
 
 class CreateIngressRouteRequest(BaseModel):
@@ -139,9 +137,7 @@ async def routes_list():
                 if existing:
                     return (
                         jsonify(
-                            {
-                                "error": f"Port {data.source_port}/{data.protocol} already in use"
-                            }
+                            {"error": f"Port {data.source_port}/{data.protocol} already in use"}
                         ),
                         409,
                     )
@@ -258,9 +254,7 @@ async def route_detail(route_id):
                     if existing:
                         return (
                             jsonify(
-                                {
-                                    "error": f"Port {data.source_port}/{protocol} already in use"
-                                }
+                                {"error": f"Port {data.source_port}/{protocol} already in use"}
                             ),
                             409,
                         )

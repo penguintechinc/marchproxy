@@ -57,13 +57,9 @@ DB_NAME = os.getenv("DB_NAME", "marchproxy")
 if DB_TYPE == "postgresql":
     DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 elif DB_TYPE == "mysql":
-    DATABASE_URL = (
-        f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-    )
+    DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 elif DB_TYPE == "mariadb":
-    DATABASE_URL = (
-        f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-    )
+    DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 elif DB_TYPE == "sqlite":
     db_path = os.getenv("DB_PATH", "./marchproxy.db")
     DATABASE_URL = f"sqlite:///{db_path}"
@@ -76,9 +72,7 @@ if DB_TYPE == "sqlite":
         DATABASE_URL, connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
 else:
-    engine = create_engine(
-        DATABASE_URL, pool_pre_ping=True, pool_size=10, max_overflow=20
-    )
+    engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=10, max_overflow=20)
 
 Base = declarative_base()
 
@@ -109,12 +103,8 @@ class User(Base):
     meta = Column("metadata", JSON, default={})
 
     # Relationships
-    sessions = relationship(
-        "Session", back_populates="user", cascade="all, delete-orphan"
-    )
-    api_tokens = relationship(
-        "APIToken", back_populates="user", cascade="all, delete-orphan"
-    )
+    sessions = relationship("Session", back_populates="user", cascade="all, delete-orphan")
+    api_tokens = relationship("APIToken", back_populates="user", cascade="all, delete-orphan")
     clusters_created = relationship(
         "Cluster", back_populates="created_by_user", foreign_keys="Cluster.created_by"
     )
@@ -258,18 +248,12 @@ class Cluster(Base):
     proxy_servers = relationship(
         "ProxyServer", back_populates="cluster", cascade="all, delete-orphan"
     )
-    services = relationship(
-        "Service", back_populates="cluster", cascade="all, delete-orphan"
-    )
-    mappings = relationship(
-        "Mapping", back_populates="cluster", cascade="all, delete-orphan"
-    )
+    services = relationship("Service", back_populates="cluster", cascade="all, delete-orphan")
+    mappings = relationship("Mapping", back_populates="cluster", cascade="all, delete-orphan")
     user_cluster_assignments = relationship(
         "UserClusterAssignment", back_populates="cluster", cascade="all, delete-orphan"
     )
-    block_rules = relationship(
-        "BlockRule", back_populates="cluster", cascade="all, delete-orphan"
-    )
+    block_rules = relationship("BlockRule", back_populates="cluster", cascade="all, delete-orphan")
     xdp_rate_limits = relationship(
         "XDPRateLimit", back_populates="cluster", cascade="all, delete-orphan"
     )
@@ -297,9 +281,7 @@ class UserClusterAssignment(Base):
     is_active = Column(Boolean, default=True, index=True)
 
     # Relationships
-    user = relationship(
-        "User", back_populates="user_cluster_assignments", foreign_keys=[user_id]
-    )
+    user = relationship("User", back_populates="user_cluster_assignments", foreign_keys=[user_id])
     cluster = relationship("Cluster", back_populates="user_cluster_assignments")
     assigned_by_user = relationship("User", foreign_keys=[assigned_by])
 
@@ -359,9 +341,7 @@ class ProxyMetric(Base):
     __tablename__ = "proxy_metrics"
 
     id = Column(Integer, primary_key=True)
-    proxy_id = Column(
-        Integer, ForeignKey("proxy_servers.id"), nullable=False, index=True
-    )
+    proxy_id = Column(Integer, ForeignKey("proxy_servers.id"), nullable=False, index=True)
     timestamp = Column(DateTime, default=datetime.utcnow, index=True)
     cpu_usage = Column(Float)
     memory_usage = Column(Float)
@@ -447,9 +427,7 @@ class UserServiceAssignment(Base):
     is_active = Column(Boolean, default=True, index=True)
 
     # Relationships
-    user = relationship(
-        "User", back_populates="user_service_assignments", foreign_keys=[user_id]
-    )
+    user = relationship("User", back_populates="user_service_assignments", foreign_keys=[user_id])
     service = relationship("Service", back_populates="user_service_assignments")
     assigned_by_user = relationship("User", foreign_keys=[assigned_by])
 
@@ -709,17 +687,13 @@ class BlockRule(Base):
     name = Column(String(255), nullable=False, index=True)
     description = Column(Text)
     cluster_id = Column(Integer, ForeignKey("clusters.id"), nullable=False, index=True)
-    rule_type = Column(
-        String(20), nullable=False
-    )  # ip, cidr, domain, url_pattern, port
+    rule_type = Column(String(20), nullable=False)  # ip, cidr, domain, url_pattern, port
     layer = Column(String(5), nullable=False)  # L4, L7
     value = Column(String(500), nullable=False)
     ports = Column(JSON)  # List of ports
     protocols = Column(JSON, default=["tcp", "udp"])  # List of protocols
     wildcard = Column(Boolean, default=False)
-    match_type = Column(
-        String(20), default="exact"
-    )  # exact, prefix, suffix, regex, contains
+    match_type = Column(String(20), default="exact")  # exact, prefix, suffix, regex, contains
     action = Column(String(20), default="deny")  # deny, drop, allow, log
     priority = Column(Integer, default=1000, index=True)
     apply_to_alb = Column(Boolean, default=True)
@@ -757,9 +731,7 @@ class BlockRuleSync(Base):
     __tablename__ = "block_rule_sync"
 
     id = Column(Integer, primary_key=True)
-    proxy_id = Column(
-        Integer, ForeignKey("proxy_servers.id"), nullable=False, unique=True
-    )
+    proxy_id = Column(Integer, ForeignKey("proxy_servers.id"), nullable=False, unique=True)
     last_sync_version = Column(String(64))
     last_sync_at = Column(DateTime)
     rules_count = Column(Integer, default=0)
@@ -793,9 +765,7 @@ class RateLimit(Base):
         Index("idx_rate_limits_client_id", "client_id"),
         Index("idx_rate_limits_endpoint", "endpoint"),
         Index("idx_rate_limits_is_blocked", "is_blocked"),
-        UniqueConstraint(
-            "client_id", "endpoint", name="uq_rate_limits_client_endpoint"
-        ),
+        UniqueConstraint("client_id", "endpoint", name="uq_rate_limits_client_endpoint"),
     )
 
 
@@ -871,12 +841,8 @@ class XDPRateLimitStats(Base):
     __tablename__ = "xdp_rate_limit_stats"
 
     id = Column(Integer, primary_key=True)
-    rate_limit_id = Column(
-        Integer, ForeignKey("xdp_rate_limits.id"), nullable=False, index=True
-    )
-    proxy_id = Column(
-        Integer, ForeignKey("proxy_servers.id"), nullable=False, index=True
-    )
+    rate_limit_id = Column(Integer, ForeignKey("xdp_rate_limits.id"), nullable=False, index=True)
+    proxy_id = Column(Integer, ForeignKey("proxy_servers.id"), nullable=False, index=True)
     interface_name = Column(String(32))
 
     # Statistics data
@@ -915,15 +881,11 @@ class XDPRateLimitWhitelist(Base):
     __tablename__ = "xdp_rate_limit_whitelist"
 
     id = Column(Integer, primary_key=True)
-    rate_limit_id = Column(
-        Integer, ForeignKey("xdp_rate_limits.id"), nullable=False, index=True
-    )
+    rate_limit_id = Column(Integer, ForeignKey("xdp_rate_limits.id"), nullable=False, index=True)
     ip_address = Column(String(45), nullable=False)  # Support IPv4 and IPv6
     ip_mask = Column(Integer, default=32)  # CIDR mask
     description = Column(Text)
-    whitelist_type = Column(
-        String(32), default="manual"
-    )  # manual, automatic, temporary
+    whitelist_type = Column(String(32), default="manual")  # manual, automatic, temporary
     expires_at = Column(DateTime)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -1008,9 +970,7 @@ class UserPermissionCache(Base):
     __tablename__ = "user_permissions_cache"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(
-        Integer, ForeignKey("users.id"), nullable=False, unique=True, index=True
-    )
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True, index=True)
     global_permissions = Column(JSON, default=[])  # List of global permissions
     cluster_permissions = Column(JSON, default={})  # {cluster_id: [perms]}
     service_permissions = Column(JSON, default={})  # {service_id: [perms]}

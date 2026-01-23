@@ -104,16 +104,10 @@ def _load_config(app: Quart, config: Optional[dict] = None) -> None:
             "DATABASE_URL": os.getenv("DATABASE_URL"),
             "DB_TYPE": os.getenv("DB_TYPE", "postgres").lower(),
             "JWT_SECRET": os.getenv("JWT_SECRET"),
-            "JWT_ACCESS_TOKEN_EXPIRES": int(
-                os.getenv("JWT_ACCESS_TOKEN_EXPIRES", "3600")
-            ),
-            "JWT_REFRESH_TOKEN_EXPIRES": int(
-                os.getenv("JWT_REFRESH_TOKEN_EXPIRES", "86400")
-            ),
+            "JWT_ACCESS_TOKEN_EXPIRES": int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES", "3600")),
+            "JWT_REFRESH_TOKEN_EXPIRES": int(os.getenv("JWT_REFRESH_TOKEN_EXPIRES", "86400")),
             "DEBUG": os.getenv("DEBUG", "false").lower() == "true",
-            "LICENSE_SERVER_URL": os.getenv(
-                "LICENSE_SERVER_URL", "https://license.penguintech.io"
-            ),
+            "LICENSE_SERVER_URL": os.getenv("LICENSE_SERVER_URL", "https://license.penguintech.io"),
             "LICENSE_KEY": os.getenv("LICENSE_KEY"),
             "ADMIN_PASSWORD": os.getenv("ADMIN_PASSWORD", "admin123"),
             "SQL_ECHO": os.getenv("SQL_ECHO", "false").lower() == "true",
@@ -195,9 +189,7 @@ def _initialize_database(app: Quart) -> None:
         app.db = db
         app.db_manager = db_manager
 
-        logger.info(
-            "Database initialized successfully", extra={"db_type": db_manager.db_type}
-        )
+        logger.info("Database initialized successfully", extra={"db_type": db_manager.db_type})
 
     except Exception as e:
         logger.error(f"Database initialization failed: {str(e)}", exc_info=True)
@@ -390,9 +382,7 @@ def _register_error_handlers(app: Quart) -> None:
         """Handle 400 Bad Request errors"""
         logger.warning(f"Bad request: {error}")
         return (
-            jsonify(
-                {"error": "Bad Request", "message": str(error), "status_code": 400}
-            ),
+            jsonify({"error": "Bad Request", "message": str(error), "status_code": 400}),
             400,
         )
 
@@ -532,9 +522,7 @@ async def _initialize_default_data(app: Quart) -> None:
                     db.commit()
                     logger.info("RBAC default roles initialized")
                 else:
-                    logger.info(
-                        f"RBAC tables already initialized ({role_count} roles exist)"
-                    )
+                    logger.info(f"RBAC tables already initialized ({role_count} roles exist)")
             except Exception as roles_error:
                 logger.error(f"Error checking/initializing RBAC roles: {roles_error}")
                 db.rollback()
@@ -567,9 +555,7 @@ async def _initialize_default_data(app: Quart) -> None:
 
             # Assign Admin role to default admin user
             try:
-                RBACModel.assign_role(
-                    db, admin_id, "admin", scope=PermissionScope.GLOBAL
-                )
+                RBACModel.assign_role(db, admin_id, "admin", scope=PermissionScope.GLOBAL)
                 logger.info(f"Assigned Admin role to default admin user")
             except Exception as e:
                 logger.warning(f"Could not assign admin role: {e}")

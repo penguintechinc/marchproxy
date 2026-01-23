@@ -90,9 +90,7 @@ async def test_license_status_endpoint(client):
 @pytest.mark.asyncio
 async def test_cors_headers(client):
     """Test CORS headers are present."""
-    response = await client.options(
-        "/api/auth/login", headers={"Origin": "http://localhost:3000"}
-    )
+    response = await client.options("/api/auth/login", headers={"Origin": "http://localhost:3000"})
     # OPTIONS should be handled
     assert response.status_code in [200, 204, 405]
 

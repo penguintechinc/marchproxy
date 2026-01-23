@@ -103,9 +103,7 @@ def requires_permission(
                         abort(400, f"Invalid {resource_id_param}")
 
             # Check permission
-            has_perm = RBACModel.has_permission(
-                db, user_id, permission, resource_type, resource_id
-            )
+            has_perm = RBACModel.has_permission(db, user_id, permission, resource_type, resource_id)
 
             if not has_perm:
                 logger.warning(
@@ -231,9 +229,7 @@ def requires_any_permission(*permissions: str):
                 # Could also check scoped permissions here
 
             if not has_permission:
-                logger.warning(
-                    f"No required permissions: user={user_id}, required={permissions}"
-                )
+                logger.warning(f"No required permissions: user={user_id}, required={permissions}")
                 abort(403, "Insufficient permissions")
 
             return await f(*args, **kwargs)
@@ -305,13 +301,9 @@ def can_manage_users(user_id: int, db) -> bool:
 
 def can_access_cluster(user_id: int, cluster_id: int, db) -> bool:
     """Helper function to check if user can access cluster"""
-    return RBACModel.has_permission(
-        db, user_id, Permissions.CLUSTER_READ, "cluster", cluster_id
-    )
+    return RBACModel.has_permission(db, user_id, Permissions.CLUSTER_READ, "cluster", cluster_id)
 
 
 def can_access_service(user_id: int, service_id: int, db) -> bool:
     """Helper function to check if user can access service"""
-    return RBACModel.has_permission(
-        db, user_id, Permissions.SERVICE_READ, "service", service_id
-    )
+    return RBACModel.has_permission(db, user_id, Permissions.SERVICE_READ, "service", service_id)

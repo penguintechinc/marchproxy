@@ -75,15 +75,11 @@ class ServiceManagementService:
         self.db.commit()
 
         service = self.db.services[service_id]
-        logger.info(
-            f"Created service '{service.name}' (ID: {service_id}) in cluster {cluster_id}"
-        )
+        logger.info(f"Created service '{service.name}' (ID: {service_id}) in cluster {cluster_id}")
 
         return self._service_to_dict(service, include_secrets=True)
 
-    def get_service(
-        self, service_id: int, user_id: int, include_secrets: bool = False
-    ) -> Dict:
+    def get_service(self, service_id: int, user_id: int, include_secrets: bool = False) -> Dict:
         """Get service by ID with access control"""
 
         service = self.db.services[service_id]
@@ -115,10 +111,7 @@ class ServiceManagementService:
                     abort(403, "Access denied to target cluster")
 
         # Handle authentication type changes
-        if (
-            "auth_type" in service_data
-            and service_data["auth_type"] != service.auth_type
-        ):
+        if "auth_type" in service_data and service_data["auth_type"] != service.auth_type:
             auth_config = self._generate_auth_config(service_data["auth_type"])
             service_data.update(auth_config)
 
@@ -194,8 +187,7 @@ class ServiceManagementService:
         )
 
         service_list = [
-            self._service_to_dict(service, include_secrets=False)
-            for service in services
+            self._service_to_dict(service, include_secrets=False) for service in services
         ]
 
         return {
@@ -236,9 +228,7 @@ class ServiceManagementService:
             self.db(
                 (self.db.user_service_assignments.user_id == target_user_id)
                 & (self.db.user_service_assignments.service_id == service_id)
-            ).update(
-                role=role, assigned_at=datetime.utcnow(), assigned_by=assigner_user_id
-            )
+            ).update(role=role, assigned_at=datetime.utcnow(), assigned_by=assigner_user_id)
         else:
             # Create new assignment
             self.db.user_service_assignments.insert(
@@ -250,9 +240,7 @@ class ServiceManagementService:
             )
 
         self.db.commit()
-        logger.info(
-            f"Assigned user {target_user_id} to service {service_id} with role {role}"
-        )
+        logger.info(f"Assigned user {target_user_id} to service {service_id} with role {role}")
         return True
 
     def remove_user_from_service(
@@ -379,14 +367,10 @@ class ServiceManagementService:
             if service.jwt_rotation_data:
                 try:
                     rotation_data = json.loads(service.jwt_rotation_data)
-                    rotation_started = datetime.fromisoformat(
-                        rotation_data["rotation_started"]
-                    )
+                    rotation_started = datetime.fromisoformat(rotation_data["rotation_started"])
                     window_seconds = rotation_data.get("rotation_window", 300)
 
-                    if datetime.utcnow() < rotation_started + timedelta(
-                        seconds=window_seconds
-                    ):
+                    if datetime.utcnow() < rotation_started + timedelta(seconds=window_seconds):
                         auth_config["jwt_secret_old"] = rotation_data["old_secret"]
                 except (json.JSONDecodeError, ValueError, KeyError):
                     pass
@@ -489,9 +473,7 @@ class ServiceManagementService:
 
         return assignment and assignment.role in ["editor", "owner"]
 
-    def _build_user_services_query(
-        self, user_id: int, cluster_id: Optional[int] = None
-    ):
+    def _build_user_services_query(self, user_id: int, cluster_id: Optional[int] = None):
         """Build query for user's accessible services"""
 
         user = self.db.auth_user[user_id]
@@ -525,12 +507,8 @@ class ServiceManagementService:
             "auth_type": service.auth_type,
             "description": service.description,
             "is_active": service.is_active,
-            "created_at": (
-                service.created_at.isoformat() if service.created_at else None
-            ),
-            "updated_at": (
-                service.updated_at.isoformat() if service.updated_at else None
-            ),
+            "created_at": (service.created_at.isoformat() if service.created_at else None),
+            "updated_at": (service.updated_at.isoformat() if service.updated_at else None),
         }
 
         # Include authentication secrets only when requested
@@ -547,9 +525,7 @@ class ServiceManagementService:
                     try:
                         rotation_data = json.loads(service.jwt_rotation_data)
                         result["jwt_rotation_active"] = True
-                        result["jwt_rotation_started"] = rotation_data.get(
-                            "rotation_started"
-                        )
+                        result["jwt_rotation_started"] = rotation_data.get("rotation_started")
                     except (json.JSONDecodeError, ValueError):
                         pass
 

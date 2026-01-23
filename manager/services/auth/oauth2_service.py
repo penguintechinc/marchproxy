@@ -132,9 +132,7 @@ class OAuth2Service:
                 )
         return available
 
-    def initiate_oauth2_flow(
-        self, provider: str, redirect_uri: Optional[str] = None
-    ) -> str:
+    def initiate_oauth2_flow(self, provider: str, redirect_uri: Optional[str] = None) -> str:
         """Initiate OAuth2 authorization flow"""
         if not self.is_enabled(provider):
             abort(403, f"OAuth2 provider '{provider}' not available")
@@ -260,9 +258,7 @@ class OAuth2Service:
             "Accept": "application/json",
         }
 
-        response = requests.get(
-            config["userinfo_endpoint"], headers=headers, timeout=30
-        )
+        response = requests.get(config["userinfo_endpoint"], headers=headers, timeout=30)
         response.raise_for_status()
 
         user_info = response.json()
@@ -287,9 +283,7 @@ class OAuth2Service:
             )
             if email_response.status_code == 200:
                 emails = email_response.json()
-                primary_email = next(
-                    (email["email"] for email in emails if email["primary"]), None
-                )
+                primary_email = next((email["email"] for email in emails if email["primary"]), None)
                 if primary_email:
                     user_info["email"] = primary_email
 
@@ -330,15 +324,11 @@ class OAuth2Service:
                 user_data["last_name"] = name_parts[1] if len(name_parts) > 1 else ""
 
         # Determine admin status
-        user_data["is_admin"] = self._determine_admin_status(
-            provider, user_info, user_data
-        )
+        user_data["is_admin"] = self._determine_admin_status(provider, user_info, user_data)
 
         return user_data
 
-    def _determine_admin_status(
-        self, provider: str, user_info: Dict, user_data: Dict
-    ) -> bool:
+    def _determine_admin_status(self, provider: str, user_info: Dict, user_data: Dict) -> bool:
         """Determine if user should have admin privileges"""
         config = self.providers[provider]
 

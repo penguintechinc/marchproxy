@@ -113,9 +113,7 @@ async def register(user_data):
 
     # Check if username or email already exists
     existing = (
-        db((db.users.username == data.username) | (db.users.email == data.email))
-        .select()
-        .first()
+        db((db.users.username == data.username) | (db.users.email == data.email)).select().first()
     )
 
     if existing:
@@ -123,9 +121,7 @@ async def register(user_data):
 
     # Create user
     password_hash = UserModel.hash_password(data.password)
-    user_id = db.users.insert(
-        username=data.username, email=data.email, password_hash=password_hash
-    )
+    user_id = db.users.insert(username=data.username, email=data.email, password_hash=password_hash)
 
     user = db.users[user_id]
     response = UserResponse(

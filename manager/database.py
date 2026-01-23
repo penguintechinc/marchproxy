@@ -258,9 +258,7 @@ class DatabaseManager:
                 if "already exists" in error_msg:
                     # Race condition - another worker created tables
                     # Close and retry with fake_migrate
-                    logger.info(
-                        "Tables created by another worker, retrying with fake_migrate"
-                    )
+                    logger.info("Tables created by another worker, retrying with fake_migrate")
                     db.close()
                     db = DAL(
                         self.pydal_uri,
@@ -276,9 +274,7 @@ class DatabaseManager:
             # Store in thread-local storage
             self._thread_local.db = db
 
-            logger.info(
-                "PyDAL connection created successfully", extra={"db_type": self.db_type}
-            )
+            logger.info("PyDAL connection created successfully", extra={"db_type": self.db_type})
 
             return db
 
@@ -336,9 +332,7 @@ class DatabaseManager:
             MediaSettingsModel.define_table(db)
             MediaStreamModel.define_table(db)
 
-            logger.info(
-                "All database tables defined successfully", extra={"table_count": 15}
-            )
+            logger.info("All database tables defined successfully", extra={"table_count": 15})
 
         except Exception as e:
             logger.error(f"Failed to define database tables: {str(e)}", exc_info=True)

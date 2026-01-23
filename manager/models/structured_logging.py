@@ -18,9 +18,7 @@ import threading
 class StructuredFormatter(logging.Formatter):
     """JSON structured logging formatter"""
 
-    def __init__(
-        self, service_name: str = "marchproxy-manager", version: str = "1.0.0"
-    ):
+    def __init__(self, service_name: str = "marchproxy-manager", version: str = "1.0.0"):
         super().__init__()
         self.service_name = service_name
         self.version = version
@@ -100,9 +98,7 @@ class MarchProxyLogger:
         """Setup root logger configuration"""
         # Get log level from environment
         log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
-        log_format = os.environ.get(
-            "LOG_FORMAT", "structured"
-        )  # 'structured' or 'simple'
+        log_format = os.environ.get("LOG_FORMAT", "structured")  # 'structured' or 'simple'
 
         # Configure root logger
         root_logger = logging.getLogger()
@@ -118,9 +114,7 @@ class MarchProxyLogger:
             console_handler.setFormatter(StructuredFormatter(self.service_name))
         else:
             console_handler.setFormatter(
-                logging.Formatter(
-                    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-                )
+                logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
             )
 
         root_logger.addHandler(console_handler)
@@ -136,9 +130,7 @@ class MarchProxyLogger:
                 file_handler.setFormatter(StructuredFormatter(self.service_name))
             else:
                 file_handler.setFormatter(
-                    logging.Formatter(
-                        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-                    )
+                    logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
                 )
 
             root_logger.addHandler(file_handler)
@@ -211,9 +203,7 @@ class MarchProxyLogger:
 
         level = logging.INFO if status_code < 400 else logging.WARNING
 
-        logger.log(
-            level, f"{method} {path} - {status_code} ({duration_ms:.2f}ms)", extra=extra
-        )
+        logger.log(level, f"{method} {path} - {status_code} ({duration_ms:.2f}ms)", extra=extra)
 
     def log_license_event(
         self,
@@ -234,9 +224,7 @@ class MarchProxyLogger:
 
         if license_key:
             # Mask license key for security
-            extra["license_key"] = (
-                f"{license_key[:8]}..." if len(license_key) > 8 else "***"
-            )
+            extra["license_key"] = f"{license_key[:8]}..." if len(license_key) > 8 else "***"
         if details:
             extra.update(details)
 
@@ -337,9 +325,7 @@ class MarchProxyLogger:
 
         level = logging.INFO if success else logging.ERROR
 
-        logger.log(
-            level, f"Certificate {event_type}: {cert_name or cert_id}", extra=extra
-        )
+        logger.log(level, f"Certificate {event_type}: {cert_name or cert_id}", extra=extra)
 
 
 # Global logger instance

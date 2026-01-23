@@ -156,9 +156,7 @@ class SAMLAuthenticator:
                 "url": f"{self.base_url}/api/auth/saml/sls",
                 "binding": BINDING_HTTP_REDIRECT,
             },
-            "name_id_format": [
-                "urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress"
-            ],
+            "name_id_format": ["urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress"],
             "key_file": self.config.get("sp_private_key"),
             "cert_file": self.config.get("sp_x509_cert"),
         }
@@ -176,9 +174,7 @@ class SAMLAuthenticator:
         }
 
         config = Saml2Config()
-        config.load(
-            {"sp": saml_settings, "idp": {self.config["idp_entity_id"]: idp_settings}}
-        )
+        config.load({"sp": saml_settings, "idp": {self.config["idp_entity_id"]: idp_settings}})
 
         return Saml2Client(config=config)
 
@@ -215,9 +211,7 @@ class SAMLAuthenticator:
 
             # Map attributes to user fields
             mapped_user = {}
-            for local_attr, saml_attr in self.config.get(
-                "attribute_mapping", {}
-            ).items():
+            for local_attr, saml_attr in self.config.get("attribute_mapping", {}).items():
                 if saml_attr in user_info:
                     value = user_info[saml_attr]
                     mapped_user[local_attr] = (
@@ -295,8 +289,7 @@ class OAuth2Authenticator:
                         if user_info:
                             return {
                                 "provider": "oauth2",
-                                "external_id": user_info.get("sub")
-                                or user_info.get("id"),
+                                "external_id": user_info.get("sub") or user_info.get("id"),
                                 "attributes": self._map_attributes(user_info),
                                 "access_token": access_token,
                                 "refresh_token": token_response.get("refresh_token"),
@@ -354,9 +347,7 @@ class SCIMUserModel:
         )
 
     @staticmethod
-    def process_scim_user(
-        db: DAL, scim_data: Dict[str, Any], provider_name: str
-    ) -> Optional[int]:
+    def process_scim_user(db: DAL, scim_data: Dict[str, Any], provider_name: str) -> Optional[int]:
         """Process SCIM user creation/update"""
         scim_id = scim_data.get("id")
         if not scim_id:
@@ -401,9 +392,7 @@ class SCIMUserModel:
 
         else:
             # Create new user if auto-provisioning is enabled
-            provider = (
-                db(db.enterprise_auth_providers.name == provider_name).select().first()
-            )
+            provider = db(db.enterprise_auth_providers.name == provider_name).select().first()
             if not provider or not provider.auto_provision:
                 return None
 
@@ -413,9 +402,7 @@ class SCIMUserModel:
             user_id = db.users.insert(
                 username=user_name or primary_email,
                 email=primary_email,
-                password_hash=UserModel.hash_password(
-                    secrets.token_urlsafe(32)
-                ),  # Random password
+                password_hash=UserModel.hash_password(secrets.token_urlsafe(32)),  # Random password
                 is_active=is_active,
                 auth_provider=provider_name,
                 external_id=scim_data.get("externalId"),
@@ -457,9 +444,7 @@ class EnterpriseAuthManager:
 
         return None
 
-    def get_oauth2_authenticator(
-        self, provider_name: str
-    ) -> Optional[OAuth2Authenticator]:
+    def get_oauth2_authenticator(self, provider_name: str) -> Optional[OAuth2Authenticator]:
         """Get OAuth2 authenticator for provider"""
         provider = (
             self.db(
@@ -527,9 +512,7 @@ class EnterpriseAuthManager:
         user_id = self.db.users.insert(
             username=username,
             email=email,
-            password_hash=UserModel.hash_password(
-                secrets.token_urlsafe(32)
-            ),  # Random password
+            password_hash=UserModel.hash_password(secrets.token_urlsafe(32)),  # Random password
             auth_provider=provider_name,
             external_id=external_id,
             metadata=attributes,
@@ -540,9 +523,7 @@ class EnterpriseAuthManager:
             from .cluster import UserClusterAssignmentModel
 
             # Get default cluster
-            default_cluster = (
-                self.db(self.db.clusters.is_default == True).select().first()
-            )
+            default_cluster = self.db(self.db.clusters.is_default == True).select().first()
             if default_cluster:
                 UserClusterAssignmentModel.assign_user_to_cluster(
                     self.db,

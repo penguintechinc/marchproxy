@@ -42,9 +42,7 @@ async def manage_block_rules(user_data, cluster_id):
 
         # Verify cluster exists
         cluster = (
-            db((db.clusters.id == cluster_id) & (db.clusters.is_active == True))
-            .select()
-            .first()
+            db((db.clusters.id == cluster_id) & (db.clusters.is_active == True)).select().first()
         )
         if not cluster:
             return jsonify({"error": "Cluster not found"}), 404
@@ -53,9 +51,7 @@ async def manage_block_rules(user_data, cluster_id):
         rule_type = request.args.get("rule_type")
         layer = request.args.get("layer")
         proxy_type = request.args.get("proxy_type")
-        include_inactive = (
-            request.args.get("include_inactive", "false").lower() == "true"
-        )
+        include_inactive = request.args.get("include_inactive", "false").lower() == "true"
 
         rules = BlockRuleModel.list_rules(
             db,
@@ -67,9 +63,7 @@ async def manage_block_rules(user_data, cluster_id):
         )
 
         return (
-            jsonify(
-                {"cluster_id": cluster_id, "rules_count": len(rules), "rules": rules}
-            ),
+            jsonify({"cluster_id": cluster_id, "rules_count": len(rules), "rules": rules}),
             200,
         )
 
@@ -80,9 +74,7 @@ async def manage_block_rules(user_data, cluster_id):
 
         # Verify cluster exists
         cluster = (
-            db((db.clusters.id == cluster_id) & (db.clusters.is_active == True))
-            .select()
-            .first()
+            db((db.clusters.id == cluster_id) & (db.clusters.is_active == True)).select().first()
         )
         if not cluster:
             return jsonify({"error": "Cluster not found"}), 404
@@ -169,17 +161,13 @@ async def manage_single_block_rule(user_data, cluster_id, rule_id):
             return jsonify({"error": "Validation error", "details": str(e)}), 400
 
         try:
-            success = BlockRuleModel.update_rule(
-                db, rule_id, **data.dict(exclude_unset=True)
-            )
+            success = BlockRuleModel.update_rule(db, rule_id, **data.dict(exclude_unset=True))
             if not success:
                 return jsonify({"error": "Failed to update block rule"}), 500
 
             updated_rule = BlockRuleModel.get_rule(db, rule_id)
             return (
-                jsonify(
-                    {"message": "Block rule updated successfully", "rule": updated_rule}
-                ),
+                jsonify({"message": "Block rule updated successfully", "rule": updated_rule}),
                 200,
             )
 
@@ -222,11 +210,7 @@ async def bulk_create_block_rules(user_data, cluster_id):
     user = user_data
 
     # Verify cluster exists
-    cluster = (
-        db((db.clusters.id == cluster_id) & (db.clusters.is_active == True))
-        .select()
-        .first()
-    )
+    cluster = db((db.clusters.id == cluster_id) & (db.clusters.is_active == True)).select().first()
     if not cluster:
         return jsonify({"error": "Cluster not found"}), 404
 
@@ -369,8 +353,7 @@ async def get_sync_status(user_data, cluster_id):
 
     # Get all proxies in cluster and their sync status
     proxies = db(
-        (db.proxy_servers.cluster_id == cluster_id)
-        & (db.proxy_servers.status == "active")
+        (db.proxy_servers.cluster_id == cluster_id) & (db.proxy_servers.status == "active")
     ).select()
 
     current_version = BlockRuleModel.get_rules_version(db, cluster_id)
@@ -386,9 +369,7 @@ async def get_sync_status(user_data, cluster_id):
                 "sync_status": sync["sync_status"] if sync else "never_synced",
                 "last_sync_at": sync["last_sync_at"] if sync else None,
                 "last_sync_version": sync["last_sync_version"] if sync else None,
-                "is_current": (
-                    sync["last_sync_version"] == current_version if sync else False
-                ),
+                "is_current": (sync["last_sync_version"] == current_version if sync else False),
                 "rules_count": sync["rules_count"] if sync else 0,
                 "sync_error": sync["sync_error"] if sync else None,
             }

@@ -55,16 +55,12 @@ class MappingModel:
         """Create new mapping configuration"""
 
         # Validate and normalize source services
-        normalized_sources = MappingModel._normalize_service_list(
-            db, source_services, cluster_id
-        )
+        normalized_sources = MappingModel._normalize_service_list(db, source_services, cluster_id)
         if not normalized_sources:
             raise ValueError("No valid source services provided")
 
         # Validate and normalize destination services
-        normalized_dests = MappingModel._normalize_service_list(
-            db, dest_services, cluster_id
-        )
+        normalized_dests = MappingModel._normalize_service_list(db, dest_services, cluster_id)
         if not normalized_dests:
             raise ValueError("No valid destination services provided")
 
@@ -104,8 +100,7 @@ class MappingModel:
             if service == "all":
                 # Special case: all services in cluster
                 cluster_services = db(
-                    (db.services.cluster_id == cluster_id)
-                    & (db.services.is_active == True)
+                    (db.services.cluster_id == cluster_id) & (db.services.is_active == True)
                 ).select()
 
                 normalized.append(
@@ -182,9 +177,7 @@ class MappingModel:
                     try:
                         start, end = map(int, port.split("-"))
                         if 1 <= start <= end <= 65535:
-                            normalized.append(
-                                {"type": "range", "start": start, "end": end}
-                            )
+                            normalized.append({"type": "range", "start": start, "end": end})
                     except ValueError:
                         pass
 
@@ -210,9 +203,7 @@ class MappingModel:
         return normalized
 
     @staticmethod
-    def get_cluster_mappings(
-        db: DAL, cluster_id: int, user_id: int = None
-    ) -> List[Dict[str, Any]]:
+    def get_cluster_mappings(db: DAL, cluster_id: int, user_id: int = None) -> List[Dict[str, Any]]:
         """Get mappings for cluster (with user access control)"""
         query = (db.mappings.cluster_id == cluster_id) & (db.mappings.is_active == True)
 
@@ -226,9 +217,7 @@ class MappingModel:
                     & (db.user_service_assignments.is_active == True)
                 ).select(db.user_service_assignments.service_id)
 
-                accessible_service_ids = [
-                    assignment.service_id for assignment in user_services
-                ]
+                accessible_service_ids = [assignment.service_id for assignment in user_services]
 
                 # Filter mappings that involve user's services
                 # This is complex because services are stored as JSON arrays
@@ -298,9 +287,7 @@ class MappingModel:
     def resolve_mapping_services(db: DAL, mapping_id: int) -> Optional[Dict[str, Any]]:
         """Resolve mapping to concrete service configurations for proxy"""
         mapping = (
-            db((db.mappings.id == mapping_id) & (db.mappings.is_active == True))
-            .select()
-            .first()
+            db((db.mappings.id == mapping_id) & (db.mappings.is_active == True)).select().first()
         )
 
         if not mapping:
@@ -469,9 +456,7 @@ class CreateMappingRequest(BaseModel):
         valid_protocols = ["tcp", "udp", "icmp", "http", "https"]
         for protocol in v:
             if protocol not in valid_protocols:
-                raise ValueError(
-                    f"Invalid protocol: {protocol}. Must be one of: {valid_protocols}"
-                )
+                raise ValueError(f"Invalid protocol: {protocol}. Must be one of: {valid_protocols}")
         return [p.lower() for p in v]
 
     @validator("ports")
@@ -499,9 +484,7 @@ class CreateMappingRequest(BaseModel):
                         port_list = [int(p.strip()) for p in port.split(",")]
                         for p in port_list:
                             if not (1 <= p <= 65535):
-                                raise ValueError(
-                                    f"Port {p} must be between 1 and 65535"
-                                )
+                                raise ValueError(f"Port {p} must be between 1 and 65535")
                     except ValueError:
                         raise ValueError(f"Invalid port list format: {port}")
                 else:
@@ -509,9 +492,7 @@ class CreateMappingRequest(BaseModel):
                     try:
                         port_num = int(port)
                         if not (1 <= port_num <= 65535):
-                            raise ValueError(
-                                f"Port {port_num} must be between 1 and 65535"
-                            )
+                            raise ValueError(f"Port {port_num} must be between 1 and 65535")
                     except ValueError:
                         raise ValueError(f"Invalid port format: {port}")
 

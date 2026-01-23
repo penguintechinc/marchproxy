@@ -19,13 +19,9 @@ class MediaSettingsModel:
         """Define media_settings table in database"""
         return db.define_table(
             "media_settings",
-            Field(
-                "admin_max_resolution", type="integer"
-            ),  # NULL = use hardware default
+            Field("admin_max_resolution", type="integer"),  # NULL = use hardware default
             Field("admin_max_bitrate_kbps", type="integer"),
-            Field(
-                "enforce_codec", type="string", length=10
-            ),  # NULL, 'h264', 'h265', 'av1'
+            Field("enforce_codec", type="string", length=10),  # NULL, 'h264', 'h265', 'av1'
             Field("transcode_ladder_enabled", type="boolean", default=True),
             Field("transcode_ladder_resolutions", type="json"),  # [360, 540, 720, 1080]
             Field("updated_by", type="reference users"),
@@ -78,15 +74,11 @@ class MediaSettingsModel:
                     admin_max_bitrate_kbps if admin_max_bitrate_kbps > 0 else None
                 )
             if enforce_codec is not None:
-                update_data["enforce_codec"] = (
-                    enforce_codec if enforce_codec != "" else None
-                )
+                update_data["enforce_codec"] = enforce_codec if enforce_codec != "" else None
             if transcode_ladder_enabled is not None:
                 update_data["transcode_ladder_enabled"] = transcode_ladder_enabled
             if transcode_ladder_resolutions is not None:
-                update_data[
-                    "transcode_ladder_resolutions"
-                ] = transcode_ladder_resolutions
+                update_data["transcode_ladder_resolutions"] = transcode_ladder_resolutions
 
             settings.update_record(**update_data)
         else:
@@ -102,16 +94,11 @@ class MediaSettingsModel:
                     if admin_max_bitrate_kbps and admin_max_bitrate_kbps > 0
                     else None
                 ),
-                enforce_codec=(
-                    enforce_codec if enforce_codec and enforce_codec != "" else None
-                ),
+                enforce_codec=(enforce_codec if enforce_codec and enforce_codec != "" else None),
                 transcode_ladder_enabled=(
-                    transcode_ladder_enabled
-                    if transcode_ladder_enabled is not None
-                    else True
+                    transcode_ladder_enabled if transcode_ladder_enabled is not None else True
                 ),
-                transcode_ladder_resolutions=transcode_ladder_resolutions
-                or [360, 540, 720, 1080],
+                transcode_ladder_resolutions=transcode_ladder_resolutions or [360, 540, 720, 1080],
                 updated_by=updated_by,
                 updated_at=datetime.utcnow(),
             )
@@ -140,15 +127,11 @@ class MediaStreamModel:
         return db.define_table(
             "media_streams",
             Field("stream_key", type="string", unique=True, required=True, length=100),
-            Field(
-                "protocol", type="string", required=True, length=20
-            ),  # rtmp, srt, webrtc
+            Field("protocol", type="string", required=True, length=20),  # rtmp, srt, webrtc
             Field("codec", type="string", length=10),  # h264, h265, av1
             Field("resolution", type="string", length=20),  # e.g., "1920x1080"
             Field("bitrate_kbps", type="integer"),
-            Field(
-                "status", type="string", default="active", length=20
-            ),  # active, idle, error
+            Field("status", type="string", default="active", length=20),  # active, idle, error
             Field("client_ip", type="string", length=45),
             Field("user_agent", type="string", length=255),
             Field("started_at", type="datetime", default=datetime.utcnow),

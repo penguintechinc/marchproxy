@@ -324,9 +324,7 @@ class SCIMService:
                             None,
                         )
                         if primary_email:
-                            self.db(self.db.auth_user.id == user_id).update(
-                                email=primary_email
-                            )
+                            self.db(self.db.auth_user.id == user_id).update(email=primary_email)
                 elif path.startswith("name"):
                     if "givenName" in value:
                         self.db(self.db.auth_user.id == user_id).update(
@@ -362,9 +360,7 @@ class SCIMService:
 
         logger.info(f"SCIM: Deleted user {username}")
 
-    def list_users(
-        self, start_index: int = 1, count: int = 100, filter_expr: str = None
-    ) -> Dict:
+    def list_users(self, start_index: int = 1, count: int = 100, filter_expr: str = None) -> Dict:
         """List users via SCIM"""
         if not self.is_enabled():
             abort(403, "SCIM provisioning not available")
@@ -403,9 +399,7 @@ class SCIMService:
         # Extract email
         emails = user_data.get("emails", [])
         if emails:
-            primary_email = next(
-                (email["value"] for email in emails if email.get("primary")), None
-            )
+            primary_email = next((email["value"] for email in emails if email.get("primary")), None)
             if primary_email:
                 attrs["email"] = primary_email
             elif emails[0].get("value"):
@@ -423,9 +417,7 @@ class SCIMService:
             attrs["external_id"] = user_data["externalId"]
 
         # Enterprise extension
-        enterprise = user_data.get(
-            "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User", {}
-        )
+        enterprise = user_data.get("urn:ietf:params:scim:schemas:extension:enterprise:2.0:User", {})
         if "department" in enterprise:
             attrs["department"] = enterprise["department"]
         if "manager" in enterprise:
@@ -449,13 +441,9 @@ class SCIMService:
             "meta": {
                 "resourceType": "User",
                 "created": (
-                    user.registration_date.isoformat() + "Z"
-                    if user.registration_date
-                    else None
+                    user.registration_date.isoformat() + "Z" if user.registration_date else None
                 ),
-                "lastModified": (
-                    user.last_login.isoformat() + "Z" if user.last_login else None
-                ),
+                "lastModified": (user.last_login.isoformat() + "Z" if user.last_login else None),
                 "location": f"{self.base_url}/Users/{user.id}",
                 "version": f'W/"{user.id}"',
             },

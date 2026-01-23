@@ -87,9 +87,7 @@ def _validate_token(token: str) -> Optional[dict]:
         return None
 
 
-def require_auth(
-    admin_required: bool = False, license_feature: Optional[str] = None
-) -> Callable:
+def require_auth(admin_required: bool = False, license_feature: Optional[str] = None) -> Callable:
     """
     Decorator to protect routes requiring authentication.
 
@@ -184,9 +182,7 @@ async def _authenticate_and_authorize_async(
 
     # Check admin requirement
     if admin_required and not payload.get("is_admin", False):
-        logger.warning(
-            f"Non-admin user {payload.get('user_id')} attempted admin access"
-        )
+        logger.warning(f"Non-admin user {payload.get('user_id')} attempted admin access")
         return ({"error": "Admin access required"}, 403)
 
     # Check license feature (placeholder for future implementation)

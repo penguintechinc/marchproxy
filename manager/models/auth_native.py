@@ -74,9 +74,7 @@ def extend_auth_user_table(auth: Auth):
                     table.is_admin.set_attributes(type="boolean", default=False),
                     table.totp_enabled.set_attributes(type="boolean", default=False),
                     table.totp_secret.set_attributes(type="string", length=32),
-                    table.auth_provider.set_attributes(
-                        type="string", default="local", length=50
-                    ),
+                    table.auth_provider.set_attributes(type="string", default="local", length=50),
                     table.external_id.set_attributes(type="string", length=255),
                     table.last_login.set_attributes(type="datetime"),
                     table.metadata.set_attributes(type="json"),
@@ -114,9 +112,7 @@ class TOTPManager:
 
         return {"secret": secret, "qr_uri": uri, "qr_code": self._generate_qr_code(uri)}
 
-    def verify_and_complete_2fa(
-        self, user_id: int, secret: str, totp_code: str
-    ) -> bool:
+    def verify_and_complete_2fa(self, user_id: int, secret: str, totp_code: str) -> bool:
         """Verify TOTP code and complete 2FA setup"""
         user = self.db.auth_user[user_id]
         if not user or user.totp_secret != secret:
@@ -216,9 +212,7 @@ class APITokenManager:
 
         token = secrets.token_urlsafe(48)
         token_id = secrets.token_urlsafe(32)
-        token_hash = bcrypt.hashpw(token.encode("utf-8"), bcrypt.gensalt()).decode(
-            "utf-8"
-        )
+        token_hash = bcrypt.hashpw(token.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
         expires_at = None
         if ttl_days:
@@ -247,9 +241,7 @@ class APITokenManager:
                 | (self.db.api_tokens.expires_at > datetime.utcnow())
             )
         ).select():
-            if bcrypt.checkpw(
-                token.encode("utf-8"), token_record.token_hash.encode("utf-8")
-            ):
+            if bcrypt.checkpw(token.encode("utf-8"), token_record.token_hash.encode("utf-8")):
                 # Update last used
                 token_record.update_record(last_used=datetime.utcnow())
 
@@ -290,9 +282,7 @@ def create_admin_user(
 
         # Create default API token for admin
         token_manager = APITokenManager(auth)
-        token, token_id = token_manager.create_token(
-            user_id, "admin-default", {"admin": True}
-        )
+        token, token_id = token_manager.create_token(user_id, "admin-default", {"admin": True})
 
         print(f"Admin user created - Email: {email}, Password: {password}")
         print(f"Admin API token: {token}")

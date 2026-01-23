@@ -21,21 +21,11 @@ system_bp = Blueprint("system", __name__)
 # Prometheus metrics
 marchproxy_users_total = Gauge("marchproxy_users_total", "Total number of users")
 marchproxy_users_active = Gauge("marchproxy_users_active", "Number of active users")
-marchproxy_clusters_total = Gauge(
-    "marchproxy_clusters_total", "Total number of clusters"
-)
-marchproxy_proxies_total = Gauge(
-    "marchproxy_proxies_total", "Total number of proxy servers"
-)
-marchproxy_proxies_active = Gauge(
-    "marchproxy_proxies_active", "Number of active proxy servers"
-)
-marchproxy_services_total = Gauge(
-    "marchproxy_services_total", "Total number of services"
-)
-marchproxy_mappings_total = Gauge(
-    "marchproxy_mappings_total", "Total number of mappings"
-)
+marchproxy_clusters_total = Gauge("marchproxy_clusters_total", "Total number of clusters")
+marchproxy_proxies_total = Gauge("marchproxy_proxies_total", "Total number of proxy servers")
+marchproxy_proxies_active = Gauge("marchproxy_proxies_active", "Number of active proxy servers")
+marchproxy_services_total = Gauge("marchproxy_services_total", "Total number of services")
+marchproxy_mappings_total = Gauge("marchproxy_mappings_total", "Total number of mappings")
 
 
 @system_bp.route("/", methods=["GET"])
@@ -154,9 +144,7 @@ async def metrics():
 
     except Exception as e:
         logger.error(f"Metrics collection failed: {e}")
-        return Response(
-            f"# Error collecting metrics: {e}\n", status=500, mimetype="text/plain"
-        )
+        return Response(f"# Error collecting metrics: {e}\n", status=500, mimetype="text/plain")
 
 
 @system_bp.route("/license-status", methods=["GET"])
@@ -197,9 +185,7 @@ async def license_status():
                 "max_proxies": license_data["max_proxies"],
                 "active_proxies": db(db.proxy_servers.status == "active").count(),
                 "expires_at": (
-                    license_data["expires_at"].isoformat()
-                    if license_data["expires_at"]
-                    else None
+                    license_data["expires_at"].isoformat() if license_data["expires_at"] else None
                 ),
             }
         )
