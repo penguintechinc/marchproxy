@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/penguintech/marchproxy/internal/manager"
+	"marchproxy-egress/internal/manager"
 )
 
 // Manager handles eBPF program lifecycle and map management

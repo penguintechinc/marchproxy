@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/MarchProxy/proxy/internal/middleware"
+	"marchproxy-egress/internal/middleware"
 )
 
 type CacheMiddleware struct {

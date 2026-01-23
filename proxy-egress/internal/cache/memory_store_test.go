@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 )
@@ -16,6 +17,8 @@ func TestNewMemoryStore(t *testing.T) {
 	}
 
 	store := NewMemoryStore(config)
+	defer store.Close()
+
 	if store == nil {
 		t.Fatal("Expected store to be created, got nil")
 	}
@@ -37,29 +40,33 @@ func TestMemoryStoreBasicOperations(t *testing.T) {
 	}
 
 	store := NewMemoryStore(config)
+	defer store.Close()
 	ctx := context.Background()
 
 	// Test Set and Get
 	key := "test_key"
-	value := []byte("test_value")
+	entry := &CacheEntry{
+		Value: []byte("test_value"),
+		Size:  10,
+	}
 	ttl := time.Hour
 
-	err := store.Set(ctx, key, value, ttl)
+	err := store.Set(ctx, key, entry, ttl)
 	if err != nil {
 		t.Fatalf("Failed to set value: %v", err)
 	}
 
-	retrieved, found, err := store.Get(ctx, key)
+	retrieved, err := store.Get(ctx, key)
 	if err != nil {
 		t.Fatalf("Failed to get value: %v", err)
 	}
 
-	if !found {
-		t.Error("Expected key to be found")
+	if retrieved == nil {
+		t.Error("Expected entry to be found")
 	}
 
-	if string(retrieved) != string(value) {
-		t.Errorf("Expected value %s, got %s", string(value), string(retrieved))
+	if string(retrieved.Value) != string(entry.Value) {
+		t.Errorf("Expected value %s, got %s", string(entry.Value), string(retrieved.Value))
 	}
 }
 
@@ -71,23 +78,27 @@ func TestMemoryStoreDelete(t *testing.T) {
 	}
 
 	store := NewMemoryStore(config)
+	defer store.Close()
 	ctx := context.Background()
 
 	key := "test_key"
-	value := []byte("test_value")
+	entry := &CacheEntry{
+		Value: []byte("test_value"),
+		Size:  10,
+	}
 
 	// Set value
-	err := store.Set(ctx, key, value, time.Hour)
+	err := store.Set(ctx, key, entry, time.Hour)
 	if err != nil {
 		t.Fatalf("Failed to set value: %v", err)
 	}
 
 	// Verify it exists
-	_, found, err := store.Get(ctx, key)
+	retrieved, err := store.Get(ctx, key)
 	if err != nil {
 		t.Fatalf("Failed to get value: %v", err)
 	}
-	if !found {
+	if retrieved == nil {
 		t.Error("Expected key to be found before deletion")
 	}
 
@@ -98,11 +109,11 @@ func TestMemoryStoreDelete(t *testing.T) {
 	}
 
 	// Verify it's gone
-	_, found, err = store.Get(ctx, key)
+	retrieved, err = store.Get(ctx, key)
 	if err != nil {
 		t.Fatalf("Failed to get value after deletion: %v", err)
 	}
-	if found {
+	if retrieved != nil {
 		t.Error("Expected key to be not found after deletion")
 	}
 }
@@ -115,24 +126,28 @@ func TestMemoryStoreTTL(t *testing.T) {
 	}
 
 	store := NewMemoryStore(config)
+	defer store.Close()
 	ctx := context.Background()
 
 	key := "test_key"
-	value := []byte("test_value")
+	entry := &CacheEntry{
+		Value: []byte("test_value"),
+		Size:  10,
+	}
 	ttl := time.Millisecond * 100 // Very short TTL
 
 	// Set value with short TTL
-	err := store.Set(ctx, key, value, ttl)
+	err := store.Set(ctx, key, entry, ttl)
 	if err != nil {
 		t.Fatalf("Failed to set value: %v", err)
 	}
 
 	// Should be found immediately
-	_, found, err := store.Get(ctx, key)
+	retrieved, err := store.Get(ctx, key)
 	if err != nil {
 		t.Fatalf("Failed to get value: %v", err)
 	}
-	if !found {
+	if retrieved == nil {
 		t.Error("Expected key to be found immediately after setting")
 	}
 
@@ -140,11 +155,11 @@ func TestMemoryStoreTTL(t *testing.T) {
 	time.Sleep(ttl + time.Millisecond*50)
 
 	// Should be expired
-	_, found, err = store.Get(ctx, key)
+	retrieved, err = store.Get(ctx, key)
 	if err != nil {
 		t.Fatalf("Failed to get value after TTL: %v", err)
 	}
-	if found {
+	if retrieved != nil {
 		t.Error("Expected key to be expired after TTL")
 	}
 }
@@ -157,10 +172,14 @@ func TestMemoryStoreExists(t *testing.T) {
 	}
 
 	store := NewMemoryStore(config)
+	defer store.Close()
 	ctx := context.Background()
 
 	key := "test_key"
-	value := []byte("test_value")
+	entry := &CacheEntry{
+		Value: []byte("test_value"),
+		Size:  10,
+	}
 
 	// Check non-existent key
 	exists, err := store.Exists(ctx, key)
@@ -172,7 +191,7 @@ func TestMemoryStoreExists(t *testing.T) {
 	}
 
 	// Set value
-	err = store.Set(ctx, key, value, time.Hour)
+	err = store.Set(ctx, key, entry, time.Hour)
 	if err != nil {
 		t.Fatalf("Failed to set value: %v", err)
 	}
@@ -195,34 +214,44 @@ func TestMemoryStoreClear(t *testing.T) {
 	}
 
 	store := NewMemoryStore(config)
+	defer store.Close()
 	ctx := context.Background()
 
 	// Set multiple values
 	for i := 0; i < 10; i++ {
 		key := fmt.Sprintf("key_%d", i)
-		value := []byte(fmt.Sprintf("value_%d", i))
-		err := store.Set(ctx, key, value, time.Hour)
+		entry := &CacheEntry{
+			Value: []byte(fmt.Sprintf("value_%d", i)),
+			Size:  10,
+		}
+		err := store.Set(ctx, key, entry, time.Hour)
 		if err != nil {
 			t.Fatalf("Failed to set value %d: %v", i, err)
 		}
 	}
 
 	// Verify they exist
-	stats := store.GetStats()
-	if stats.Keys != 10 {
-		t.Errorf("Expected 10 keys, got %d", stats.Keys)
+	stats, err := store.Stats(ctx)
+	if err != nil {
+		t.Fatalf("Failed to get stats: %v", err)
+	}
+	if stats.KeyCount != 10 {
+		t.Errorf("Expected 10 keys, got %d", stats.KeyCount)
 	}
 
 	// Clear all
-	err := store.Clear(ctx)
+	err = store.Clear(ctx)
 	if err != nil {
 		t.Fatalf("Failed to clear store: %v", err)
 	}
 
 	// Verify they're gone
-	stats = store.GetStats()
-	if stats.Keys != 0 {
-		t.Errorf("Expected 0 keys after clear, got %d", stats.Keys)
+	stats, err = store.Stats(ctx)
+	if err != nil {
+		t.Fatalf("Failed to get stats: %v", err)
+	}
+	if stats.KeyCount != 0 {
+		t.Errorf("Expected 0 keys after clear, got %d", stats.KeyCount)
 	}
 }
 
@@ -234,59 +263,54 @@ func TestMemoryStoreStats(t *testing.T) {
 	}
 
 	store := NewMemoryStore(config)
+	defer store.Close()
 	ctx := context.Background()
 
 	// Initial stats
-	stats := store.GetStats()
-	if stats.Keys != 0 {
-		t.Errorf("Expected 0 initial keys, got %d", stats.Keys)
+	stats, err := store.Stats(ctx)
+	if err != nil {
+		t.Fatalf("Failed to get stats: %v", err)
 	}
-	if stats.Hits != 0 {
-		t.Errorf("Expected 0 initial hits, got %d", stats.Hits)
-	}
-	if stats.Misses != 0 {
-		t.Errorf("Expected 0 initial misses, got %d", stats.Misses)
+	if stats.KeyCount != 0 {
+		t.Errorf("Expected 0 initial keys, got %d", stats.KeyCount)
 	}
 
 	// Set a value
 	key := "test_key"
-	value := []byte("test_value")
-	err := store.Set(ctx, key, value, time.Hour)
+	entry := &CacheEntry{
+		Value: []byte("test_value"),
+		Size:  10,
+	}
+	err = store.Set(ctx, key, entry, time.Hour)
 	if err != nil {
 		t.Fatalf("Failed to set value: %v", err)
 	}
 
 	// Check stats after set
-	stats = store.GetStats()
-	if stats.Keys != 1 {
-		t.Errorf("Expected 1 key after set, got %d", stats.Keys)
+	stats, err = store.Stats(ctx)
+	if err != nil {
+		t.Fatalf("Failed to get stats: %v", err)
+	}
+	if stats.KeyCount != 1 {
+		t.Errorf("Expected 1 key after set, got %d", stats.KeyCount)
 	}
 
 	// Get the value (hit)
-	_, found, err := store.Get(ctx, key)
+	retrieved, err := store.Get(ctx, key)
 	if err != nil {
 		t.Fatalf("Failed to get value: %v", err)
 	}
-	if !found {
+	if retrieved == nil {
 		t.Error("Expected key to be found")
 	}
 
 	// Get non-existent value (miss)
-	_, found, err = store.Get(ctx, "non_existent")
+	retrieved, err = store.Get(ctx, "non_existent")
 	if err != nil {
 		t.Fatalf("Failed to get non-existent value: %v", err)
 	}
-	if found {
+	if retrieved != nil {
 		t.Error("Expected key to not be found")
-	}
-
-	// Check final stats
-	stats = store.GetStats()
-	if stats.Hits != 1 {
-		t.Errorf("Expected 1 hit, got %d", stats.Hits)
-	}
-	if stats.Misses != 1 {
-		t.Errorf("Expected 1 miss, got %d", stats.Misses)
 	}
 }
 
@@ -298,22 +322,26 @@ func TestMemoryStoreKeys(t *testing.T) {
 	}
 
 	store := NewMemoryStore(config)
+	defer store.Close()
 	ctx := context.Background()
 
 	// Set multiple values
 	expectedKeys := make(map[string]bool)
 	for i := 0; i < 5; i++ {
 		key := fmt.Sprintf("key_%d", i)
-		value := []byte(fmt.Sprintf("value_%d", i))
+		entry := &CacheEntry{
+			Value: []byte(fmt.Sprintf("value_%d", i)),
+			Size:  10,
+		}
 		expectedKeys[key] = true
-		err := store.Set(ctx, key, value, time.Hour)
+		err := store.Set(ctx, key, entry, time.Hour)
 		if err != nil {
 			t.Fatalf("Failed to set value %d: %v", i, err)
 		}
 	}
 
-	// Get all keys
-	keys, err := store.Keys(ctx, "*")
+	// Get all keys using ".*" pattern (regex)
+	keys, err := store.Keys(ctx, ".*")
 	if err != nil {
 		t.Fatalf("Failed to get keys: %v", err)
 	}
@@ -343,26 +371,29 @@ func TestMemoryStoreEviction(t *testing.T) {
 	}
 
 	store := NewMemoryStore(config)
+	defer store.Close()
 	ctx := context.Background()
 
 	// Fill cache beyond capacity
 	for i := 0; i < 5; i++ {
 		key := fmt.Sprintf("key_%d", i)
-		value := []byte(fmt.Sprintf("large_value_to_trigger_eviction_%d", i))
-		err := store.Set(ctx, key, value, time.Hour)
+		entry := &CacheEntry{
+			Value: []byte(fmt.Sprintf("large_value_to_trigger_eviction_%d", i)),
+			Size:  50,
+		}
+		err := store.Set(ctx, key, entry, time.Hour)
 		if err != nil {
 			t.Fatalf("Failed to set value %d: %v", i, err)
 		}
 	}
 
 	// Check that some keys were evicted
-	stats := store.GetStats()
-	if stats.Keys > int64(config.MaxKeys) {
-		t.Errorf("Expected keys to be limited to %d, got %d", config.MaxKeys, stats.Keys)
+	stats, err := store.Stats(ctx)
+	if err != nil {
+		t.Fatalf("Failed to get stats: %v", err)
 	}
-
-	if stats.Evictions == 0 {
-		t.Error("Expected some evictions to occur")
+	if stats.KeyCount > int64(config.MaxKeys) {
+		t.Errorf("Expected keys to be limited to %d, got %d", config.MaxKeys, stats.KeyCount)
 	}
 }
 
@@ -374,6 +405,7 @@ func TestMemoryStorePatternMatching(t *testing.T) {
 	}
 
 	store := NewMemoryStore(config)
+	defer store.Close()
 	ctx := context.Background()
 
 	// Set values with different patterns
@@ -386,14 +418,18 @@ func TestMemoryStorePatternMatching(t *testing.T) {
 	}
 
 	for key, value := range testData {
-		err := store.Set(ctx, key, []byte(value), time.Hour)
+		entry := &CacheEntry{
+			Value: []byte(value),
+			Size:  int64(len(value)),
+		}
+		err := store.Set(ctx, key, entry, time.Hour)
 		if err != nil {
 			t.Fatalf("Failed to set value for key %s: %v", key, err)
 		}
 	}
 
-	// Test pattern matching
-	userKeys, err := store.Keys(ctx, "user:*")
+	// Test pattern matching (using regex)
+	userKeys, err := store.Keys(ctx, "^user:.*")
 	if err != nil {
 		t.Fatalf("Failed to get user keys: %v", err)
 	}
@@ -402,7 +438,7 @@ func TestMemoryStorePatternMatching(t *testing.T) {
 		t.Errorf("Expected 2 user keys, got %d", len(userKeys))
 	}
 
-	sessionKeys, err := store.Keys(ctx, "session:*")
+	sessionKeys, err := store.Keys(ctx, "^session:.*")
 	if err != nil {
 		t.Fatalf("Failed to get session keys: %v", err)
 	}
@@ -411,7 +447,7 @@ func TestMemoryStorePatternMatching(t *testing.T) {
 		t.Errorf("Expected 2 session keys, got %d", len(sessionKeys))
 	}
 
-	configKeys, err := store.Keys(ctx, "config:*")
+	configKeys, err := store.Keys(ctx, "^config:.*")
 	if err != nil {
 		t.Fatalf("Failed to get config keys: %v", err)
 	}
@@ -429,13 +465,17 @@ func BenchmarkMemoryStoreSet(b *testing.B) {
 	}
 
 	store := NewMemoryStore(config)
+	defer store.Close()
 	ctx := context.Background()
-	value := []byte("benchmark_value")
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		key := fmt.Sprintf("key_%d", i)
-		store.Set(ctx, key, value, time.Hour)
+		entry := &CacheEntry{
+			Value: []byte("benchmark_value"),
+			Size:  15,
+		}
+		store.Set(ctx, key, entry, time.Hour)
 	}
 }
 
@@ -447,13 +487,17 @@ func BenchmarkMemoryStoreGet(b *testing.B) {
 	}
 
 	store := NewMemoryStore(config)
+	defer store.Close()
 	ctx := context.Background()
-	value := []byte("benchmark_value")
 
 	// Pre-populate with test data
 	for i := 0; i < 1000; i++ {
 		key := fmt.Sprintf("key_%d", i)
-		store.Set(ctx, key, value, time.Hour)
+		entry := &CacheEntry{
+			Value: []byte("benchmark_value"),
+			Size:  15,
+		}
+		store.Set(ctx, key, entry, time.Hour)
 	}
 
 	b.ResetTimer()

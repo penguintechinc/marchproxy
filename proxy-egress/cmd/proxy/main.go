@@ -436,6 +436,7 @@ func (p *TCPProxy) handleConnection(clientConn net.Conn) {
 	destAddr := fmt.Sprintf("%s:%d", destService.IPFQDN, destPort)
 
 	var destConn net.Conn
+	var err error
 	// Use mTLS for outbound connections if configured
 	if p.config.IsMTLSEnabled() && p.mtlsManager != nil {
 		// Create mTLS client for outbound connection

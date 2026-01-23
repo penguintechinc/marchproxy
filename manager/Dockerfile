@@ -1,33 +1,37 @@
 # MarchProxy Manager Dockerfile
-# Python/py4web management server
+# Python/Quart async management server
 
 # Build stage
 FROM python:3.12-slim AS builder
 
 # Install build dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
+    libxml2-dev \
+    libxslt1-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /build
 
 # Copy requirements first for better caching
-COPY requirements.txt requirements-core.txt requirements-dev.txt ./
+COPY manager/requirements.txt manager/requirements-core.txt manager/requirements-dev.txt ./
 
 # Install Python dependencies
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 # Copy manager application
-COPY . .
+COPY manager/ .
 
 # Production stage
 FROM python:3.12-slim AS production
 
 # Install runtime dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
+    libxml2 \
+    libxslt1.1 \
     curl \
     dumb-init \
     && rm -rf /var/lib/apt/lists/*
@@ -38,31 +42,34 @@ RUN groupadd -r marchproxy && useradd -r -g marchproxy marchproxy
 # Set working directory
 WORKDIR /app
 
-# Copy Python packages from builder
+# Copy Python packages from builder and set correct permissions
 COPY --from=builder /root/.local /home/marchproxy/.local
+RUN chown -R marchproxy:marchproxy /home/marchproxy/.local
 
 # Copy application code
-COPY --chown=marchproxy:marchproxy . .
+COPY --chown=marchproxy:marchproxy manager/ .
 
-# Create necessary directories
+# Create necessary directories, remove Python cache, and fix all permissions
 RUN mkdir -p /app/logs /app/certs && \
-    chown -R marchproxy:marchproxy /app/logs /app/certs
+    find /app -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true && \
+    find /app -type f -name "*.pyc" -delete 2>/dev/null || true && \
+    chown -R marchproxy:marchproxy /app && \
+    chmod -R 755 /app
 
 # Make sure scripts are executable
 RUN chmod +x scripts/*.sh 2>/dev/null || true
 
 # Set Python path to include user packages
 ENV PATH="/home/marchproxy/.local/bin:$PATH"
-ENV PYTHONPATH="/app"
+ENV PYTHONPATH="/app:$PYTHONPATH"
+ENV PYTHONUSERBASE="/home/marchproxy/.local"
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1
-ENV PY4WEB_APPS_FOLDER=/app/apps
-ENV PY4WEB_SERVICE_FOLDER=/app
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:8000/healthz || exit 1
 
 # Expose port
 EXPOSE 8000
@@ -70,8 +77,8 @@ EXPOSE 8000
 # Switch to non-root user
 USER marchproxy
 
-# Start command
-CMD ["dumb-init", "python", "-m", "py4web", "run", "apps", "--host", "0.0.0.0", "--port", "8000"]
+# Start command - Quart with Hypercorn ASGI server
+CMD ["dumb-init", "python3.12", "-m", "hypercorn", "quart_app:create_app()", "--bind", "0.0.0.0:8000", "--workers", "4"]
 
 # Development stage
 FROM production AS development
@@ -83,12 +90,13 @@ USER root
 RUN pip install --no-cache-dir \
     pytest \
     pytest-cov \
+    pytest-asyncio \
     black \
     flake8 \
     mypy
 
 # Install development tools
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     vim \
     less \
@@ -97,8 +105,8 @@ RUN apt-get update && apt-get install -y \
 # Switch back to marchproxy user
 USER marchproxy
 
-# Override command for development
-CMD ["dumb-init", "python", "-m", "py4web", "run", "apps", "--host", "0.0.0.0", "--port", "8000", "--debug"]
+# Override command for development with auto-reload
+CMD ["dumb-init", "hypercorn", "quart_app:create_app()", "--bind", "0.0.0.0:8000", "--reload"]
 
 # Testing stage
 FROM development AS testing
@@ -107,7 +115,7 @@ FROM development AS testing
 USER root
 
 # Copy test requirements
-COPY requirements-dev.txt .
+COPY manager/requirements-dev.txt .
 RUN pip install --no-cache-dir -r requirements-dev.txt
 
 # Switch back to marchproxy user

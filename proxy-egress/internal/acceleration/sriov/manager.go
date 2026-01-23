@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/penguintech/marchproxy/internal/manager"
+	"marchproxy-egress/internal/manager"
 )
 
 // SRIOVManager handles SR-IOV configuration and management

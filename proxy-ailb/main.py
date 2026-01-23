@@ -27,6 +27,12 @@ from app.router.intelligent import LLMRequestRouter, RoutingStrategy
 from app.memory.conversation import ConversationMemoryManager
 from app.rag.retrieval import RAGManager
 from app.grpc.server import start_grpc_server
+from app.keys.manager import KeyManager
+from app.keys import routes as keys_routes
+from app.ratelimit.limiter import RateLimiter
+from app.ratelimit.middleware import RateLimitMiddleware
+from app.billing.tracker import CostTracker
+from app.billing import routes as billing_routes
 
 # Configure structured logging
 structlog.configure(
@@ -52,6 +58,11 @@ class AILBServer:
         self.rag_manager = None
         self.grpc_server_task = None
 
+        # Key management, rate limiting, and billing
+        self.key_manager = None
+        self.rate_limiter = None
+        self.cost_tracker = None
+
         # Configuration from environment
         self.config = {
             'grpc_port': int(os.getenv('GRPC_PORT', '50051')),
@@ -66,6 +77,18 @@ class AILBServer:
     async def startup(self):
         """Initialize server components"""
         logger.info("Starting AILB Server")
+
+        # Initialize key manager
+        self.key_manager = KeyManager()
+        logger.info("Key manager initialized")
+
+        # Initialize rate limiter
+        self.rate_limiter = RateLimiter()
+        logger.info("Rate limiter initialized")
+
+        # Initialize cost tracker
+        self.cost_tracker = CostTracker()
+        logger.info("Cost tracker initialized")
 
         # Initialize LLM provider connectors
         await self._init_connectors()
@@ -152,6 +175,22 @@ ailb_server = AILBServer()
 async def lifespan(app: FastAPI):
     """FastAPI lifespan context manager"""
     await ailb_server.startup()
+
+    # Add rate limiting middleware after server startup
+    app.add_middleware(
+        RateLimitMiddleware,
+        limiter=ailb_server.rate_limiter,
+        exempt_paths=["/healthz", "/metrics", "/docs", "/openapi.json", "/redoc"]
+    )
+
+    # Include routers
+    app.include_router(keys_routes.router)
+    app.include_router(billing_routes.router)
+
+    # Set global instances for route dependencies
+    keys_routes._key_manager = ailb_server.key_manager
+    billing_routes._cost_tracker = ailb_server.cost_tracker
+
     yield
     await ailb_server.shutdown()
 
@@ -172,6 +211,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Rate limiting middleware
+# Note: Added after startup when rate_limiter is initialized
+# This is handled by adding it in the lifespan startup hook
 
 
 # Health check endpoints
@@ -202,10 +245,43 @@ async def chat_completions(
     start_time = time.time()
 
     try:
+        # Validate API key
+        api_key = None
+        key_id = None
+        if authorization:
+            api_key = authorization[7:] if authorization.startswith("Bearer ") else authorization
+            validation_result = ailb_server.key_manager.validate_key(api_key)
+
+            if not validation_result.valid:
+                raise HTTPException(
+                    status_code=401,
+                    detail=f"Invalid API key: {validation_result.error}"
+                )
+
+            key_id = validation_result.key_id
+            logger.info(f"Request authenticated with key: {key_id}")
+
         # Parse request
         body = await request.json()
         messages = body.get("messages", [])
         model = body.get("model") or x_preferred_model or "gpt-3.5-turbo"
+
+        # Check budget before request (if key is provided)
+        if key_id:
+            # Estimate cost based on typical request size (conservative estimate)
+            estimated_tokens = sum(len(str(m.get('content', ''))) // 4 for m in messages) + 500
+            estimated_cost = ailb_server.cost_tracker.calculate_cost(
+                model=model,
+                input_tokens=estimated_tokens // 2,
+                output_tokens=estimated_tokens // 2
+            )
+
+            can_proceed = ailb_server.cost_tracker.check_budget(key_id, estimated_cost)
+            if not can_proceed:
+                raise HTTPException(
+                    status_code=402,
+                    detail="Budget exceeded. Request would exceed spending limit."
+                )
 
         # Get session ID for memory
         session_id = body.get('session_id') or request.headers.get('X-Session-ID')
@@ -240,6 +316,57 @@ async def chat_completions(
             **{k: v for k, v in body.items() if k not in ['messages', 'model', 'session_id']}
         )
 
+        # Get actual token usage
+        input_tokens = usage_info.get('input_tokens', 0)
+        output_tokens = usage_info.get('output_tokens', 0)
+        total_tokens = usage_info.get('total_tokens', input_tokens + output_tokens)
+
+        # Record usage and cost (if key is provided)
+        if key_id:
+            try:
+                # Determine provider from model
+                provider = "unknown"
+                if "gpt" in model.lower():
+                    provider = "openai"
+                elif "claude" in model.lower():
+                    provider = "anthropic"
+                elif "ollama" in model.lower():
+                    provider = "ollama"
+
+                # Record usage in cost tracker
+                ailb_server.cost_tracker.record_usage(
+                    key_id=key_id,
+                    model=model,
+                    provider=provider,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    request_id=f"chatcmpl-{int(time.time())}",
+                    session_id=session_id
+                )
+
+                # Record usage in key manager
+                cost = ailb_server.cost_tracker.calculate_cost(
+                    model=model,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens
+                )
+                ailb_server.key_manager.record_usage(
+                    key_id=key_id,
+                    tokens=total_tokens,
+                    cost=cost,
+                    model=model,
+                    provider=provider
+                )
+
+                logger.info(
+                    f"Recorded usage: key={key_id}, model={model}, "
+                    f"tokens={total_tokens}, cost=${cost:.4f}"
+                )
+
+            except Exception as e:
+                logger.error(f"Failed to record usage: {str(e)}")
+                # Don't fail the request if usage recording fails
+
         # Store conversation in memory if enabled
         if ailb_server.memory_manager and session_id:
             asyncio.create_task(ailb_server.memory_manager.store_turn(
@@ -264,9 +391,9 @@ async def chat_completions(
                 "finish_reason": "stop"
             }],
             "usage": {
-                "prompt_tokens": usage_info.get('input_tokens', 0),
-                "completion_tokens": usage_info.get('output_tokens', 0),
-                "total_tokens": usage_info.get('total_tokens', 0)
+                "prompt_tokens": input_tokens,
+                "completion_tokens": output_tokens,
+                "total_tokens": total_tokens
             }
         }
 

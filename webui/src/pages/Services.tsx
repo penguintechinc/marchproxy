@@ -16,6 +16,16 @@ import {
   Select,
   FormControl,
   InputLabel,
+  IconButton,
+  Tooltip,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemSecondaryAction,
+  Divider,
+  Paper,
+  Grid,
+  InputAdornment,
 } from '@mui/material';
 import {
   DataGrid,
@@ -29,6 +39,11 @@ import {
   Delete as DeleteIcon,
   Refresh as RefreshIcon,
   VpnKey as TokenIcon,
+  ContentCopy as CopyIcon,
+  Info as InfoIcon,
+  Link as LinkIcon,
+  Close as CloseIcon,
+  Search as SearchIcon,
 } from '@mui/icons-material';
 import { useForm, Controller } from 'react-hook-form';
 import { serviceApi, CreateServiceRequest, UpdateServiceRequest } from '@services/serviceApi';
@@ -58,6 +73,12 @@ const Services: React.FC = () => {
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [newToken, setNewToken] = useState<string | null>(null);
   const [filterCluster, setFilterCluster] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [detailsService, setDetailsService] = useState<Service | null>(null);
+  const [mappingsDialog, setMappingsDialog] = useState<Service | null>(null);
+  const [serviceMappings, setServiceMappings] = useState<Service[]>([]);
+  const [availableServices, setAvailableServices] = useState<Service[]>([]);
+  const [copySuccess, setCopySuccess] = useState<string | null>(null);
 
   const { control, handleSubmit, reset, watch, formState: { errors } } = useForm<ServiceFormData>({
     defaultValues: {
@@ -78,7 +99,7 @@ const Services: React.FC = () => {
   useEffect(() => {
     fetchClusters();
     fetchServices();
-  }, [filterCluster]);
+  }, [filterCluster, searchQuery]);
 
   const fetchClusters = async () => {
     try {
@@ -94,6 +115,7 @@ const Services: React.FC = () => {
       setLoading(true);
       const response = await serviceApi.list({
         cluster_id: filterCluster || undefined,
+        search: searchQuery || undefined,
       });
       setServices(response.items);
       setError(null);
@@ -101,6 +123,23 @@ const Services: React.FC = () => {
       setError(err.response?.data?.detail || 'Failed to load services');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchServiceMappings = async (serviceId: number) => {
+    try {
+      const mappings = await serviceApi.getMappings(serviceId);
+      setServiceMappings(mappings);
+
+      // Get available services (all services except the selected one and already mapped ones)
+      const allServices = await serviceApi.list({ cluster_id: mappingsDialog?.cluster_id });
+      const mappedIds = new Set(mappings.map(m => m.id));
+      const available = allServices.items.filter(
+        s => s.id !== serviceId && !mappedIds.has(s.id)
+      );
+      setAvailableServices(available);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to load service mappings');
     }
   };
 
@@ -157,6 +196,73 @@ const Services: React.FC = () => {
     }
   };
 
+  const handleCopyToken = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopySuccess('Token copied to clipboard!');
+      setTimeout(() => setCopySuccess(null), 3000);
+    } catch (err) {
+      setError('Failed to copy to clipboard');
+    }
+  };
+
+  const handleOpenMappings = async (service: Service) => {
+    setMappingsDialog(service);
+    await fetchServiceMappings(service.id);
+  };
+
+  const handleAddMapping = async (targetServiceId: number) => {
+    if (!mappingsDialog) return;
+    try {
+      await serviceApi.addMapping(mappingsDialog.id, targetServiceId);
+      await fetchServiceMappings(mappingsDialog.id);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to add service mapping');
+    }
+  };
+
+  const handleRemoveMapping = async (targetServiceId: number) => {
+    if (!mappingsDialog) return;
+    try {
+      await serviceApi.removeMapping(mappingsDialog.id, targetServiceId);
+      await fetchServiceMappings(mappingsDialog.id);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to remove service mapping');
+    }
+  };
+
+  const getClusterName = (clusterId: number): string => {
+    const cluster = clusters.find(c => c.id === clusterId);
+    return cluster?.name || `Cluster ${clusterId}`;
+  };
+
+  const validatePort = (value: string): boolean | string => {
+    // Single port: 443
+    // Range: 8000-8100
+    // Comma-separated: 80,443,8080
+    const portRegex = /^(\d+(-\d+)?)(,\d+(-\d+)?)*$/;
+    if (!portRegex.test(value)) {
+      return 'Invalid port format. Use single (443), range (8000-8100), or comma-separated (80,443,8080)';
+    }
+
+    // Validate individual ports are in valid range (1-65535)
+    const parts = value.split(',');
+    for (const part of parts) {
+      if (part.includes('-')) {
+        const [start, end] = part.split('-').map(Number);
+        if (start < 1 || start > 65535 || end < 1 || end > 65535 || start >= end) {
+          return 'Port numbers must be between 1-65535 and start < end in ranges';
+        }
+      } else {
+        const port = Number(part);
+        if (port < 1 || port > 65535) {
+          return 'Port numbers must be between 1-65535';
+        }
+      }
+    }
+    return true;
+  };
+
   const onSubmit = async (data: ServiceFormData) => {
     try {
       if (editMode && selectedService) {
@@ -174,6 +280,14 @@ const Services: React.FC = () => {
   const columns: GridColDef[] = [
     { field: 'id', headerName: 'ID', width: 70 },
     { field: 'name', headerName: 'Service Name', width: 200, flex: 1 },
+    {
+      field: 'cluster_id',
+      headerName: 'Cluster',
+      width: 150,
+      renderCell: (params) => (
+        <Chip label={getClusterName(params.value)} size="small" variant="outlined" />
+      ),
+    },
     {
       field: 'destination_fqdn',
       headerName: 'Destination',
@@ -217,8 +331,18 @@ const Services: React.FC = () => {
       field: 'actions',
       type: 'actions',
       headerName: 'Actions',
-      width: 150,
+      width: 200,
       getActions: (params: GridRowParams<Service>) => [
+        <GridActionsCellItem
+          icon={<InfoIcon />}
+          label="Details"
+          onClick={() => setDetailsService(params.row)}
+        />,
+        <GridActionsCellItem
+          icon={<LinkIcon />}
+          label="Service Mappings"
+          onClick={() => handleOpenMappings(params.row)}
+        />,
         <GridActionsCellItem
           icon={<EditIcon />}
           label="Edit"
@@ -245,7 +369,21 @@ const Services: React.FC = () => {
           Service Management
         </Typography>
         <Box sx={{ display: 'flex', gap: 2 }}>
-          <FormControl sx={{ minWidth: 200 }}>
+          <TextField
+            size="small"
+            placeholder="Search services..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+            sx={{ minWidth: 250 }}
+          />
+          <FormControl size="small" sx={{ minWidth: 200 }}>
             <InputLabel>Filter by Cluster</InputLabel>
             <Select
               value={filterCluster || ''}
@@ -283,14 +421,29 @@ const Services: React.FC = () => {
         </Alert>
       )}
 
+      {copySuccess && (
+        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setCopySuccess(null)}>
+          {copySuccess}
+        </Alert>
+      )}
+
       {newToken && (
         <Alert severity="success" sx={{ mb: 2 }} onClose={() => setNewToken(null)}>
-          <Typography variant="body2" fontWeight="bold">
-            New Service Token (save this, it won't be shown again):
-          </Typography>
-          <Typography variant="body2" sx={{ fontFamily: 'monospace', mt: 1 }}>
-            {newToken}
-          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box>
+              <Typography variant="body2" fontWeight="bold">
+                New Service Token (save this, it won't be shown again):
+              </Typography>
+              <Typography variant="body2" sx={{ fontFamily: 'monospace', mt: 1 }}>
+                {newToken}
+              </Typography>
+            </Box>
+            <Tooltip title="Copy to clipboard">
+              <IconButton onClick={() => handleCopyToken(newToken)} size="small">
+                <CopyIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
         </Alert>
       )}
 
@@ -375,7 +528,10 @@ const Services: React.FC = () => {
               <Controller
                 name="destination_port"
                 control={control}
-                rules={{ required: 'Port is required' }}
+                rules={{
+                  required: 'Port is required',
+                  validate: validatePort
+                }}
                 render={({ field }) => (
                   <TextField
                     {...field}
@@ -466,6 +622,201 @@ const Services: React.FC = () => {
           >
             Delete
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Service Details Dialog */}
+      <Dialog open={detailsService !== null} onClose={() => setDetailsService(null)} maxWidth="md" fullWidth>
+        <DialogTitle>
+          Service Details
+          <IconButton
+            onClick={() => setDetailsService(null)}
+            sx={{ position: 'absolute', right: 8, top: 8 }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          {detailsService && (
+            <Grid container spacing={2} sx={{ mt: 1 }}>
+              <Grid item xs={12} sm={6}>
+                <Paper sx={{ p: 2 }}>
+                  <Typography variant="caption" color="text.secondary">Service Name</Typography>
+                  <Typography variant="body1" fontWeight="bold">{detailsService.name}</Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Paper sx={{ p: 2 }}>
+                  <Typography variant="caption" color="text.secondary">Cluster</Typography>
+                  <Typography variant="body1" fontWeight="bold">{getClusterName(detailsService.cluster_id)}</Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12}>
+                <Paper sx={{ p: 2 }}>
+                  <Typography variant="caption" color="text.secondary">Description</Typography>
+                  <Typography variant="body1">{detailsService.description || 'No description'}</Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Paper sx={{ p: 2 }}>
+                  <Typography variant="caption" color="text.secondary">Destination</Typography>
+                  <Typography variant="body1" fontWeight="bold">
+                    {detailsService.destination_fqdn}:{detailsService.destination_port}
+                  </Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Paper sx={{ p: 2 }}>
+                  <Typography variant="caption" color="text.secondary">Protocol</Typography>
+                  <Typography variant="body1">
+                    <Chip label={detailsService.protocol} color="primary" size="small" />
+                  </Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Paper sx={{ p: 2 }}>
+                  <Typography variant="caption" color="text.secondary">Authentication Method</Typography>
+                  <Typography variant="body1">
+                    <Chip
+                      label={detailsService.auth_method === 'jwt' ? 'JWT Token' : 'Base64 Token'}
+                      color={detailsService.auth_method === 'jwt' ? 'success' : 'default'}
+                      size="small"
+                    />
+                  </Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Paper sx={{ p: 2 }}>
+                  <Typography variant="caption" color="text.secondary">Status</Typography>
+                  <Typography variant="body1">
+                    <Chip
+                      label={detailsService.is_active ? 'Active' : 'Inactive'}
+                      color={detailsService.is_active ? 'success' : 'default'}
+                      size="small"
+                    />
+                  </Typography>
+                </Paper>
+              </Grid>
+              {detailsService.auth_method === 'jwt' && detailsService.token_ttl && (
+                <Grid item xs={12} sm={6}>
+                  <Paper sx={{ p: 2 }}>
+                    <Typography variant="caption" color="text.secondary">Token TTL</Typography>
+                    <Typography variant="body1">{detailsService.token_ttl} seconds</Typography>
+                  </Paper>
+                </Grid>
+              )}
+              <Grid item xs={12} sm={6}>
+                <Paper sx={{ p: 2 }}>
+                  <Typography variant="caption" color="text.secondary">Created</Typography>
+                  <Typography variant="body1">{new Date(detailsService.created_at).toLocaleString()}</Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Paper sx={{ p: 2 }}>
+                  <Typography variant="caption" color="text.secondary">Last Updated</Typography>
+                  <Typography variant="body1">{new Date(detailsService.updated_at).toLocaleString()}</Typography>
+                </Paper>
+              </Grid>
+            </Grid>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDetailsService(null)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Service-to-Service Mappings Dialog */}
+      <Dialog
+        open={mappingsDialog !== null}
+        onClose={() => setMappingsDialog(null)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Service-to-Service Mappings for {mappingsDialog?.name}
+          <IconButton
+            onClick={() => setMappingsDialog(null)}
+            sx={{ position: 'absolute', right: 8, top: 8 }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Configure which services can access this service. Only mapped services will be allowed to connect.
+          </Typography>
+
+          <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
+            Current Mappings
+          </Typography>
+          {serviceMappings.length === 0 ? (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              No service mappings configured. All services in the cluster can access this service.
+            </Alert>
+          ) : (
+            <Paper variant="outlined" sx={{ mb: 3 }}>
+              <List>
+                {serviceMappings.map((service, index) => (
+                  <React.Fragment key={service.id}>
+                    {index > 0 && <Divider />}
+                    <ListItem>
+                      <ListItemText
+                        primary={service.name}
+                        secondary={`${service.destination_fqdn}:${service.destination_port} (${service.protocol})`}
+                      />
+                      <ListItemSecondaryAction>
+                        <IconButton
+                          edge="end"
+                          onClick={() => handleRemoveMapping(service.id)}
+                          color="error"
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </ListItemSecondaryAction>
+                    </ListItem>
+                  </React.Fragment>
+                ))}
+              </List>
+            </Paper>
+          )}
+
+          <Typography variant="h6" sx={{ mt: 3, mb: 1 }}>
+            Add Service Mapping
+          </Typography>
+          {availableServices.length === 0 ? (
+            <Alert severity="info">
+              No additional services available to map in this cluster.
+            </Alert>
+          ) : (
+            <Paper variant="outlined">
+              <List>
+                {availableServices.map((service, index) => (
+                  <React.Fragment key={service.id}>
+                    {index > 0 && <Divider />}
+                    <ListItem>
+                      <ListItemText
+                        primary={service.name}
+                        secondary={`${service.destination_fqdn}:${service.destination_port} (${service.protocol})`}
+                      />
+                      <ListItemSecondaryAction>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<AddIcon />}
+                          onClick={() => handleAddMapping(service.id)}
+                        >
+                          Add
+                        </Button>
+                      </ListItemSecondaryAction>
+                    </ListItem>
+                  </React.Fragment>
+                ))}
+              </List>
+            </Paper>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setMappingsDialog(null)}>Close</Button>
         </DialogActions>
       </Dialog>
     </Box>

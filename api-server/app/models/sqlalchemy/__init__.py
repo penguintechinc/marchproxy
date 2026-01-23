@@ -3,6 +3,7 @@
 from app.models.sqlalchemy.user import User
 from app.models.sqlalchemy.cluster import Cluster, UserClusterAssignment
 from app.models.sqlalchemy.service import Service, UserServiceAssignment
+from app.models.sqlalchemy.mapping import Mapping
 from app.models.sqlalchemy.proxy import ProxyServer, ProxyMetrics
 from app.models.sqlalchemy.certificate import Certificate, CertificateSource
 from app.models.sqlalchemy.enterprise import (
@@ -19,6 +20,7 @@ __all__ = [
     "UserClusterAssignment",
     "Service",
     "UserServiceAssignment",
+    "Mapping",
     "ProxyServer",
     "ProxyMetrics",
     "Certificate",

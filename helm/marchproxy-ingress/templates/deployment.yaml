@@ -1,0 +1,189 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "marchproxy-ingress.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "marchproxy-ingress.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "marchproxy-ingress.selectorLabels" . | nindent 6 }}
+  strategy:
+    {{- toYaml .Values.updateStrategy | nindent 4 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- if .Values.tls.createSecret }}
+        checksum/tls: {{ include (print $.Template.BasePath "/tls-secret.yaml") . | sha256sum }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "marchproxy-ingress.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "marchproxy-ingress.serviceAccountName" . }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.securityContext.pod | nindent 8 }}
+      containers:
+        - name: ingress
+          image: {{ include "marchproxy-ingress.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.httpTargetPort }}
+              protocol: TCP
+            - name: https
+              containerPort: {{ .Values.service.httpsTargetPort }}
+              protocol: TCP
+            - name: admin
+              containerPort: {{ .Values.service.adminTargetPort }}
+              protocol: TCP
+            - name: health
+              containerPort: {{ .Values.service.healthTargetPort }}
+              protocol: TCP
+          env:
+            - name: PROXY_TYPE
+              value: {{ .Values.config.proxyType | quote }}
+            - name: PROXY_CONFIG_PATH
+              value: {{ .Values.config.configPath | quote }}
+            - name: PROXY_LOG_PATH
+              value: {{ .Values.config.logPath | quote }}
+            - name: PROXY_CERT_PATH
+              value: {{ .Values.config.certPath | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.config.logLevel | quote }}
+            - name: MTLS_ENABLED
+              value: {{ .Values.config.mtls.enabled | quote }}
+            {{- if .Values.config.mtls.enabled }}
+            - name: MTLS_SERVER_CERT_PATH
+              value: {{ .Values.config.mtls.serverCertPath | quote }}
+            - name: MTLS_SERVER_KEY_PATH
+              value: {{ .Values.config.mtls.serverKeyPath | quote }}
+            - name: MTLS_CLIENT_CA_PATH
+              value: {{ .Values.config.mtls.clientCaPath | quote }}
+            - name: MTLS_VERIFY_CLIENT
+              value: {{ .Values.config.mtls.verifyClient | quote }}
+            {{- end }}
+            - name: ENABLE_EBPF
+              value: {{ .Values.config.ebpf.enabled | quote }}
+            - name: ENABLE_XDP
+              value: {{ .Values.config.xdp.enabled | quote }}
+            {{- if .Values.config.xdp.enabled }}
+            - name: XDP_INTERFACE
+              value: {{ .Values.config.xdp.interface | quote }}
+            {{- end }}
+            - name: RATE_LIMIT_ENABLED
+              value: {{ .Values.config.rateLimit.enabled | quote }}
+            {{- if .Values.config.rateLimit.enabled }}
+            - name: RATE_LIMIT_RPS
+              value: {{ .Values.config.rateLimit.requestsPerSecond | quote }}
+            - name: RATE_LIMIT_BURST
+              value: {{ .Values.config.rateLimit.burstSize | quote }}
+            {{- end }}
+            - name: HEALTH_CHECK_ENABLED
+              value: {{ .Values.config.healthCheck.enabled | quote }}
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- if .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          {{- end }}
+          {{- if .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          {{- end }}
+          {{- if .Values.startupProbe }}
+          startupProbe:
+            {{- toYaml .Values.startupProbe | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.securityContext.container | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: {{ .Values.config.configPath }}
+              readOnly: true
+            - name: logs
+              mountPath: {{ .Values.config.logPath }}
+            {{- if or .Values.tls.createSecret .Values.certManager.enabled }}
+            - name: tls-certs
+              mountPath: {{ .Values.config.certPath }}
+              readOnly: true
+            {{- end }}
+            - name: tmp
+              mountPath: /tmp
+            - name: run
+              mountPath: /run
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.lifecycle }}
+          lifecycle:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "marchproxy-ingress.fullname" . }}
+        - name: logs
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "marchproxy-ingress.fullname" . }}-logs
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- if or .Values.tls.createSecret .Values.certManager.enabled }}
+        - name: tls-certs
+          secret:
+            secretName: {{ .Values.tls.secretName }}
+            defaultMode: 0400
+        {{- end }}
+        - name: tmp
+          emptyDir: {}
+        - name: run
+          emptyDir: {}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

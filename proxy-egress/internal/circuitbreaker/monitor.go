@@ -9,8 +9,6 @@ import (
 	"sort"
 	"sync"
 	"time"
-
-	"github.com/MarchProxy/proxy/internal/manager"
 )
 
 type Monitor struct {

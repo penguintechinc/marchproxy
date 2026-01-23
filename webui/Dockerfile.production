@@ -1,0 +1,33 @@
+# MarchProxy WebUI Dockerfile - Production with Pre-built Dist
+# Uses existing dist/ folder from local build
+
+FROM node:20-bookworm-slim AS production
+
+LABEL maintainer="MarchProxy Contributors"
+LABEL description="MarchProxy WebUI - React Frontend"
+
+WORKDIR /app
+
+# Install serve globally
+RUN npm install -g serve
+
+# Copy pre-built application
+COPY dist ./dist
+
+# Create health check script
+RUN echo '#!/usr/bin/env node\nconst http = require("http");\nhttp.get("http://localhost:3000/", (res) => {\n  process.exit(res.statusCode === 200 ? 0 : 1);\n}).on("error", () => process.exit(1));' > /app/healthcheck.js && chmod +x /app/healthcheck.js
+
+# Use existing node user (UID 1000)
+RUN chown -R node:node /app
+
+USER node
+
+# Expose port
+EXPOSE 3000
+
+# Health check using Node.js
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD node /app/healthcheck.js
+
+# Serve application
+CMD ["serve", "-s", "dist", "-l", "3000"]

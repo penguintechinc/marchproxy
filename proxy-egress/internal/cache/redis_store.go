@@ -56,29 +56,29 @@ func NewRedisStore(config RedisStoreConfig) (*RedisStore, error) {
 
 	if config.ClusterMode {
 		rs.client = redis.NewClusterClient(&redis.ClusterOptions{
-			Addrs:        config.Addresses,
-			Password:     config.Password,
-			PoolSize:     config.PoolSize,
-			MinIdleConns: config.MinIdleConns,
-			MaxRetries:   config.MaxRetries,
-			RetryDelay:   config.RetryDelay,
-			DialTimeout:  config.DialTimeout,
-			ReadTimeout:  config.ReadTimeout,
-			WriteTimeout: config.WriteTimeout,
+			Addrs:           config.Addresses,
+			Password:        config.Password,
+			PoolSize:        config.PoolSize,
+			MinIdleConns:    config.MinIdleConns,
+			MaxRetries:      config.MaxRetries,
+			MinRetryBackoff: config.RetryDelay,
+			DialTimeout:     config.DialTimeout,
+			ReadTimeout:     config.ReadTimeout,
+			WriteTimeout:    config.WriteTimeout,
 		})
 	} else if config.SentinelMode {
 		rs.client = redis.NewFailoverClient(&redis.FailoverOptions{
-			MasterName:    config.MasterName,
-			SentinelAddrs: config.Addresses,
-			Password:      config.Password,
-			DB:            config.Database,
-			PoolSize:      config.PoolSize,
-			MinIdleConns:  config.MinIdleConns,
-			MaxRetries:    config.MaxRetries,
-			RetryDelay:    config.RetryDelay,
-			DialTimeout:   config.DialTimeout,
-			ReadTimeout:   config.ReadTimeout,
-			WriteTimeout:  config.WriteTimeout,
+			MasterName:      config.MasterName,
+			SentinelAddrs:   config.Addresses,
+			Password:        config.Password,
+			DB:              config.Database,
+			PoolSize:        config.PoolSize,
+			MinIdleConns:    config.MinIdleConns,
+			MaxRetries:      config.MaxRetries,
+			MinRetryBackoff: config.RetryDelay,
+			DialTimeout:     config.DialTimeout,
+			ReadTimeout:     config.ReadTimeout,
+			WriteTimeout:    config.WriteTimeout,
 		})
 	} else {
 		addr := "localhost:6379"
@@ -87,16 +87,16 @@ func NewRedisStore(config RedisStoreConfig) (*RedisStore, error) {
 		}
 
 		rs.client = redis.NewClient(&redis.Options{
-			Addr:         addr,
-			Password:     config.Password,
-			DB:           config.Database,
-			PoolSize:     config.PoolSize,
-			MinIdleConns: config.MinIdleConns,
-			MaxRetries:   config.MaxRetries,
-			RetryDelay:   config.RetryDelay,
-			DialTimeout:  config.DialTimeout,
-			ReadTimeout:  config.ReadTimeout,
-			WriteTimeout: config.WriteTimeout,
+			Addr:            addr,
+			Password:        config.Password,
+			DB:              config.Database,
+			PoolSize:        config.PoolSize,
+			MinIdleConns:    config.MinIdleConns,
+			MaxRetries:      config.MaxRetries,
+			MinRetryBackoff: config.RetryDelay,
+			DialTimeout:     config.DialTimeout,
+			ReadTimeout:     config.ReadTimeout,
+			WriteTimeout:    config.WriteTimeout,
 		})
 	}
 

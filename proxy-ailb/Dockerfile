@@ -36,19 +36,19 @@ COPY --from=builder /root/.local /root/.local
 # Add local bin to PATH
 ENV PATH=/root/.local/bin:$PATH
 
-# Copy application code
+# Copy application code (includes proto/ if it exists)
 COPY . .
 
-# Copy proto files (if generated)
-COPY ../proto /app/proto
-
-# Generate gRPC code from proto files
-RUN python -m grpc_tools.protoc \
-    -I/app/proto \
-    --python_out=/app/proto \
-    --grpc_python_out=/app/proto \
-    /app/proto/marchproxy/module_service.proto \
-    || echo "Proto generation failed, will skip gRPC server"
+# Generate gRPC code from proto files if available
+RUN if [ -d "/app/proto/marchproxy" ]; then \
+        python -m grpc_tools.protoc \
+        -I/app/proto \
+        --python_out=/app/proto \
+        --grpc_python_out=/app/proto \
+        /app/proto/marchproxy/module_service.proto; \
+    else \
+        echo "Proto files not found, skipping gRPC code generation"; \
+    fi
 
 # Create directories for data persistence
 RUN mkdir -p /app/ailb_memory /app/ailb_rag

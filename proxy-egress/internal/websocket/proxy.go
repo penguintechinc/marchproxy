@@ -15,7 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/penguintech/marchproxy/internal/manager"
+	"marchproxy-egress/internal/manager"
 )
 
 // WebSocketProxy handles WebSocket connection proxying
@@ -759,8 +759,9 @@ func (ws *WebSocketProxy) GetConnections() map[string]*WebSocketConnection {
 
 	connections := make(map[string]*WebSocketConnection)
 	for id, conn := range ws.connections {
-		connCopy := *conn
-		connections[id] = &connCopy
+		// Return pointers to existing connections instead of copying
+		// (copying would cause mutex copy error due to sync.RWMutex)
+		connections[id] = conn
 	}
 	return connections
 }

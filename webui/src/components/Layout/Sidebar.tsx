@@ -20,6 +20,9 @@ import {
   Security as CertificateIcon,
   Speed as TracingIcon,
   NotificationsActive as AlertsIcon,
+  People as UsersIcon,
+  Api as ApiIcon,
+  Videocam as MediaIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -41,7 +44,10 @@ const menuItems: MenuItem[] = [
   { text: 'Clusters', icon: <ClusterIcon />, path: '/clusters' },
   { text: 'Services', icon: <ServiceIcon />, path: '/services' },
   { text: 'Proxies', icon: <ProxyIcon />, path: '/proxies' },
+  { text: 'Kong Gateway', icon: <ApiIcon />, path: '/kong' },
+  { text: 'Media Streaming', icon: <MediaIcon />, path: '/media' },
   { text: 'Certificates', icon: <CertificateIcon />, path: '/certificates' },
+  { text: 'Users', icon: <UsersIcon />, path: '/users' },
   { text: 'Tracing', icon: <TracingIcon />, path: '/observability/tracing' },
   { text: 'Metrics', icon: <MetricsIcon />, path: '/observability/metrics' },
   { text: 'Alerts', icon: <AlertsIcon />, path: '/observability/alerts' },
@@ -73,7 +79,9 @@ const Sidebar: React.FC<SidebarProps> = ({
             alignItems: 'center',
             justifyContent: 'center',
             width: '100%',
+            cursor: 'pointer',
           }}
+          onClick={() => handleNavigation('/dashboard')}
         >
           <Box
             component="img"
@@ -91,7 +99,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         {menuItems.map((item) => (
           <ListItem key={item.text} disablePadding>
             <ListItemButton
-              selected={location.pathname === item.path}
+              selected={location.pathname === item.path || location.pathname.startsWith(item.path + '/')}
               onClick={() => handleNavigation(item.path)}
               sx={{
                 '&.Mui-selected': {

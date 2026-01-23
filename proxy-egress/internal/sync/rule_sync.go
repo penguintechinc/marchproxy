@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/penguintech/marchproxy/internal/acceleration/xdp"
-	"github.com/penguintech/marchproxy/internal/manager"
+	"marchproxy-egress/internal/acceleration/xdp"
+	"marchproxy-egress/internal/manager"
 )
 
 // RuleSynchronizer handles synchronization between manager rules and XDP fast-path
@@ -117,7 +117,14 @@ func (rs *RuleSynchronizer) syncLoop() {
 // syncRules fetches configuration from manager and updates XDP rules
 func (rs *RuleSynchronizer) syncRules() error {
 	// Fetch configuration from manager
-	config, err := rs.managerClient.GetConfiguration()
+	// TODO: Implement GetConfiguration method in manager.Client
+	// config, err := rs.managerClient.GetConfiguration()
+	// if err != nil {
+	// 	return fmt.Errorf("failed to fetch configuration: %w", err)
+	// }
+
+	// Temporary stub - use GetConfig instead
+	config, err := rs.managerClient.GetConfig()
 	if err != nil {
 		return fmt.Errorf("failed to fetch configuration: %w", err)
 	}
@@ -169,7 +176,7 @@ func (rs *RuleSynchronizer) serviceInMapping(service *manager.Service, mapping *
 			return true
 		}
 	}
-	for _, dstID := range mapping.DestinationServices {
+	for _, dstID := range mapping.DestServices {
 		if dstID == service.ID {
 			return true
 		}

@@ -1,0 +1,36 @@
+---
+# yamllint configuration for MarchProxy
+# https://yamllint.readthedocs.io/
+
+extends: default
+
+rules:
+  # Allow longer lines for GitHub Actions workflows
+  line-length:
+    max: 120
+    allow-non-breakable-inline-mappings: true
+
+  # GitHub Actions uses 'on:' which yamllint considers truthy
+  truthy:
+    allowed-values: ['true', 'false', 'on']
+
+  # Don't require document start marker (---)
+  document-start: disable
+
+  # Enforce consistent bracket spacing
+  brackets:
+    min-spaces-inside: 0
+    max-spaces-inside: 0
+
+  # Enforce consistent indentation
+  indentation:
+    spaces: 2
+    indent-sequences: true
+    check-multi-line-strings: false
+
+  # Allow comments without space after #
+  comments:
+    min-spaces-from-content: 1
+
+  # Don't require newline at end of file (handled by editors)
+  new-line-at-end-of-file: enable

@@ -9,7 +9,6 @@ import {
   Alert,
   CircularProgress,
 } from '@mui/material';
-import { LockOutlined } from '@mui/icons-material';
 import { useAuthStore } from '@store/authStore';
 
 const Login: React.FC = () => {
@@ -75,20 +74,16 @@ const Login: React.FC = () => {
             mb: 3,
           }}
         >
-          <Box
-            sx={{
-              bgcolor: 'secondary.main',
-              borderRadius: '50%',
-              p: 1.5,
-              mb: 2,
+          <img
+            src="/marchproxy-logo.png"
+            alt="MarchProxy Logo"
+            style={{
+              height: '300px',
+              width: 'auto',
+              marginBottom: '24px',
             }}
-          >
-            <LockOutlined sx={{ fontSize: 40, color: 'primary.dark' }} />
-          </Box>
-          <Typography variant="h4" component="h1" gutterBottom>
-            MarchProxy
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
+          />
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Sign in to your account
           </Typography>
         </Box>
@@ -149,7 +144,7 @@ const Login: React.FC = () => {
 
         <Box sx={{ mt: 2, textAlign: 'center' }}>
           <Typography variant="caption" color="text.secondary">
-            MarchProxy v1.0.0 - Enterprise Egress Proxy
+            MarchProxy v1.0.0 - Enterprise Proxy and Load Balancer Suite
           </Typography>
         </Box>
       </Paper>

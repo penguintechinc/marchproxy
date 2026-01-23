@@ -1,10 +1,7 @@
 [flake8]
 max-line-length = 100
-extend-ignore = 
-    E203,  # whitespace before ':'
-    W503,  # line break before binary operator
-    E501   # line too long (handled by black)
-exclude = 
+extend-ignore = E203, W503, E501
+exclude =
     .git,
     __pycache__,
     .venv,
@@ -14,7 +11,7 @@ exclude =
     dist,
     *.egg-info
 per-file-ignores =
-    __init__.py:F401  # imported but unused
-    migrations/*.py:E501,F401  # long lines and imports in migrations
+    __init__.py:F401
+    migrations/*.py:E501,F401
 max-complexity = 10
 docstring-convention = google

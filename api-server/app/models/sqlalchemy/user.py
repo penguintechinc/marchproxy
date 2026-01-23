@@ -41,8 +41,8 @@ class User(Base):
 
     # Relationships
     created_clusters = relationship("Cluster", back_populates="creator", foreign_keys="Cluster.created_by")
-    cluster_assignments = relationship("UserClusterAssignment", back_populates="user")
-    service_assignments = relationship("UserServiceAssignment", back_populates="user")
+    cluster_assignments = relationship("UserClusterAssignment", back_populates="user", foreign_keys="UserClusterAssignment.user_id")
+    service_assignments = relationship("UserServiceAssignment", back_populates="user", foreign_keys="UserServiceAssignment.user_id")
 
     def __repr__(self):
         return f"<User(id={self.id}, username={self.username}, email={self.email})>"

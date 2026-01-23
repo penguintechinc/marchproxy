@@ -43,7 +43,7 @@ class Mapping(Base):
     is_active = Column(Boolean, default=True, nullable=False)
 
     # Audit fields
-    created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_by = Column(Integer, ForeignKey("auth_user.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

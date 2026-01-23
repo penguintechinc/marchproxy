@@ -12,12 +12,12 @@ export const authService = {
    */
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     const response = await apiClient.post<LoginResponse>(
-      '/api/auth/login',
+      '/api/v1/auth/login',
       credentials
     );
 
-    if (response.data.token) {
-      setAuthToken(response.data.token);
+    if (response.data.access_token) {
+      setAuthToken(response.data.access_token);
     }
 
     return response.data;
@@ -28,7 +28,7 @@ export const authService = {
    */
   async logout(): Promise<void> {
     try {
-      await apiClient.post('/api/auth/logout');
+      await apiClient.post('/api/v1/auth/logout');
     } finally {
       clearAuthToken();
     }
@@ -38,7 +38,7 @@ export const authService = {
    * Get current user profile
    */
   async getCurrentUser(): Promise<User> {
-    const response = await apiClient.get<User>('/api/auth/me');
+    const response = await apiClient.get<User>('/api/v1/auth/me');
     return response.data;
   },
 
@@ -47,7 +47,7 @@ export const authService = {
    */
   async refreshToken(): Promise<string> {
     const response = await apiClient.post<{ token: string }>(
-      '/api/auth/refresh'
+      '/api/v1/auth/refresh'
     );
 
     if (response.data.token) {
@@ -64,7 +64,7 @@ export const authService = {
     currentPassword: string,
     newPassword: string
   ): Promise<void> {
-    await apiClient.post('/api/auth/change-password', {
+    await apiClient.post('/api/v1/auth/change-password', {
       current_password: currentPassword,
       new_password: newPassword,
     });
@@ -77,7 +77,7 @@ export const authService = {
     const response = await apiClient.post<{
       secret: string;
       qr_code: string;
-    }>('/api/auth/2fa/enable');
+    }>('/api/v1/auth/2fa/enable');
     return response.data;
   },
 
@@ -85,13 +85,13 @@ export const authService = {
    * Verify 2FA code
    */
   async verify2FA(code: string): Promise<void> {
-    await apiClient.post('/api/auth/2fa/verify', { code });
+    await apiClient.post('/api/v1/auth/2fa/verify', { code });
   },
 
   /**
    * Disable 2FA for current user
    */
   async disable2FA(code: string): Promise<void> {
-    await apiClient.post('/api/auth/2fa/disable', { code });
+    await apiClient.post('/api/v1/auth/2fa/disable', { code });
   },
 };

@@ -10,8 +10,8 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/MarchProxy/proxy/internal/logging"
-	"github.com/MarchProxy/proxy/internal/metrics"
+	"marchproxy-egress/internal/logging"
+	"marchproxy-egress/internal/metrics"
 )
 
 // #cgo CFLAGS: -I/usr/include/bpf -I../../../ebpf/include

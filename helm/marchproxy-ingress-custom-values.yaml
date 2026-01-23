@@ -1,0 +1,67 @@
+# Custom values for MarchProxy Ingress with proper hostname
+image:
+  registry: register.dal2.penguintech.io
+  repository: marchproxy-ingress
+  tag: v1.0.0
+  pullPolicy: IfNotPresent
+
+# Enable Kubernetes Ingress resource for proper hostname routing
+ingress:
+  mode: "alb"
+  alb:
+    enabled: true
+    className: "nginx"  # Use nginx ingress controller
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+      nginx.ingress.kubernetes.io/healthcheck-path: "/healthz"
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    hosts:
+      - host: marchproxy.penguintech.io
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: marchproxy-ingress-tls
+        hosts:
+          - marchproxy.penguintech.io
+
+# Proxy configuration
+config:
+  logLevel: "info"
+  proxyType: "ingress"
+
+  # Manager connection (to be configured)
+  managerUrl: "http://marchproxy-manager.marchproxy.svc.cluster.local:8000"
+  # clusterApiKey: "<to-be-generated>"
+
+  # mTLS configuration
+  mtls:
+    enabled: true
+    verifyClient: true
+
+  # eBPF/XDP acceleration
+  ebpf:
+    enabled: true
+  xdp:
+    enabled: false
+
+  # Rate limiting
+  rateLimit:
+    enabled: true
+    requestsPerSecond: 10000
+    burstSize: 20000
+
+  # Health check
+  healthCheck:
+    enabled: true
+    interval: "10s"
+
+# Resource limits
+resources:
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi

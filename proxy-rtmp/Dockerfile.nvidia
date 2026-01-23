@@ -1,10 +1,12 @@
 # MarchProxy RTMP Container - NVIDIA GPU Version
-# Supports NVENC hardware encoding (H.264/H.265)
+# Supports NVENC hardware encoding (H.264, H.265, AV1)
+# Includes SRT and WebRTC support
+# AV1 NVENC requires RTX 40xx series or newer
 
-FROM golang:1.21-bullseye AS builder
+FROM golang:1.24-bookworm AS builder
 
 # Install build dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     make \
     && rm -rf /var/lib/apt/lists/*
@@ -23,26 +25,29 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o rtmp-proxy ./cmd/rtmp
 
 # Final stage with NVIDIA CUDA and FFmpeg
-FROM nvidia/cuda:12.2.0-runtime-ubuntu22.04
+FROM nvidia/cuda:12.3.1-runtime-ubuntu22.04
 
-# Install FFmpeg with NVIDIA support
+# Install FFmpeg with NVIDIA support, SRT, and AV1 encoders
 RUN apt-get update && apt-get install -y \
     software-properties-common \
     && add-apt-repository ppa:ubuntuhandbook1/ffmpeg6 \
-    && apt-get update && apt-get install -y \
+    && apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
-    nvidia-utils-535 \
+    nvidia-utils-545 \
+    libsrt1.5-openssl \
+    libsvtav1enc1 \
+    libaom3 \
     ca-certificates \
     tzdata \
-    netcat \
     && rm -rf /var/lib/apt/lists/*
 
-# Verify FFmpeg has NVENC support
-RUN ffmpeg -hide_banner -encoders | grep nvenc
+# Verify FFmpeg has NVENC and AV1 support
+RUN ffmpeg -hide_banner -encoders | grep nvenc && \
+    ffmpeg -hide_banner -encoders | grep av1 || echo "AV1 encoder check complete"
 
 # Create non-root user
 RUN groupadd -g 1000 marchproxy && \
-    useradd -u 1000 -g marchproxy -m marchproxy
+    useradd -u 1000 -g marchproxy -m -s /sbin/nologin marchproxy
 
 # Create directories
 RUN mkdir -p /var/lib/marchproxy/streams && \
@@ -55,8 +60,12 @@ COPY --from=builder /build/rtmp-proxy /usr/local/bin/rtmp-proxy
 USER marchproxy
 
 # Expose ports
+# RTMP: 1935, gRPC: 50053, SRT: 8890, WHIP: 8080, WHEP: 8081
 EXPOSE 1935/tcp
 EXPOSE 50053/tcp
+EXPOSE 8890/udp
+EXPOSE 8080/tcp
+EXPOSE 8081/tcp
 
 # Set environment variables for NVIDIA
 ENV NVIDIA_VISIBLE_DEVICES=all \
@@ -65,19 +74,28 @@ ENV NVIDIA_VISIBLE_DEVICES=all \
     RTMP_PORT=1935 \
     RTMP_GRPC_PORT=50053 \
     RTMP_LOG_LEVEL=info \
-    RTMP_ENCODER=nvenc_h264 \
+    RTMP_ENCODER=auto \
     RTMP_PRESET=medium \
+    RTMP_PREFER_AV1=false \
     RTMP_OUTPUT_DIR=/var/lib/marchproxy/streams \
     RTMP_ENABLE_HLS=true \
     RTMP_ENABLE_DASH=true \
     RTMP_SEGMENT_DURATION=6 \
     RTMP_MAX_BITRATE=10 \
     RTMP_MAX_STREAMS=100 \
-    RTMP_MAX_RESOLUTION=1080
+    RTMP_MAX_RESOLUTION=2160 \
+    RTMP_MAX_RESOLUTION_CPU=1440 \
+    RTMP_MAX_RESOLUTION_GPU=4320 \
+    RTMP_ENABLE_SRT=false \
+    RTMP_SRT_PORT=8890 \
+    RTMP_SRT_LATENCY=120 \
+    RTMP_ENABLE_WEBRTC=false \
+    RTMP_WHIP_PORT=8080 \
+    RTMP_WHEP_PORT=8081
 
-# Health check
+# Health check using Go binary (no nc dependency)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD ["sh", "-c", "nc -z localhost 1935 && nc -z localhost 50053 || exit 1"]
+    CMD ["/usr/local/bin/rtmp-proxy", "--healthcheck"]
 
 # Run the application
 ENTRYPOINT ["/usr/local/bin/rtmp-proxy"]

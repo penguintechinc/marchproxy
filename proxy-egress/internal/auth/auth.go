@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/penguintech/marchproxy/internal/manager"
+	"marchproxy-egress/internal/manager"
 )
 
 // AuthType represents the type of authentication

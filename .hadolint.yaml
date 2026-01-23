@@ -1,0 +1,15 @@
+---
+# Hadolint configuration for MarchProxy
+# https://github.com/hadolint/hadolint
+
+ignored:
+  # Advisory rules - we prefer explicit over implicit but don't block CI
+  - DL3008  # Pin versions in apt-get install (advisory for flexibility)
+  - DL3059  # Multiple consecutive RUN instructions (acceptable for readability)
+
+trustedRegistries:
+  - docker.io
+  - ghcr.io
+  - envoyproxy
+
+failure-threshold: error

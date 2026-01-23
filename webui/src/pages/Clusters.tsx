@@ -35,11 +35,11 @@ import { Cluster } from '@services/types';
 interface ClusterFormData {
   name: string;
   description: string;
-  syslog_server: string;
-  syslog_port: number;
-  auth_log_enabled: boolean;
-  netflow_log_enabled: boolean;
-  debug_log_enabled: boolean;
+  syslog_endpoint: string;
+  log_auth: boolean;
+  log_netflow: boolean;
+  log_debug: boolean;
+  max_proxies: number;
 }
 
 const Clusters: React.FC = () => {
@@ -56,11 +56,11 @@ const Clusters: React.FC = () => {
     defaultValues: {
       name: '',
       description: '',
-      syslog_server: '',
-      syslog_port: 514,
-      auth_log_enabled: true,
-      netflow_log_enabled: false,
-      debug_log_enabled: false,
+      syslog_endpoint: '',
+      log_auth: true,
+      log_netflow: false,
+      log_debug: false,
+      max_proxies: 3,
     }
   });
 
@@ -87,11 +87,11 @@ const Clusters: React.FC = () => {
     reset({
       name: '',
       description: '',
-      syslog_server: '',
-      syslog_port: 514,
-      auth_log_enabled: true,
-      netflow_log_enabled: false,
-      debug_log_enabled: false,
+      syslog_endpoint: '',
+      log_auth: true,
+      log_netflow: false,
+      log_debug: false,
+      max_proxies: 3,
     });
     setOpenDialog(true);
   };
@@ -101,12 +101,12 @@ const Clusters: React.FC = () => {
     setSelectedCluster(cluster);
     reset({
       name: cluster.name,
-      description: cluster.description,
-      syslog_server: cluster.syslog_server || '',
-      syslog_port: cluster.syslog_port || 514,
-      auth_log_enabled: cluster.auth_log_enabled,
-      netflow_log_enabled: cluster.netflow_log_enabled,
-      debug_log_enabled: cluster.debug_log_enabled,
+      description: cluster.description || '',
+      syslog_endpoint: cluster.syslog_endpoint || '',
+      log_auth: cluster.log_auth,
+      log_netflow: cluster.log_netflow,
+      log_debug: cluster.log_debug,
+      max_proxies: cluster.max_proxies,
     });
     setOpenDialog(true);
   };
@@ -154,14 +154,30 @@ const Clusters: React.FC = () => {
       headerName: 'Proxies',
       width: 100,
       renderCell: (params) => (
-        <Chip label={params.value || 0} color="primary" size="small" />
+        <Chip
+          label={`${params.value || 0}/${params.row.max_proxies}`}
+          color={params.value >= params.row.max_proxies ? 'warning' : 'primary'}
+          size="small"
+        />
       ),
     },
     {
-      field: 'syslog_server',
+      field: 'syslog_endpoint',
       headerName: 'Syslog',
       width: 150,
       renderCell: (params) => params.value || 'Not configured',
+    },
+    {
+      field: 'is_active',
+      headerName: 'Status',
+      width: 100,
+      renderCell: (params) => (
+        <Chip
+          label={params.value ? 'Active' : 'Inactive'}
+          color={params.value ? 'success' : 'default'}
+          size="small"
+        />
+      ),
     },
     {
       field: 'actions',
@@ -183,6 +199,7 @@ const Clusters: React.FC = () => {
           icon={<DeleteIcon />}
           label="Delete"
           onClick={() => setDeleteConfirm(params.row.id)}
+          disabled={params.row.is_default}
         />,
       ],
     },
@@ -275,31 +292,35 @@ const Clusters: React.FC = () => {
                 )}
               />
               <Controller
-                name="syslog_server"
+                name="syslog_endpoint"
                 control={control}
                 render={({ field }) => (
                   <TextField
                     {...field}
-                    label="Syslog Server"
+                    label="Syslog Endpoint"
                     fullWidth
-                    placeholder="syslog.example.com"
+                    placeholder="syslog.example.com:514"
+                    helperText="Format: hostname:port"
                   />
                 )}
               />
               <Controller
-                name="syslog_port"
+                name="max_proxies"
                 control={control}
+                rules={{ min: { value: 1, message: 'Must be at least 1' } }}
                 render={({ field }) => (
                   <TextField
                     {...field}
-                    label="Syslog Port"
+                    label="Max Proxies"
                     type="number"
                     fullWidth
+                    error={!!errors.max_proxies}
+                    helperText={errors.max_proxies?.message || 'Community tier limited to 3'}
                   />
                 )}
               />
               <Controller
-                name="auth_log_enabled"
+                name="log_auth"
                 control={control}
                 render={({ field }) => (
                   <FormControlLabel
@@ -309,7 +330,7 @@ const Clusters: React.FC = () => {
                 )}
               />
               <Controller
-                name="netflow_log_enabled"
+                name="log_netflow"
                 control={control}
                 render={({ field }) => (
                   <FormControlLabel
@@ -319,7 +340,7 @@ const Clusters: React.FC = () => {
                 )}
               />
               <Controller
-                name="debug_log_enabled"
+                name="log_debug"
                 control={control}
                 render={({ field }) => (
                   <FormControlLabel

@@ -124,4 +124,5 @@ localhost.*
 # Testing artifacts
 coverage.out
 test-results/
-.nyc_output/
+.nyc_output/.archive/
+.archive/

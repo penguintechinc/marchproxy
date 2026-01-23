@@ -9,7 +9,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/penguintech/marchproxy/internal/manager"
+	"marchproxy-egress/internal/manager"
 )
 
 // #cgo CFLAGS: -I/usr/include/dpdk -mssse3

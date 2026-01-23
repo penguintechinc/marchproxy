@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/MarchProxy/proxy/internal/manager"
+	"marchproxy-egress/internal/manager"
 )
 
 var (
@@ -435,8 +435,19 @@ func (cb *CircuitBreaker) updateResponseTime(duration time.Duration) {
 func (cb *CircuitBreaker) Statistics() Statistics {
 	cb.mutex.RLock()
 	defer cb.mutex.RUnlock()
-	
-	return cb.stats
+
+	// Return a copy without the sync.Map to avoid copying a lock value
+	return Statistics{
+		TotalRequests:        cb.stats.TotalRequests,
+		TotalSuccesses:       cb.stats.TotalSuccesses,
+		TotalFailures:        cb.stats.TotalFailures,
+		TotalTimeouts:        cb.stats.TotalTimeouts,
+		TotalFallbacks:       cb.stats.TotalFallbacks,
+		TotalRejections:      cb.stats.TotalRejections,
+		StateChanges:         cb.stats.StateChanges,
+		LastStateChange:      cb.stats.LastStateChange,
+		AverageResponseTime:  cb.stats.AverageResponseTime,
+	}
 }
 
 func (cb *CircuitBreaker) Reset() {
@@ -461,29 +472,44 @@ func NewServiceCircuitBreaker(config Config) *ServiceCircuitBreaker {
 }
 
 func (scb *ServiceCircuitBreaker) GetBreaker(service *manager.Service) *CircuitBreaker {
-	key := fmt.Sprintf("%s:%d", service.Host, service.Port)
-	
+	key := scb.serviceKey(service)
+
 	scb.mutex.RLock()
 	breaker, exists := scb.breakers[key]
 	scb.mutex.RUnlock()
-	
+
 	if exists {
 		return breaker
 	}
-	
+
 	scb.mutex.Lock()
 	defer scb.mutex.Unlock()
-	
+
 	if breaker, exists := scb.breakers[key]; exists {
 		return breaker
 	}
-	
+
 	config := scb.config
 	config.Name = key
 	breaker = NewCircuitBreaker(config)
+	breaker.name = key
 	scb.breakers[key] = breaker
-	
+
 	return breaker
+}
+
+// serviceKey generates a unique key for a service
+func (scb *ServiceCircuitBreaker) serviceKey(service *manager.Service) string {
+	if service.IPFQDN != "" {
+		return service.IPFQDN
+	}
+	if service.Host != "" && service.Port > 0 {
+		return fmt.Sprintf("%s:%d", service.Host, service.Port)
+	}
+	if service.Host != "" {
+		return service.Host
+	}
+	return service.Name
 }
 
 func (scb *ServiceCircuitBreaker) ExecuteRequest(service *manager.Service, req func() (interface{}, error)) (interface{}, error) {
@@ -508,11 +534,11 @@ func (scb *ServiceCircuitBreaker) GetAllBreakers() map[string]*CircuitBreaker {
 }
 
 func (scb *ServiceCircuitBreaker) RemoveBreaker(service *manager.Service) {
-	key := fmt.Sprintf("%s:%d", service.Host, service.Port)
-	
+	key := scb.serviceKey(service)
+
 	scb.mutex.Lock()
 	defer scb.mutex.Unlock()
-	
+
 	delete(scb.breakers, key)
 }
 

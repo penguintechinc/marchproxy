@@ -33,10 +33,31 @@ export const useAuthStore = create<AuthStore>((set) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await authService.login(credentials);
+
+      // Check if 2FA is required
+      if (response.requires_2fa) {
+        set({
+          isLoading: false,
+          error: 'Please enter your 2FA code',
+        });
+        return;
+      }
+
+      // Create user object from response
+      const user: User = {
+        id: response.user_id,
+        username: response.username,
+        email: response.email,
+        role: response.is_admin ? 'administrator' : 'service_owner',
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
       set({
-        user: response.user,
-        token: response.token,
-        isAuthenticated: true,
+        user,
+        token: response.access_token || null,
+        isAuthenticated: !!response.access_token,
         isLoading: false,
         error: null,
       });
