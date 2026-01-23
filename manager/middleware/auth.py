@@ -25,7 +25,7 @@ def get_current_user() -> Optional[dict]:
         dict: User payload with user_id, username, email, is_admin, etc.
         None: If no user is authenticated
     """
-    return getattr(g, 'user', None)
+    return getattr(g, "user", None)
 
 
 def is_admin() -> bool:
@@ -36,7 +36,7 @@ def is_admin() -> bool:
         bool: True if current user is admin, False otherwise
     """
     user = get_current_user()
-    return user.get('is_admin', False) if user else False
+    return user.get("is_admin", False) if user else False
 
 
 def _extract_token_from_header() -> Optional[str]:
@@ -49,14 +49,14 @@ def _extract_token_from_header() -> Optional[str]:
         str: JWT token if present and valid format
         None: If token is missing or invalid format
     """
-    auth_header = request.headers.get('Authorization', '')
+    auth_header = request.headers.get("Authorization", "")
 
     if not auth_header:
         return None
 
     parts = auth_header.split()
 
-    if len(parts) != 2 or parts[0].lower() != 'bearer':
+    if len(parts) != 2 or parts[0].lower() != "bearer":
         return None
 
     return parts[1]
@@ -74,7 +74,7 @@ def _validate_token(token: str) -> Optional[dict]:
         None: If token is invalid or expired
     """
     try:
-        jwt_manager = getattr(current_app, 'jwt_manager', None)
+        jwt_manager = getattr(current_app, "jwt_manager", None)
         if not jwt_manager:
             logger.error("JWT manager not configured in current_app")
             return None
@@ -87,8 +87,9 @@ def _validate_token(token: str) -> Optional[dict]:
         return None
 
 
-def require_auth(admin_required: bool = False,
-                 license_feature: Optional[str] = None) -> Callable:
+def require_auth(
+    admin_required: bool = False, license_feature: Optional[str] = None
+) -> Callable:
     """
     Decorator to protect routes requiring authentication.
 
@@ -135,16 +136,19 @@ def require_auth(admin_required: bool = False,
             return await _authenticate_and_authorize_async(
                 handler, args, kwargs, admin_required, license_feature
             )
+
         return async_decorated
 
     return decorator
 
 
-async def _authenticate_and_authorize_async(handler: Callable,
-                                            args: tuple,
-                                            kwargs: dict,
-                                            admin_required: bool,
-                                            license_feature: Optional[str]) -> Any:
+async def _authenticate_and_authorize_async(
+    handler: Callable,
+    args: tuple,
+    kwargs: dict,
+    admin_required: bool,
+    license_feature: Optional[str],
+) -> Any:
     """
     Perform authentication and authorization checks (async).
 
@@ -179,7 +183,7 @@ async def _authenticate_and_authorize_async(handler: Callable,
     g.user = payload
 
     # Check admin requirement
-    if admin_required and not payload.get('is_admin', False):
+    if admin_required and not payload.get("is_admin", False):
         logger.warning(
             f"Non-admin user {payload.get('user_id')} attempted admin access"
         )
@@ -225,7 +229,7 @@ def _check_license_feature(feature: str, user_payload: dict) -> bool:
         # - Feature flags
         # - User tier/subscription level
 
-        license_manager = getattr(current_app, 'license_manager', None)
+        license_manager = getattr(current_app, "license_manager", None)
 
         if license_manager:
             # TODO: Implement actual license checking
@@ -292,7 +296,7 @@ class AuthContext:
 
     def is_admin(self) -> bool:
         """Check if current user is admin"""
-        return self.user.get('is_admin', False) if self.user else False
+        return self.user.get("is_admin", False) if self.user else False
 
     def has_feature(self, feature: str) -> bool:
         """Check if user has access to a feature"""

@@ -111,10 +111,15 @@ async def admin_media_settings(user_data):
 
             logger.info(f"Media settings updated by admin {user_data['user_id']}")
 
-            return jsonify({
-                "status": "updated",
-                "settings": settings,
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "status": "updated",
+                        "settings": settings,
+                    }
+                ),
+                200,
+            )
 
         except Exception as e:
             logger.error(f"Error updating media settings: {str(e)}")
@@ -147,11 +152,16 @@ async def reset_admin_override(user_data):
             f"Media settings reset to hardware default by admin {user_data['user_id']}"
         )
 
-        return jsonify({
-            "status": "reset",
-            "message": "Resolution limit reset to hardware default",
-            "settings": settings,
-        }), 200
+        return (
+            jsonify(
+                {
+                    "status": "reset",
+                    "message": "Resolution limit reset to hardware default",
+                    "settings": settings,
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         logger.error(f"Error resetting media settings: {str(e)}")
@@ -187,17 +197,22 @@ async def admin_capabilities(user_data):
             if hardware_caps.get("gpu_type") == "none":
                 res_info["disabled_reason"] = "Requires GPU hardware acceleration"
             elif height > hw_max:
-                res_info["disabled_reason"] = (
-                    f"GPU does not support {height}p (requires more VRAM)"
-                )
+                res_info[
+                    "disabled_reason"
+                ] = f"GPU does not support {height}p (requires more VRAM)"
 
         resolutions.append(res_info)
 
-    return jsonify({
-        "hardware": hardware_caps,
-        "resolutions": resolutions,
-        "supported_codecs": get_supported_codecs(hardware_caps),
-    }), 200
+    return (
+        jsonify(
+            {
+                "hardware": hardware_caps,
+                "resolutions": resolutions,
+                "supported_codecs": get_supported_codecs(hardware_caps),
+            }
+        ),
+        200,
+    )
 
 
 async def get_hardware_capabilities() -> dict:

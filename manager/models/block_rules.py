@@ -17,50 +17,51 @@ from pydantic import BaseModel, validator
 class BlockRuleModel:
     """Block rule model for threat intelligence and traffic control"""
 
-    VALID_RULE_TYPES = ['ip', 'cidr', 'domain', 'url_pattern', 'port']
-    VALID_LAYERS = ['L4', 'L7']
+    VALID_RULE_TYPES = ["ip", "cidr", "domain", "url_pattern", "port"]
+    VALID_LAYERS = ["L4", "L7"]
     # Actions:
     # - 'deny': Active rejection - sends ICMP unreachable/TCP RST/HTTP 403 (for egress)
     # - 'drop': Silent drop - no response sent (for ingress security)
     # - 'allow': Explicit allow (whitelist)
     # - 'log': Log only, don't block
-    VALID_ACTIONS = ['deny', 'drop', 'allow', 'log']
-    VALID_MATCH_TYPES = ['exact', 'prefix', 'suffix', 'regex', 'contains']
-    VALID_SOURCES = ['manual', 'threat_feed', 'api']
+    VALID_ACTIONS = ["deny", "drop", "allow", "log"]
+    VALID_MATCH_TYPES = ["exact", "prefix", "suffix", "regex", "contains"]
+    VALID_SOURCES = ["manual", "threat_feed", "api"]
 
     @staticmethod
     def define_table(db: DAL):
         """Define block_rules table in database"""
         return db.define_table(
-            'block_rules',
-            Field('name', type='string', required=True, length=100),
-            Field('description', type='text'),
-            Field('cluster_id', type='reference clusters', required=True),
-            Field('rule_type', type='string', required=True, length=20),
-            Field('layer', type='string', required=True, length=10),
-            Field('value', type='string', required=True, length=255),
-            Field('ports', type='json'),
-            Field('protocols', type='json'),
-            Field('wildcard', type='boolean', default=False),
-            Field('match_type', type='string', default='exact', length=20),
-            Field('action', type='string', default='deny', length=20),
-            Field('priority', type='integer', default=1000),
-            Field('apply_to_alb', type='boolean', default=True),
-            Field('apply_to_nlb', type='boolean', default=True),
-            Field('apply_to_egress', type='boolean', default=True),
-            Field('source', type='string', default='manual', length=20),
-            Field('source_feed_name', type='string', length=100),
-            Field('expires_at', type='datetime'),
-            Field('is_active', type='boolean', default=True),
-            Field('created_by', type='reference users'),
-            Field('created_at', type='datetime', default=datetime.utcnow),
-            Field('updated_at', type='datetime', update=datetime.utcnow),
+            "block_rules",
+            Field("name", type="string", required=True, length=100),
+            Field("description", type="text"),
+            Field("cluster_id", type="reference clusters", required=True),
+            Field("rule_type", type="string", required=True, length=20),
+            Field("layer", type="string", required=True, length=10),
+            Field("value", type="string", required=True, length=255),
+            Field("ports", type="json"),
+            Field("protocols", type="json"),
+            Field("wildcard", type="boolean", default=False),
+            Field("match_type", type="string", default="exact", length=20),
+            Field("action", type="string", default="deny", length=20),
+            Field("priority", type="integer", default=1000),
+            Field("apply_to_alb", type="boolean", default=True),
+            Field("apply_to_nlb", type="boolean", default=True),
+            Field("apply_to_egress", type="boolean", default=True),
+            Field("source", type="string", default="manual", length=20),
+            Field("source_feed_name", type="string", length=100),
+            Field("expires_at", type="datetime"),
+            Field("is_active", type="boolean", default=True),
+            Field("created_by", type="reference users"),
+            Field("created_at", type="datetime", default=datetime.utcnow),
+            Field("updated_at", type="datetime", update=datetime.utcnow),
         )
 
     @staticmethod
     def validate_ip(value: str) -> bool:
         """Validate IPv4 or IPv6 address"""
         import ipaddress
+
         try:
             ipaddress.ip_address(value)
             return True
@@ -71,6 +72,7 @@ class BlockRuleModel:
     def validate_cidr(value: str) -> bool:
         """Validate CIDR notation"""
         import ipaddress
+
         try:
             ipaddress.ip_network(value, strict=False)
             return True
@@ -81,7 +83,9 @@ class BlockRuleModel:
     def validate_domain(value: str) -> bool:
         """Validate domain name"""
         # Allow wildcards like *.example.com
-        pattern = r'^(\*\.)?([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$'
+        pattern = (
+            r"^(\*\.)?([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$"
+        )
         return bool(re.match(pattern, value))
 
     @staticmethod
@@ -94,15 +98,28 @@ class BlockRuleModel:
             return False
 
     @staticmethod
-    def create_rule(db: DAL, cluster_id: int, name: str, rule_type: str,
-                   layer: str, value: str, created_by: int = None,
-                   description: str = None, ports: list = None,
-                   protocols: list = None, wildcard: bool = False,
-                   match_type: str = 'exact', action: str = 'deny',
-                   priority: int = 1000, apply_to_alb: bool = True,
-                   apply_to_nlb: bool = True, apply_to_egress: bool = True,
-                   source: str = 'manual', source_feed_name: str = None,
-                   expires_at: datetime = None) -> int:
+    def create_rule(
+        db: DAL,
+        cluster_id: int,
+        name: str,
+        rule_type: str,
+        layer: str,
+        value: str,
+        created_by: int = None,
+        description: str = None,
+        ports: list = None,
+        protocols: list = None,
+        wildcard: bool = False,
+        match_type: str = "exact",
+        action: str = "deny",
+        priority: int = 1000,
+        apply_to_alb: bool = True,
+        apply_to_nlb: bool = True,
+        apply_to_egress: bool = True,
+        source: str = "manual",
+        source_feed_name: str = None,
+        expires_at: datetime = None,
+    ) -> int:
         """
         Create a new block rule.
 
@@ -127,22 +144,22 @@ class BlockRuleModel:
             raise ValueError(f"Invalid layer: {layer}")
 
         # Validate value based on rule type
-        if rule_type == 'ip':
+        if rule_type == "ip":
             if not BlockRuleModel.validate_ip(value):
                 raise ValueError(f"Invalid IP address: {value}")
-        elif rule_type == 'cidr':
+        elif rule_type == "cidr":
             if not BlockRuleModel.validate_cidr(value):
                 raise ValueError(f"Invalid CIDR: {value}")
-        elif rule_type == 'domain':
+        elif rule_type == "domain":
             if not BlockRuleModel.validate_domain(value):
                 raise ValueError(f"Invalid domain: {value}")
-        elif rule_type == 'url_pattern' and match_type == 'regex':
+        elif rule_type == "url_pattern" and match_type == "regex":
             if not BlockRuleModel.validate_regex(value):
                 raise ValueError(f"Invalid regex pattern: {value}")
 
         # Set default protocols if not provided
         if protocols is None:
-            protocols = ['tcp', 'udp']
+            protocols = ["tcp", "udp"]
 
         rule_id = db.block_rules.insert(
             name=name,
@@ -163,7 +180,7 @@ class BlockRuleModel:
             source=source,
             source_feed_name=source_feed_name,
             expires_at=expires_at,
-            created_by=created_by
+            created_by=created_by,
         )
 
         return rule_id
@@ -178,17 +195,23 @@ class BlockRuleModel:
         return BlockRuleModel._format_rule(rule)
 
     @staticmethod
-    def list_rules(db: DAL, cluster_id: int, include_inactive: bool = False,
-                  rule_type: str = None, layer: str = None,
-                  proxy_type: str = None) -> List[Dict[str, Any]]:
+    def list_rules(
+        db: DAL,
+        cluster_id: int,
+        include_inactive: bool = False,
+        rule_type: str = None,
+        layer: str = None,
+        proxy_type: str = None,
+    ) -> List[Dict[str, Any]]:
         """List block rules for a cluster"""
         query = db.block_rules.cluster_id == cluster_id
 
         if not include_inactive:
             query &= db.block_rules.is_active == True
             # Exclude expired rules
-            query &= ((db.block_rules.expires_at == None) |
-                     (db.block_rules.expires_at > datetime.utcnow()))
+            query &= (db.block_rules.expires_at == None) | (
+                db.block_rules.expires_at > datetime.utcnow()
+            )
 
         if rule_type:
             query &= db.block_rules.rule_type == rule_type
@@ -197,11 +220,11 @@ class BlockRuleModel:
             query &= db.block_rules.layer == layer
 
         if proxy_type:
-            if proxy_type == 'alb':
+            if proxy_type == "alb":
                 query &= db.block_rules.apply_to_alb == True
-            elif proxy_type == 'nlb':
+            elif proxy_type == "nlb":
                 query &= db.block_rules.apply_to_nlb == True
-            elif proxy_type == 'egress':
+            elif proxy_type == "egress":
                 query &= db.block_rules.apply_to_egress == True
 
         rules = db(query).select(orderby=db.block_rules.priority)
@@ -215,15 +238,27 @@ class BlockRuleModel:
             return False
 
         # Filter only valid update fields
-        valid_fields = ['name', 'description', 'value', 'ports', 'protocols',
-                       'wildcard', 'match_type', 'action', 'priority',
-                       'apply_to_alb', 'apply_to_nlb', 'apply_to_egress',
-                       'is_active', 'expires_at']
+        valid_fields = [
+            "name",
+            "description",
+            "value",
+            "ports",
+            "protocols",
+            "wildcard",
+            "match_type",
+            "action",
+            "priority",
+            "apply_to_alb",
+            "apply_to_nlb",
+            "apply_to_egress",
+            "is_active",
+            "expires_at",
+        ]
 
-        update_data = {'updated_at': datetime.utcnow()}
+        update_data = {"updated_at": datetime.utcnow()}
         for field in valid_fields:
             if field in kwargs and kwargs[field] is not None:
-                if field in ['ports', 'protocols']:
+                if field in ["ports", "protocols"]:
                     update_data[field] = json.dumps(kwargs[field])
                 else:
                     update_data[field] = kwargs[field]
@@ -252,10 +287,7 @@ class BlockRuleModel:
         if not rule:
             return False
 
-        rule.update_record(
-            hit_count=rule.hit_count + 1,
-            last_hit=datetime.utcnow()
-        )
+        rule.update_record(hit_count=rule.hit_count + 1, last_hit=datetime.utcnow())
         return True
 
     @staticmethod
@@ -266,32 +298,33 @@ class BlockRuleModel:
         return hashlib.sha256(rules_json.encode()).hexdigest()
 
     @staticmethod
-    def get_threat_feed(db: DAL, cluster_id: int, proxy_type: str = None,
-                       since_version: str = None) -> Dict[str, Any]:
+    def get_threat_feed(
+        db: DAL, cluster_id: int, proxy_type: str = None, since_version: str = None
+    ) -> Dict[str, Any]:
         """Get threat feed data for proxy consumption"""
         rules = BlockRuleModel.list_rules(db, cluster_id, proxy_type=proxy_type)
         current_version = BlockRuleModel.get_rules_version(db, cluster_id, proxy_type)
 
         # Group rules by layer and type for efficient proxy processing
-        l4_rules = {'ip': [], 'cidr': [], 'port': []}
-        l7_rules = {'domain': [], 'url_pattern': []}
+        l4_rules = {"ip": [], "cidr": [], "port": []}
+        l7_rules = {"domain": [], "url_pattern": []}
 
         for rule in rules:
-            if rule['layer'] == 'L4':
-                if rule['rule_type'] in l4_rules:
-                    l4_rules[rule['rule_type']].append(rule)
+            if rule["layer"] == "L4":
+                if rule["rule_type"] in l4_rules:
+                    l4_rules[rule["rule_type"]].append(rule)
             else:  # L7
-                if rule['rule_type'] in l7_rules:
-                    l7_rules[rule['rule_type']].append(rule)
+                if rule["rule_type"] in l7_rules:
+                    l7_rules[rule["rule_type"]].append(rule)
 
         return {
-            'version': current_version,
-            'generated_at': datetime.utcnow().isoformat(),
-            'cluster_id': cluster_id,
-            'rules_count': len(rules),
-            'l4_rules': l4_rules,
-            'l7_rules': l7_rules,
-            'full_rules': rules if since_version != current_version else None
+            "version": current_version,
+            "generated_at": datetime.utcnow().isoformat(),
+            "cluster_id": cluster_id,
+            "rules_count": len(rules),
+            "l4_rules": l4_rules,
+            "l7_rules": l7_rules,
+            "full_rules": rules if since_version != current_version else None,
         }
 
     @staticmethod
@@ -300,42 +333,50 @@ class BlockRuleModel:
         ports = None
         if rule.ports:
             try:
-                ports = json.loads(rule.ports) if isinstance(rule.ports, str) else rule.ports
+                ports = (
+                    json.loads(rule.ports)
+                    if isinstance(rule.ports, str)
+                    else rule.ports
+                )
             except (json.JSONDecodeError, TypeError):
                 ports = rule.ports
 
-        protocols = ['tcp', 'udp']
+        protocols = ["tcp", "udp"]
         if rule.protocols:
             try:
-                protocols = json.loads(rule.protocols) if isinstance(rule.protocols, str) else rule.protocols
+                protocols = (
+                    json.loads(rule.protocols)
+                    if isinstance(rule.protocols, str)
+                    else rule.protocols
+                )
             except (json.JSONDecodeError, TypeError):
                 protocols = rule.protocols
 
         return {
-            'id': rule.id,
-            'name': rule.name,
-            'description': rule.description,
-            'cluster_id': rule.cluster_id,
-            'rule_type': rule.rule_type,
-            'layer': rule.layer,
-            'value': rule.value,
-            'ports': ports,
-            'protocols': protocols,
-            'wildcard': rule.wildcard,
-            'match_type': rule.match_type,
-            'action': rule.action,
-            'priority': rule.priority,
-            'apply_to_alb': rule.apply_to_alb,
-            'apply_to_nlb': rule.apply_to_nlb,
-            'apply_to_egress': rule.apply_to_egress,
-            'source': rule.source,
-            'source_feed_name': rule.source_feed_name,
-            'is_active': rule.is_active,
-            'expires_at': rule.expires_at.isoformat() if rule.expires_at else None,
-            'hit_count': rule.hit_count,
-            'last_hit': rule.last_hit.isoformat() if rule.last_hit else None,
-            'created_at': rule.created_at.isoformat() if rule.created_at else None,
-            'updated_at': rule.updated_at.isoformat() if rule.updated_at else None
+            "id": rule.id,
+            "name": rule.name,
+            "description": rule.description,
+            "cluster_id": rule.cluster_id,
+            "rule_type": rule.rule_type,
+            "layer": rule.layer,
+            "value": rule.value,
+            "ports": ports,
+            "protocols": protocols,
+            "wildcard": rule.wildcard,
+            "match_type": rule.match_type,
+            "action": rule.action,
+            "priority": rule.priority,
+            "apply_to_alb": rule.apply_to_alb,
+            "apply_to_nlb": rule.apply_to_nlb,
+            "apply_to_egress": rule.apply_to_egress,
+            "source": rule.source,
+            "source_feed_name": rule.source_feed_name,
+            "is_active": rule.is_active,
+            "expires_at": rule.expires_at.isoformat() if rule.expires_at else None,
+            "hit_count": rule.hit_count,
+            "last_hit": rule.last_hit.isoformat() if rule.last_hit else None,
+            "created_at": rule.created_at.isoformat() if rule.created_at else None,
+            "updated_at": rule.updated_at.isoformat() if rule.updated_at else None,
         }
 
 
@@ -343,9 +384,14 @@ class BlockRuleSyncModel:
     """Block rule sync tracking model"""
 
     @staticmethod
-    def update_sync_status(db: DAL, proxy_id: int, version: str,
-                          rules_count: int, status: str = 'synced',
-                          error: str = None) -> bool:
+    def update_sync_status(
+        db: DAL,
+        proxy_id: int,
+        version: str,
+        rules_count: int,
+        status: str = "synced",
+        error: str = None,
+    ) -> bool:
         """Update sync status for a proxy"""
         existing = db(db.block_rule_sync.proxy_id == proxy_id).select().first()
 
@@ -355,7 +401,7 @@ class BlockRuleSyncModel:
                 last_sync_at=datetime.utcnow(),
                 rules_count=rules_count,
                 sync_status=status,
-                sync_error=error
+                sync_error=error,
             )
         else:
             db.block_rule_sync.insert(
@@ -363,7 +409,7 @@ class BlockRuleSyncModel:
                 last_sync_version=version,
                 rules_count=rules_count,
                 sync_status=status,
-                sync_error=error
+                sync_error=error,
             )
 
         return True
@@ -376,12 +422,14 @@ class BlockRuleSyncModel:
             return None
 
         return {
-            'proxy_id': sync.proxy_id,
-            'last_sync_version': sync.last_sync_version,
-            'last_sync_at': sync.last_sync_at.isoformat() if sync.last_sync_at else None,
-            'rules_count': sync.rules_count,
-            'sync_status': sync.sync_status,
-            'sync_error': sync.sync_error
+            "proxy_id": sync.proxy_id,
+            "last_sync_version": sync.last_sync_version,
+            "last_sync_at": (
+                sync.last_sync_at.isoformat() if sync.last_sync_at else None
+            ),
+            "rules_count": sync.rules_count,
+            "sync_status": sync.sync_status,
+            "sync_error": sync.sync_error,
         }
 
 
@@ -398,49 +446,50 @@ class CreateBlockRuleRequest(BaseModel):
     - 'allow': Explicit whitelist entry.
     - 'log': Log the traffic but don't block it.
     """
+
     name: str
     description: Optional[str] = None
-    rule_type: Literal['ip', 'cidr', 'domain', 'url_pattern', 'port']
-    layer: Literal['L4', 'L7']
+    rule_type: Literal["ip", "cidr", "domain", "url_pattern", "port"]
+    layer: Literal["L4", "L7"]
     value: str
     ports: Optional[List[int]] = None
     protocols: Optional[List[str]] = None
     wildcard: bool = False
-    match_type: Literal['exact', 'prefix', 'suffix', 'regex', 'contains'] = 'exact'
+    match_type: Literal["exact", "prefix", "suffix", "regex", "contains"] = "exact"
     # 'deny' = active rejection (egress), 'drop' = silent drop (ingress)
-    action: Literal['deny', 'drop', 'allow', 'log'] = 'deny'
+    action: Literal["deny", "drop", "allow", "log"] = "deny"
     priority: int = 1000
     apply_to_alb: bool = True
     apply_to_nlb: bool = True
     apply_to_egress: bool = True
     expires_at: Optional[datetime] = None
 
-    @validator('name')
+    @validator("name")
     def validate_name(cls, v):
         if len(v) < 3:
-            raise ValueError('Rule name must be at least 3 characters long')
+            raise ValueError("Rule name must be at least 3 characters long")
         if len(v) > 255:
-            raise ValueError('Rule name must be at most 255 characters')
+            raise ValueError("Rule name must be at most 255 characters")
         return v
 
-    @validator('priority')
+    @validator("priority")
     def validate_priority(cls, v):
         if v < 1 or v > 100000:
-            raise ValueError('Priority must be between 1 and 100000')
+            raise ValueError("Priority must be between 1 and 100000")
         return v
 
-    @validator('layer')
+    @validator("layer")
     def validate_layer_for_rule_type(cls, v, values):
-        rule_type = values.get('rule_type')
+        rule_type = values.get("rule_type")
         # L7 rules must use L7 layer
-        if rule_type in ['domain', 'url_pattern'] and v != 'L7':
-            raise ValueError(f'{rule_type} rules must use L7 layer')
+        if rule_type in ["domain", "url_pattern"] and v != "L7":
+            raise ValueError(f"{rule_type} rules must use L7 layer")
         # ip, cidr, port rules work with L4
-        if rule_type in ['ip', 'cidr', 'port'] and v not in ['L4', 'L7']:
-            raise ValueError(f'{rule_type} rules require L4 or L7 layer')
+        if rule_type in ["ip", "cidr", "port"] and v not in ["L4", "L7"]:
+            raise ValueError(f"{rule_type} rules require L4 or L7 layer")
         return v
 
-    @validator('action')
+    @validator("action")
     def validate_action_recommendation(cls, v, values):
         """
         Validate action and provide guidance on best practices.
@@ -459,8 +508,10 @@ class UpdateBlockRuleRequest(BaseModel):
     ports: Optional[List[int]] = None
     protocols: Optional[List[str]] = None
     wildcard: Optional[bool] = None
-    match_type: Optional[Literal['exact', 'prefix', 'suffix', 'regex', 'contains']] = None
-    action: Optional[Literal['deny', 'drop', 'allow', 'log']] = None
+    match_type: Optional[
+        Literal["exact", "prefix", "suffix", "regex", "contains"]
+    ] = None
+    action: Optional[Literal["deny", "drop", "allow", "log"]] = None
     priority: Optional[int] = None
     apply_to_alb: Optional[bool] = None
     apply_to_nlb: Optional[bool] = None

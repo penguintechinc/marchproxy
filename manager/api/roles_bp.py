@@ -18,34 +18,32 @@ from middleware.rbac import (
     requires_permission,
     requires_role,
     is_admin,
-    can_manage_users
+    can_manage_users,
 )
-from models.rbac import (
-    RBACModel,
-    Permissions,
-    PermissionScope,
-    RoleType,
-    DEFAULT_ROLES
-)
+from models.rbac import RBACModel, Permissions, PermissionScope, RoleType, DEFAULT_ROLES
 
 logger = logging.getLogger(__name__)
 
 # Create blueprint
-roles_bp = Blueprint('roles', __name__, url_prefix='/api/v1/roles')
+roles_bp = Blueprint("roles", __name__, url_prefix="/api/v1/roles")
 
 
 # Pydantic models for request validation
 class RoleCreateRequest(BaseModel):
     """Request model for creating a role"""
+
     name: str = Field(..., min_length=1, max_length=50)
     display_name: str = Field(..., min_length=1, max_length=100)
     description: str = Field(default="")
-    scope: str = Field(..., pattern=f"^({'|'.join([s.value for s in PermissionScope])})$")
+    scope: str = Field(
+        ..., pattern=f"^({'|'.join([s.value for s in PermissionScope])})$"
+    )
     permissions: List[str] = Field(default=[])
 
 
 class RoleUpdateRequest(BaseModel):
     """Request model for updating a role"""
+
     display_name: str = Field(None, min_length=1, max_length=100)
     description: str = None
     permissions: List[str] = None
@@ -54,12 +52,13 @@ class RoleUpdateRequest(BaseModel):
 
 class RoleAssignmentRequest(BaseModel):
     """Request model for assigning a role to a user"""
+
     user_id: int = Field(..., gt=0)
     role_name: str = Field(..., min_length=1)
     scope: str = Field(default="global")
     resource_id: int = Field(None, gt=0)
 
-    @validator('scope')
+    @validator("scope")
     def validate_scope(cls, v):
         if v not in [s.value for s in PermissionScope]:
             raise ValueError(f"Invalid scope: {v}")
@@ -67,7 +66,7 @@ class RoleAssignmentRequest(BaseModel):
 
 
 # Routes
-@roles_bp.route('', methods=['GET'])
+@roles_bp.route("", methods=["GET"])
 @requires_permission(Permissions.GLOBAL_ADMIN)
 async def list_roles():
     """
@@ -80,24 +79,31 @@ async def list_roles():
 
     roles = db(db.roles.is_active == True).select(orderby=db.roles.name)
 
-    return jsonify({
-        'roles': [
+    return (
+        jsonify(
             {
-                'id': role.id,
-                'name': role.name,
-                'display_name': role.display_name,
-                'description': role.description,
-                'scope': role.scope,
-                'permissions': role.permissions or [],
-                'is_system': role.is_system,
-                'created_at': role.created_at.isoformat() if role.created_at else None,
+                "roles": [
+                    {
+                        "id": role.id,
+                        "name": role.name,
+                        "display_name": role.display_name,
+                        "description": role.description,
+                        "scope": role.scope,
+                        "permissions": role.permissions or [],
+                        "is_system": role.is_system,
+                        "created_at": (
+                            role.created_at.isoformat() if role.created_at else None
+                        ),
+                    }
+                    for role in roles
+                ]
             }
-            for role in roles
-        ]
-    }), 200
+        ),
+        200,
+    )
 
 
-@roles_bp.route('/<int:role_id>', methods=['GET'])
+@roles_bp.route("/<int:role_id>", methods=["GET"])
 @requires_permission(Permissions.GLOBAL_ADMIN)
 async def get_role(role_id: int):
     """
@@ -110,47 +116,59 @@ async def get_role(role_id: int):
 
     role = db.roles[role_id]
     if not role or not role.is_active:
-        return jsonify({'error': 'Role not found'}), 404
+        return jsonify({"error": "Role not found"}), 404
 
     # Get users with this role
     assignments = db(
-        (db.user_roles.role_id == role_id) &
-        (db.user_roles.is_active == True)
+        (db.user_roles.role_id == role_id) & (db.user_roles.is_active == True)
     ).select(
         db.user_roles.ALL,
         db.users.id,
         db.users.username,
         db.users.email,
-        left=db.users.on(db.user_roles.user_id == db.users.id)
+        left=db.users.on(db.user_roles.user_id == db.users.id),
     )
 
-    return jsonify({
-        'role': {
-            'id': role.id,
-            'name': role.name,
-            'display_name': role.display_name,
-            'description': role.description,
-            'scope': role.scope,
-            'permissions': role.permissions or [],
-            'is_system': role.is_system,
-            'created_at': role.created_at.isoformat() if role.created_at else None,
-            'updated_at': role.updated_at.isoformat() if role.updated_at else None,
-        },
-        'assignments': [
+    return (
+        jsonify(
             {
-                'user_id': a.users.id,
-                'username': a.users.username,
-                'email': a.users.email,
-                'scope': a.user_roles.scope,
-                'resource_id': a.user_roles.resource_id,
-                'granted_at': a.user_roles.granted_at.isoformat() if a.user_roles.granted_at else None,
+                "role": {
+                    "id": role.id,
+                    "name": role.name,
+                    "display_name": role.display_name,
+                    "description": role.description,
+                    "scope": role.scope,
+                    "permissions": role.permissions or [],
+                    "is_system": role.is_system,
+                    "created_at": (
+                        role.created_at.isoformat() if role.created_at else None
+                    ),
+                    "updated_at": (
+                        role.updated_at.isoformat() if role.updated_at else None
+                    ),
+                },
+                "assignments": [
+                    {
+                        "user_id": a.users.id,
+                        "username": a.users.username,
+                        "email": a.users.email,
+                        "scope": a.user_roles.scope,
+                        "resource_id": a.user_roles.resource_id,
+                        "granted_at": (
+                            a.user_roles.granted_at.isoformat()
+                            if a.user_roles.granted_at
+                            else None
+                        ),
+                    }
+                    for a in assignments
+                ],
             }
-            for a in assignments
-        ]
-    }), 200
+        ),
+        200,
+    )
 
 
-@roles_bp.route('', methods=['POST'])
+@roles_bp.route("", methods=["POST"])
 @requires_permission(Permissions.GLOBAL_ADMIN)
 async def create_role():
     """
@@ -165,14 +183,14 @@ async def create_role():
     try:
         role_data = RoleCreateRequest(**data)
     except Exception as e:
-        return jsonify({'error': f'Invalid request: {str(e)}'}), 400
+        return jsonify({"error": f"Invalid request: {str(e)}"}), 400
 
     db = g.db
 
     # Check if role name already exists
     existing = db(db.roles.name == role_data.name).select().first()
     if existing:
-        return jsonify({'error': 'Role name already exists'}), 409
+        return jsonify({"error": "Role name already exists"}), 409
 
     # Create role
     role_id = db.roles.insert(
@@ -183,7 +201,7 @@ async def create_role():
         permissions=role_data.permissions,
         is_system=False,
         is_active=True,
-        created_at=datetime.utcnow()
+        created_at=datetime.utcnow(),
     )
 
     db.commit()
@@ -191,20 +209,25 @@ async def create_role():
     role = db.roles[role_id]
     logger.info(f"Created custom role: {role_data.name} (ID: {role_id})")
 
-    return jsonify({
-        'role': {
-            'id': role.id,
-            'name': role.name,
-            'display_name': role.display_name,
-            'description': role.description,
-            'scope': role.scope,
-            'permissions': role.permissions or [],
-            'is_system': role.is_system,
-        }
-    }), 201
+    return (
+        jsonify(
+            {
+                "role": {
+                    "id": role.id,
+                    "name": role.name,
+                    "display_name": role.display_name,
+                    "description": role.description,
+                    "scope": role.scope,
+                    "permissions": role.permissions or [],
+                    "is_system": role.is_system,
+                }
+            }
+        ),
+        201,
+    )
 
 
-@roles_bp.route('/<int:role_id>', methods=['PUT'])
+@roles_bp.route("/<int:role_id>", methods=["PUT"])
 @requires_permission(Permissions.GLOBAL_ADMIN)
 async def update_role(role_id: int):
     """
@@ -219,28 +242,27 @@ async def update_role(role_id: int):
     try:
         update_data = RoleUpdateRequest(**data)
     except Exception as e:
-        return jsonify({'error': f'Invalid request: {str(e)}'}), 400
+        return jsonify({"error": f"Invalid request: {str(e)}"}), 400
 
     db = g.db
 
     role = db.roles[role_id]
     if not role:
-        return jsonify({'error': 'Role not found'}), 404
+        return jsonify({"error": "Role not found"}), 404
 
     # Cannot modify system roles
     if role.is_system:
-        return jsonify({'error': 'Cannot modify system role'}), 403
+        return jsonify({"error": "Cannot modify system role"}), 403
 
     # Update role
     update_dict = update_data.dict(exclude_unset=True)
     if update_dict:
-        update_dict['updated_at'] = datetime.utcnow()
+        update_dict["updated_at"] = datetime.utcnow()
         db(db.roles.id == role_id).update(**update_dict)
 
         # Invalidate permission cache for all users with this role
         assignments = db(
-            (db.user_roles.role_id == role_id) &
-            (db.user_roles.is_active == True)
+            (db.user_roles.role_id == role_id) & (db.user_roles.is_active == True)
         ).select(db.user_roles.user_id, distinct=True)
 
         for assignment in assignments:
@@ -251,20 +273,25 @@ async def update_role(role_id: int):
         logger.info(f"Updated role: {role.name} (ID: {role_id})")
 
     role = db.roles[role_id]
-    return jsonify({
-        'role': {
-            'id': role.id,
-            'name': role.name,
-            'display_name': role.display_name,
-            'description': role.description,
-            'scope': role.scope,
-            'permissions': role.permissions or [],
-            'is_system': role.is_system,
-        }
-    }), 200
+    return (
+        jsonify(
+            {
+                "role": {
+                    "id": role.id,
+                    "name": role.name,
+                    "display_name": role.display_name,
+                    "description": role.description,
+                    "scope": role.scope,
+                    "permissions": role.permissions or [],
+                    "is_system": role.is_system,
+                }
+            }
+        ),
+        200,
+    )
 
 
-@roles_bp.route('/<int:role_id>', methods=['DELETE'])
+@roles_bp.route("/<int:role_id>", methods=["DELETE"])
 @requires_permission(Permissions.GLOBAL_ADMIN)
 async def delete_role(role_id: int):
     """
@@ -277,11 +304,11 @@ async def delete_role(role_id: int):
 
     role = db.roles[role_id]
     if not role:
-        return jsonify({'error': 'Role not found'}), 404
+        return jsonify({"error": "Role not found"}), 404
 
     # Cannot delete system roles
     if role.is_system:
-        return jsonify({'error': 'Cannot delete system role'}), 403
+        return jsonify({"error": "Cannot delete system role"}), 403
 
     # Deactivate role
     db(db.roles.id == role_id).update(is_active=False, updated_at=datetime.utcnow())
@@ -300,10 +327,10 @@ async def delete_role(role_id: int):
 
     logger.info(f"Deleted role: {role.name} (ID: {role_id})")
 
-    return jsonify({'message': 'Role deleted successfully'}), 200
+    return jsonify({"message": "Role deleted successfully"}), 200
 
 
-@roles_bp.route('/assign', methods=['POST'])
+@roles_bp.route("/assign", methods=["POST"])
 @requires_permission(Permissions.GLOBAL_USER_WRITE)
 async def assign_role():
     """
@@ -318,7 +345,7 @@ async def assign_role():
     try:
         assignment_data = RoleAssignmentRequest(**data)
     except Exception as e:
-        return jsonify({'error': f'Invalid request: {str(e)}'}), 400
+        return jsonify({"error": f"Invalid request: {str(e)}"}), 400
 
     db = g.db
     user_id = g.user_id
@@ -326,7 +353,7 @@ async def assign_role():
     # Verify user exists
     user = db.users[assignment_data.user_id]
     if not user or not user.is_active:
-        return jsonify({'error': 'User not found'}), 404
+        return jsonify({"error": "User not found"}), 404
 
     # Assign role
     try:
@@ -337,7 +364,7 @@ async def assign_role():
             assignment_data.role_name,
             scope,
             assignment_data.resource_id,
-            granted_by=user_id
+            granted_by=user_id,
         )
 
         logger.info(
@@ -345,16 +372,21 @@ async def assign_role():
             f"(scope: {assignment_data.scope}, resource: {assignment_data.resource_id})"
         )
 
-        return jsonify({
-            'message': 'Role assigned successfully',
-            'assignment_id': assignment_id
-        }), 201
+        return (
+            jsonify(
+                {
+                    "message": "Role assigned successfully",
+                    "assignment_id": assignment_id,
+                }
+            ),
+            201,
+        )
 
     except ValueError as e:
-        return jsonify({'error': str(e)}), 400
+        return jsonify({"error": str(e)}), 400
 
 
-@roles_bp.route('/revoke', methods=['POST'])
+@roles_bp.route("/revoke", methods=["POST"])
 @requires_permission(Permissions.GLOBAL_USER_WRITE)
 async def revoke_role():
     """
@@ -366,12 +398,12 @@ async def revoke_role():
     """
     data = await request.get_json()
 
-    user_id = data.get('user_id')
-    role_name = data.get('role_name')
-    resource_id = data.get('resource_id')
+    user_id = data.get("user_id")
+    role_name = data.get("role_name")
+    resource_id = data.get("resource_id")
 
     if not user_id or not role_name:
-        return jsonify({'error': 'user_id and role_name required'}), 400
+        return jsonify({"error": "user_id and role_name required"}), 400
 
     db = g.db
 
@@ -383,13 +415,13 @@ async def revoke_role():
             f"(resource: {resource_id})"
         )
 
-        return jsonify({'message': 'Role revoked successfully'}), 200
+        return jsonify({"message": "Role revoked successfully"}), 200
 
     except ValueError as e:
-        return jsonify({'error': str(e)}), 400
+        return jsonify({"error": str(e)}), 400
 
 
-@roles_bp.route('/user/<int:user_id>', methods=['GET'])
+@roles_bp.route("/user/<int:user_id>", methods=["GET"])
 @requires_permission(Permissions.GLOBAL_USER_READ)
 async def get_user_roles(user_id: int):
     """
@@ -403,7 +435,7 @@ async def get_user_roles(user_id: int):
     # Verify user exists
     user = db.users[user_id]
     if not user:
-        return jsonify({'error': 'User not found'}), 404
+        return jsonify({"error": "User not found"}), 404
 
     # Get roles
     roles = RBACModel.get_user_roles(db, user_id)
@@ -411,16 +443,21 @@ async def get_user_roles(user_id: int):
     # Get permissions
     permissions = RBACModel.get_user_permissions(db, user_id)
 
-    return jsonify({
-        'user_id': user_id,
-        'username': user.username,
-        'email': user.email,
-        'roles': roles,
-        'permissions': permissions
-    }), 200
+    return (
+        jsonify(
+            {
+                "user_id": user_id,
+                "username": user.username,
+                "email": user.email,
+                "roles": roles,
+                "permissions": permissions,
+            }
+        ),
+        200,
+    )
 
 
-@roles_bp.route('/permissions', methods=['GET'])
+@roles_bp.route("/permissions", methods=["GET"])
 async def list_available_permissions():
     """
     List all available permissions
@@ -431,14 +468,19 @@ async def list_available_permissions():
     all_permissions = [
         getattr(Permissions, attr)
         for attr in dir(Permissions)
-        if not attr.startswith('_') and isinstance(getattr(Permissions, attr), str)
+        if not attr.startswith("_") and isinstance(getattr(Permissions, attr), str)
     ]
 
-    return jsonify({
-        'permissions': all_permissions,
-        'scopes': {
-            'global': [p for p in all_permissions if p.startswith('global:')],
-            'cluster': [p for p in all_permissions if p.startswith('cluster:')],
-            'service': [p for p in all_permissions if p.startswith('service:')],
-        }
-    }), 200
+    return (
+        jsonify(
+            {
+                "permissions": all_permissions,
+                "scopes": {
+                    "global": [p for p in all_permissions if p.startswith("global:")],
+                    "cluster": [p for p in all_permissions if p.startswith("cluster:")],
+                    "service": [p for p in all_permissions if p.startswith("service:")],
+                },
+            }
+        ),
+        200,
+    )

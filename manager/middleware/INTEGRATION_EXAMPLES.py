@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 # Example 1: Basic authenticated endpoint
-@application.route('/api/user/profile', methods=['GET'])
+@application.route("/api/user/profile", methods=["GET"])
 @require_auth()
 def get_user_profile():
     """
@@ -43,15 +43,15 @@ def get_user_profile():
     """
     user = get_current_user()
     return {
-        "user_id": user['user_id'],
-        "username": user['username'],
-        "email": user['email'],
-        "is_admin": user['is_admin']
+        "user_id": user["user_id"],
+        "username": user["username"],
+        "email": user["email"],
+        "is_admin": user["is_admin"],
     }
 
 
 # Example 2: Admin-only endpoint
-@application.route('/api/admin/users', methods=['GET'])
+@application.route("/api/admin/users", methods=["GET"])
 @require_auth(admin_required=True)
 def list_all_users():
     """
@@ -81,13 +81,13 @@ def list_all_users():
     return {
         "users": [
             {"user_id": 1, "username": "admin", "is_admin": True},
-            {"user_id": 2, "username": "user1", "is_admin": False}
+            {"user_id": 2, "username": "user1", "is_admin": False},
         ]
     }
 
 
 # Example 3: Admin-only create endpoint
-@application.route('/api/admin/users', methods=['POST'])
+@application.route("/api/admin/users", methods=["POST"])
 @require_auth(admin_required=True)
 def create_user():
     """
@@ -116,16 +116,13 @@ def create_user():
     try:
         data = request.json
         # Validate input
-        if not data.get('username') or not data.get('password'):
+        if not data.get("username") or not data.get("password"):
             response.status = 400
             return {"error": "Missing required fields"}
 
         # In real implementation, create user in database
         user_id = 3
-        return {
-            "user_id": user_id,
-            "username": data['username']
-        }
+        return {"user_id": user_id, "username": data["username"]}
     except Exception as e:
         logger.error(f"Error creating user: {e}")
         response.status = 500
@@ -133,7 +130,7 @@ def create_user():
 
 
 # Example 4: License-gated feature
-@application.route('/api/advanced/threat-intelligence', methods=['GET'])
+@application.route("/api/advanced/threat-intelligence", methods=["GET"])
 @require_auth(license_feature="threat_intelligence")
 def get_threat_intelligence():
     """
@@ -159,13 +156,13 @@ def get_threat_intelligence():
     return {
         "threats": [
             {"id": 1, "type": "malware", "severity": "high"},
-            {"id": 2, "type": "phishing", "severity": "medium"}
+            {"id": 2, "type": "phishing", "severity": "medium"},
         ]
     }
 
 
 # Example 5: License-gated admin endpoint
-@application.route('/api/admin/advanced-blocking', methods=['GET'])
+@application.route("/api/admin/advanced-blocking", methods=["GET"])
 @require_auth(admin_required=True, license_feature="advanced_blocking")
 def get_advanced_blocking_config():
     """
@@ -188,14 +185,11 @@ def get_advanced_blocking_config():
         OR
         {"error": "Feature 'advanced_blocking' not licensed"}
     """
-    return {
-        "blocking_rules": [],
-        "threat_feeds": []
-    }
+    return {"blocking_rules": [], "threat_feeds": []}
 
 
 # Example 6: Manual authentication context (for complex flows)
-@application.route('/api/cluster/config/<int:cluster_id>', methods=['GET', 'PUT'])
+@application.route("/api/cluster/config/<int:cluster_id>", methods=["GET", "PUT"])
 def manage_cluster_config(cluster_id):
     """
     Manage cluster configuration with flexible auth checking.
@@ -229,14 +223,14 @@ def manage_cluster_config(cluster_id):
             return {"error": "Not authenticated"}
 
         # Handle GET
-        if request.method == 'GET':
+        if request.method == "GET":
             user = auth.get_user()
             # Check user has access to this cluster
             # (In real implementation, check database)
             return {"config": {"cluster_id": cluster_id}}
 
         # Handle PUT - admin only
-        elif request.method == 'PUT':
+        elif request.method == "PUT":
             if not auth.is_admin():
                 response.status = 403
                 return {"error": "Admin required for updates"}
@@ -250,7 +244,7 @@ def manage_cluster_config(cluster_id):
 
 
 # Example 7: Using helper functions in handlers
-@application.route('/api/user/activity', methods=['GET'])
+@application.route("/api/user/activity", methods=["GET"])
 @require_auth()
 def get_user_activity():
     """
@@ -259,7 +253,7 @@ def get_user_activity():
     Uses helper functions to access user info.
     """
     user = get_current_user()
-    user_id = user['user_id']
+    user_id = user["user_id"]
     is_admin_user = is_admin()
 
     # If admin, show all activity, otherwise show only own activity
@@ -267,20 +261,20 @@ def get_user_activity():
         # Show system-wide activity
         activity = [
             {"user_id": 1, "action": "login"},
-            {"user_id": 2, "action": "create_rule"}
+            {"user_id": 2, "action": "create_rule"},
         ]
     else:
         # Show only this user's activity
         activity = [
             {"user_id": user_id, "action": "login"},
-            {"user_id": user_id, "action": "update_profile"}
+            {"user_id": user_id, "action": "update_profile"},
         ]
 
     return {"activity": activity}
 
 
 # Example 8: Async handler with authentication
-@application.route('/api/async/proxy-health', methods=['GET'])
+@application.route("/api/async/proxy-health", methods=["GET"])
 @require_auth()
 async def get_proxy_health():
     """
@@ -296,13 +290,13 @@ async def get_proxy_health():
         "proxies": [
             {"id": 1, "status": "healthy"},
             {"id": 2, "status": "healthy"},
-            {"id": 3, "status": "degraded"}
+            {"id": 3, "status": "degraded"},
         ]
     }
 
 
 # Example 9: Conditional authorization based on resource ownership
-@application.route('/api/cluster/<int:cluster_id>/rules', methods=['GET', 'DELETE'])
+@application.route("/api/cluster/<int:cluster_id>/rules", methods=["GET", "DELETE"])
 @require_auth()
 def manage_cluster_rules(cluster_id):
     """
@@ -313,12 +307,12 @@ def manage_cluster_rules(cluster_id):
     - DELETE: User must be assigned AND have admin role for cluster
     """
     user = get_current_user()
-    user_id = user['user_id']
+    user_id = user["user_id"]
 
     # In real implementation, check database for cluster membership
     # and roles
 
-    if request.method == 'GET':
+    if request.method == "GET":
         # Check if user has access to this cluster
         has_access = True  # Would check database
         if not has_access:
@@ -327,7 +321,7 @@ def manage_cluster_rules(cluster_id):
 
         return {"rules": []}
 
-    elif request.method == 'DELETE':
+    elif request.method == "DELETE":
         # Delete requires admin access to cluster
         has_admin_access = False  # Would check database
         if not has_admin_access:
@@ -338,7 +332,7 @@ def manage_cluster_rules(cluster_id):
 
 
 # Example 10: Token refresh endpoint (no auth required)
-@application.route('/api/auth/refresh', methods=['POST'])
+@application.route("/api/auth/refresh", methods=["POST"])
 def refresh_token():
     """
     Refresh access token using refresh token.
@@ -364,7 +358,7 @@ def refresh_token():
     """
     try:
         data = request.json
-        refresh_token = data.get('refresh_token')
+        refresh_token = data.get("refresh_token")
 
         if not refresh_token:
             response.status = 400
@@ -376,7 +370,7 @@ def refresh_token():
         return {
             "access_token": "<new_token>",
             "token_type": "Bearer",
-            "expires_in": 86400
+            "expires_in": 86400,
         }
     except Exception as e:
         logger.error(f"Token refresh failed: {e}")

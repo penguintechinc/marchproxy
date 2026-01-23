@@ -9,19 +9,24 @@ from quart import Blueprint, request, current_app, jsonify
 from pydantic import ValidationError
 import logging
 from models.proxy import (
-    ProxyServerModel, ProxyMetricsModel,
-    ProxyRegistrationRequest, ProxyHeartbeatRequest, ProxyConfigRequest,
-    ProxyResponse, ProxyStatsResponse, ProxyMetricsResponse
+    ProxyServerModel,
+    ProxyMetricsModel,
+    ProxyRegistrationRequest,
+    ProxyHeartbeatRequest,
+    ProxyConfigRequest,
+    ProxyResponse,
+    ProxyStatsResponse,
+    ProxyMetricsResponse,
 )
 from models.cluster import ClusterModel, UserClusterAssignmentModel
 from middleware.auth import require_auth
 
 logger = logging.getLogger(__name__)
 
-proxy_bp = Blueprint('proxy', __name__, url_prefix='/api/v1/proxy')
+proxy_bp = Blueprint("proxy", __name__, url_prefix="/api/v1/proxy")
 
 
-@proxy_bp.route('/register', methods=['POST'])
+@proxy_bp.route("/register", methods=["POST"])
 async def register():
     """Register new proxy server"""
     try:
@@ -42,34 +47,44 @@ async def register():
         ip_address=data.ip_address,
         port=data.port,
         version=data.version,
-        capabilities=data.capabilities
+        capabilities=data.capabilities,
     )
 
     if not proxy_id:
-        return jsonify({
-            "error": "Registration failed - invalid API key or proxy limit exceeded"
-        }), 400
+        return (
+            jsonify(
+                {
+                    "error": "Registration failed - invalid API key or proxy limit exceeded"
+                }
+            ),
+            400,
+        )
 
     registered_proxy = db.proxy_servers[proxy_id]
-    return jsonify({
-        "proxy": ProxyResponse(
-            id=registered_proxy.id,
-            name=registered_proxy.name,
-            hostname=registered_proxy.hostname,
-            ip_address=registered_proxy.ip_address,
-            port=registered_proxy.port,
-            cluster_id=registered_proxy.cluster_id,
-            status=registered_proxy.status,
-            version=registered_proxy.version,
-            license_validated=registered_proxy.license_validated,
-            last_seen=registered_proxy.last_seen,
-            registered_at=registered_proxy.registered_at
-        ).dict(),
-        "message": "Proxy registered successfully"
-    }), 201
+    return (
+        jsonify(
+            {
+                "proxy": ProxyResponse(
+                    id=registered_proxy.id,
+                    name=registered_proxy.name,
+                    hostname=registered_proxy.hostname,
+                    ip_address=registered_proxy.ip_address,
+                    port=registered_proxy.port,
+                    cluster_id=registered_proxy.cluster_id,
+                    status=registered_proxy.status,
+                    version=registered_proxy.version,
+                    license_validated=registered_proxy.license_validated,
+                    last_seen=registered_proxy.last_seen,
+                    registered_at=registered_proxy.registered_at,
+                ).dict(),
+                "message": "Proxy registered successfully",
+            }
+        ),
+        201,
+    )
 
 
-@proxy_bp.route('/heartbeat', methods=['POST'])
+@proxy_bp.route("/heartbeat", methods=["POST"])
 async def heartbeat():
     """Proxy heartbeat endpoint"""
     try:
@@ -83,20 +98,21 @@ async def heartbeat():
     # Update heartbeat
     status_data = {}
     if data.version:
-        status_data['version'] = data.version
+        status_data["version"] = data.version
     if data.capabilities:
-        status_data['capabilities'] = data.capabilities
+        status_data["capabilities"] = data.capabilities
     if data.config_version:
-        status_data['config_version'] = data.config_version
+        status_data["config_version"] = data.config_version
 
     success = ProxyServerModel.update_heartbeat(
         db, data.proxy_name, data.cluster_api_key, status_data
     )
 
     if not success:
-        return jsonify({
-            "error": "Heartbeat failed - invalid API key or proxy not found"
-        }), 400
+        return (
+            jsonify({"error": "Heartbeat failed - invalid API key or proxy not found"}),
+            400,
+        )
 
     # Record metrics if provided
     if data.metrics:
@@ -107,7 +123,7 @@ async def heartbeat():
     return jsonify({"message": "Heartbeat recorded successfully"}), 200
 
 
-@proxy_bp.route('/config', methods=['POST'])
+@proxy_bp.route("/config", methods=["POST"])
 async def get_config():
     """Get proxy configuration"""
     try:
@@ -123,21 +139,26 @@ async def get_config():
     )
 
     if not config:
-        return jsonify({
-            "error": "Configuration retrieval failed - invalid API key or proxy not found"
-        }), 400
+        return (
+            jsonify(
+                {
+                    "error": "Configuration retrieval failed - invalid API key or proxy not found"
+                }
+            ),
+            400,
+        )
 
     return jsonify(config), 200
 
 
-@proxy_bp.route('/proxies', methods=['GET'])
+@proxy_bp.route("/proxies", methods=["GET"])
 @require_auth()
 async def list_proxies(user_data):
     """List all proxies (authenticated endpoint)"""
     db = current_app.db
-    user_id = user_data['user_id']
-    is_admin = user_data.get('is_admin', False)
-    cluster_id = request.args.get('cluster_id')
+    user_id = user_data["user_id"]
+    is_admin = user_data.get("is_admin", False)
+    cluster_id = request.args.get("cluster_id")
 
     if is_admin:
         # Admin can see all proxies
@@ -148,24 +169,24 @@ async def list_proxies(user_data):
             all_proxies = db(db.proxy_servers).select()
             proxies = [
                 {
-                    'id': p.id,
-                    'name': p.name,
-                    'hostname': p.hostname,
-                    'ip_address': p.ip_address,
-                    'port': p.port,
-                    'cluster_id': p.cluster_id,
-                    'status': p.status,
-                    'version': p.version,
-                    'license_validated': p.license_validated,
-                    'last_seen': p.last_seen,
-                    'registered_at': p.registered_at
+                    "id": p.id,
+                    "name": p.name,
+                    "hostname": p.hostname,
+                    "ip_address": p.ip_address,
+                    "port": p.port,
+                    "cluster_id": p.cluster_id,
+                    "status": p.status,
+                    "version": p.version,
+                    "license_validated": p.license_validated,
+                    "last_seen": p.last_seen,
+                    "registered_at": p.registered_at,
                 }
                 for p in all_proxies
             ]
     else:
         # Regular user can only see proxies in their assigned clusters
         user_clusters = UserClusterAssignmentModel.get_user_clusters(db, user_id)
-        cluster_ids = [uc['cluster_id'] for uc in user_clusters]
+        cluster_ids = [uc["cluster_id"] for uc in user_clusters]
 
         if cluster_id and int(cluster_id) in cluster_ids:
             proxies = ProxyServerModel.get_cluster_proxies(db, int(cluster_id))
@@ -178,13 +199,13 @@ async def list_proxies(user_data):
     return jsonify({"proxies": proxies}), 200
 
 
-@proxy_bp.route('/proxies/<int:proxy_id>', methods=['GET'])
+@proxy_bp.route("/proxies/<int:proxy_id>", methods=["GET"])
 @require_auth()
 async def get_proxy(user_data, proxy_id):
     """Get proxy details"""
     db = current_app.db
-    user_id = user_data['user_id']
-    is_admin = user_data.get('is_admin', False)
+    user_id = user_data["user_id"]
+    is_admin = user_data.get("is_admin", False)
 
     found_proxy = db.proxy_servers[proxy_id]
     if not found_proxy:
@@ -198,29 +219,34 @@ async def get_proxy(user_data, proxy_id):
         if not user_role:
             return jsonify({"error": "Access denied to proxy"}), 403
 
-    return jsonify(ProxyResponse(
-        id=found_proxy.id,
-        name=found_proxy.name,
-        hostname=found_proxy.hostname,
-        ip_address=found_proxy.ip_address,
-        port=found_proxy.port,
-        cluster_id=found_proxy.cluster_id,
-        status=found_proxy.status,
-        version=found_proxy.version,
-        license_validated=found_proxy.license_validated,
-        last_seen=found_proxy.last_seen,
-        registered_at=found_proxy.registered_at
-    ).dict()), 200
+    return (
+        jsonify(
+            ProxyResponse(
+                id=found_proxy.id,
+                name=found_proxy.name,
+                hostname=found_proxy.hostname,
+                ip_address=found_proxy.ip_address,
+                port=found_proxy.port,
+                cluster_id=found_proxy.cluster_id,
+                status=found_proxy.status,
+                version=found_proxy.version,
+                license_validated=found_proxy.license_validated,
+                last_seen=found_proxy.last_seen,
+                registered_at=found_proxy.registered_at,
+            ).dict()
+        ),
+        200,
+    )
 
 
-@proxy_bp.route('/proxies/stats', methods=['GET'])
+@proxy_bp.route("/proxies/stats", methods=["GET"])
 @require_auth()
 async def get_stats(user_data):
     """Get proxy statistics"""
     db = current_app.db
-    user_id = user_data['user_id']
-    is_admin = user_data.get('is_admin', False)
-    cluster_id = request.args.get('cluster_id')
+    user_id = user_data["user_id"]
+    is_admin = user_data.get("is_admin", False)
+    cluster_id = request.args.get("cluster_id")
 
     if cluster_id:
         cluster_id = int(cluster_id)
@@ -236,13 +262,13 @@ async def get_stats(user_data):
     return jsonify(ProxyStatsResponse(**stats).dict()), 200
 
 
-@proxy_bp.route('/proxies/<int:proxy_id>/metrics', methods=['GET'])
+@proxy_bp.route("/proxies/<int:proxy_id>/metrics", methods=["GET"])
 @require_auth()
 async def get_metrics(user_data, proxy_id):
     """Get proxy metrics"""
     db = current_app.db
-    user_id = user_data['user_id']
-    is_admin = user_data.get('is_admin', False)
+    user_id = user_data["user_id"]
+    is_admin = user_data.get("is_admin", False)
 
     found_proxy = db.proxy_servers[proxy_id]
     if not found_proxy:
@@ -256,41 +282,52 @@ async def get_metrics(user_data, proxy_id):
         if not user_role:
             return jsonify({"error": "Access denied to proxy"}), 403
 
-    hours = int(request.args.get('hours', 24))
+    hours = int(request.args.get("hours", 24))
     metrics = ProxyMetricsModel.get_metrics(db, proxy_id, hours)
 
-    return jsonify({
-        "proxy_id": proxy_id,
-        "metrics": [
-            ProxyMetricsResponse(
-                proxy_id=metric['proxy_id'],
-                timestamp=metric['timestamp'],
-                cpu_usage=metric['cpu_usage'],
-                memory_usage=metric['memory_usage'],
-                connections_active=metric['connections_active'],
-                connections_total=metric['connections_total'],
-                bytes_sent=metric['bytes_sent'],
-                bytes_received=metric['bytes_received'],
-                requests_per_second=metric['requests_per_second'],
-                latency_avg=metric['latency_avg'],
-                latency_p95=metric['latency_p95'],
-                errors_per_second=metric['errors_per_second']
-            ).dict() for metric in metrics
-        ]
-    }), 200
+    return (
+        jsonify(
+            {
+                "proxy_id": proxy_id,
+                "metrics": [
+                    ProxyMetricsResponse(
+                        proxy_id=metric["proxy_id"],
+                        timestamp=metric["timestamp"],
+                        cpu_usage=metric["cpu_usage"],
+                        memory_usage=metric["memory_usage"],
+                        connections_active=metric["connections_active"],
+                        connections_total=metric["connections_total"],
+                        bytes_sent=metric["bytes_sent"],
+                        bytes_received=metric["bytes_received"],
+                        requests_per_second=metric["requests_per_second"],
+                        latency_avg=metric["latency_avg"],
+                        latency_p95=metric["latency_p95"],
+                        errors_per_second=metric["errors_per_second"],
+                    ).dict()
+                    for metric in metrics
+                ],
+            }
+        ),
+        200,
+    )
 
 
-@proxy_bp.route('/proxies/cleanup', methods=['POST'])
+@proxy_bp.route("/proxies/cleanup", methods=["POST"])
 @require_auth(admin_required=True)
 async def cleanup_stale(user_data):
     """Cleanup stale proxy registrations (admin only)"""
     db = current_app.db
 
     data_json = await request.get_json()
-    timeout_minutes = int(data_json.get('timeout_minutes', 10))
+    timeout_minutes = int(data_json.get("timeout_minutes", 10))
     cleaned_count = ProxyServerModel.cleanup_stale_proxies(db, timeout_minutes)
 
-    return jsonify({
-        "message": f"Cleaned up {cleaned_count} stale proxy registrations",
-        "cleaned_count": cleaned_count
-    }), 200
+    return (
+        jsonify(
+            {
+                "message": f"Cleaned up {cleaned_count} stale proxy registrations",
+                "cleaned_count": cleaned_count,
+            }
+        ),
+        200,
+    )

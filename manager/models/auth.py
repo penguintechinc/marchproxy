@@ -22,31 +22,31 @@ class UserModel:
     def define_table(db: DAL):
         """Define user table in database"""
         return db.define_table(
-            'users',
-            Field('username', type='string', unique=True, required=True, length=50),
-            Field('email', type='string', unique=True, required=True, length=255),
-            Field('password_hash', type='string', required=True, length=255),
-            Field('is_admin', type='boolean', default=False),
-            Field('is_active', type='boolean', default=True),
-            Field('totp_secret', type='string', length=32),
-            Field('totp_enabled', type='boolean', default=False),
-            Field('auth_provider', type='string', default='local', length=50),
-            Field('external_id', type='string', length=255),
-            Field('last_login', type='datetime'),
-            Field('created_at', type='datetime', default=datetime.utcnow),
-            Field('updated_at', type='datetime', update=datetime.utcnow),
-            Field('metadata', type='json'),
+            "users",
+            Field("username", type="string", unique=True, required=True, length=50),
+            Field("email", type="string", unique=True, required=True, length=255),
+            Field("password_hash", type="string", required=True, length=255),
+            Field("is_admin", type="boolean", default=False),
+            Field("is_active", type="boolean", default=True),
+            Field("totp_secret", type="string", length=32),
+            Field("totp_enabled", type="boolean", default=False),
+            Field("auth_provider", type="string", default="local", length=50),
+            Field("external_id", type="string", length=255),
+            Field("last_login", type="datetime"),
+            Field("created_at", type="datetime", default=datetime.utcnow),
+            Field("updated_at", type="datetime", update=datetime.utcnow),
+            Field("metadata", type="json"),
         )
 
     @staticmethod
     def hash_password(password: str) -> str:
         """Hash password using bcrypt"""
-        return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
     @staticmethod
     def verify_password(password: str, password_hash: str) -> bool:
         """Verify password against hash"""
-        return bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
+        return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
 
     @staticmethod
     def generate_totp_secret() -> str:
@@ -73,15 +73,15 @@ class SessionModel:
     def define_table(db: DAL):
         """Define session table in database"""
         return db.define_table(
-            'sessions',
-            Field('session_id', type='string', unique=True, required=True, length=64),
-            Field('user_id', type='reference users', required=True),
-            Field('ip_address', type='string', length=45),
-            Field('user_agent', type='string', length=255),
-            Field('data', type='json'),
-            Field('expires_at', type='datetime', required=True),
-            Field('created_at', type='datetime', default=datetime.utcnow),
-            Field('last_activity', type='datetime', default=datetime.utcnow),
+            "sessions",
+            Field("session_id", type="string", unique=True, required=True, length=64),
+            Field("user_id", type="reference users", required=True),
+            Field("ip_address", type="string", length=45),
+            Field("user_agent", type="string", length=255),
+            Field("data", type="json"),
+            Field("expires_at", type="datetime", required=True),
+            Field("created_at", type="datetime", default=datetime.utcnow),
+            Field("last_activity", type="datetime", default=datetime.utcnow),
         )
 
     @staticmethod
@@ -90,8 +90,13 @@ class SessionModel:
         return secrets.token_urlsafe(48)
 
     @staticmethod
-    def create_session(db: DAL, user_id: int, ip_address: str = None,
-                       user_agent: str = None, ttl_hours: int = 24) -> str:
+    def create_session(
+        db: DAL,
+        user_id: int,
+        ip_address: str = None,
+        user_agent: str = None,
+        ttl_hours: int = 24,
+    ) -> str:
         """Create new session for user"""
         session_id = SessionModel.generate_session_id()
         expires_at = datetime.utcnow() + timedelta(hours=ttl_hours)
@@ -101,7 +106,7 @@ class SessionModel:
             user_id=user_id,
             ip_address=ip_address,
             user_agent=user_agent,
-            expires_at=expires_at
+            expires_at=expires_at,
         )
 
         return session_id
@@ -109,10 +114,14 @@ class SessionModel:
     @staticmethod
     def validate_session(db: DAL, session_id: str) -> Optional[Dict[str, Any]]:
         """Validate session and return user info if valid"""
-        session = db(
-            (db.sessions.session_id == session_id) &
-            (db.sessions.expires_at > datetime.utcnow())
-        ).select().first()
+        session = (
+            db(
+                (db.sessions.session_id == session_id)
+                & (db.sessions.expires_at > datetime.utcnow())
+            )
+            .select()
+            .first()
+        )
 
         if session:
             # Update last activity
@@ -122,11 +131,11 @@ class SessionModel:
             user = db.users[session.user_id]
             if user and user.is_active:
                 return {
-                    'user_id': user.id,
-                    'username': user.username,
-                    'email': user.email,
-                    'is_admin': user.is_admin,
-                    'session_id': session_id
+                    "user_id": user.id,
+                    "username": user.username,
+                    "email": user.email,
+                    "is_admin": user.is_admin,
+                    "session_id": session_id,
                 }
 
         return None
@@ -144,19 +153,19 @@ class APITokenModel:
     def define_table(db: DAL):
         """Define API token table in database"""
         return db.define_table(
-            'api_tokens',
-            Field('token_id', type='string', unique=True, required=True, length=64),
-            Field('name', type='string', required=True, length=100),
-            Field('token_hash', type='string', required=True, length=255),
-            Field('user_id', type='reference users'),
-            Field('service_id', type='reference services'),
-            Field('cluster_id', type='reference clusters'),
-            Field('permissions', type='json'),
-            Field('expires_at', type='datetime'),
-            Field('last_used', type='datetime'),
-            Field('is_active', type='boolean', default=True),
-            Field('created_at', type='datetime', default=datetime.utcnow),
-            Field('metadata', type='json'),
+            "api_tokens",
+            Field("token_id", type="string", unique=True, required=True, length=64),
+            Field("name", type="string", required=True, length=100),
+            Field("token_hash", type="string", required=True, length=255),
+            Field("user_id", type="reference users"),
+            Field("service_id", type="reference services"),
+            Field("cluster_id", type="reference clusters"),
+            Field("permissions", type="json"),
+            Field("expires_at", type="datetime"),
+            Field("last_used", type="datetime"),
+            Field("is_active", type="boolean", default=True),
+            Field("created_at", type="datetime", default=datetime.utcnow),
+            Field("metadata", type="json"),
         )
 
     @staticmethod
@@ -169,17 +178,23 @@ class APITokenModel:
     @staticmethod
     def hash_token(token: str) -> str:
         """Hash API token for storage"""
-        return bcrypt.hashpw(token.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        return bcrypt.hashpw(token.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
     @staticmethod
     def verify_token(token: str, token_hash: str) -> bool:
         """Verify API token against hash"""
-        return bcrypt.checkpw(token.encode('utf-8'), token_hash.encode('utf-8'))
+        return bcrypt.checkpw(token.encode("utf-8"), token_hash.encode("utf-8"))
 
     @staticmethod
-    def create_token(db: DAL, name: str, user_id: int = None,
-                    service_id: int = None, cluster_id: int = None,
-                    permissions: Dict = None, ttl_days: int = None) -> tuple[str, str]:
+    def create_token(
+        db: DAL,
+        name: str,
+        user_id: int = None,
+        service_id: int = None,
+        cluster_id: int = None,
+        permissions: Dict = None,
+        ttl_days: int = None,
+    ) -> tuple[str, str]:
         """Create new API token"""
         token, token_id = APITokenModel.generate_token()
         token_hash = APITokenModel.hash_token(token)
@@ -196,7 +211,7 @@ class APITokenModel:
             service_id=service_id,
             cluster_id=cluster_id,
             permissions=permissions or {},
-            expires_at=expires_at
+            expires_at=expires_at,
         )
 
         return token, token_id
@@ -206,20 +221,23 @@ class APITokenModel:
         """Validate API token and return associated info"""
         # Try to find token by checking hash
         for token_record in db(
-            (db.api_tokens.is_active == True) &
-            ((db.api_tokens.expires_at == None) | (db.api_tokens.expires_at > datetime.utcnow()))
+            (db.api_tokens.is_active == True)
+            & (
+                (db.api_tokens.expires_at == None)
+                | (db.api_tokens.expires_at > datetime.utcnow())
+            )
         ).select():
             if APITokenModel.verify_token(token, token_record.token_hash):
                 # Update last used
                 token_record.update_record(last_used=datetime.utcnow())
 
                 return {
-                    'token_id': token_record.token_id,
-                    'name': token_record.name,
-                    'user_id': token_record.user_id,
-                    'service_id': token_record.service_id,
-                    'cluster_id': token_record.cluster_id,
-                    'permissions': token_record.permissions
+                    "token_id": token_record.token_id,
+                    "name": token_record.name,
+                    "user_id": token_record.user_id,
+                    "service_id": token_record.service_id,
+                    "cluster_id": token_record.cluster_id,
+                    "permissions": token_record.permissions,
                 }
 
         return None
@@ -228,7 +246,7 @@ class APITokenModel:
 class JWTManager:
     """JWT token management for stateless authentication"""
 
-    def __init__(self, secret_key: str, algorithm: str = 'HS256', ttl_hours: int = 24):
+    def __init__(self, secret_key: str, algorithm: str = "HS256", ttl_hours: int = 24):
         self.secret_key = secret_key
         self.algorithm = algorithm
         self.ttl_hours = ttl_hours
@@ -236,9 +254,9 @@ class JWTManager:
     def create_token(self, payload: Dict[str, Any]) -> str:
         """Create JWT token with payload"""
         payload = payload.copy()
-        payload['exp'] = datetime.utcnow() + timedelta(hours=self.ttl_hours)
-        payload['iat'] = datetime.utcnow()
-        payload['iss'] = 'marchproxy'
+        payload["exp"] = datetime.utcnow() + timedelta(hours=self.ttl_hours)
+        payload["iat"] = datetime.utcnow()
+        payload["iss"] = "marchproxy"
 
         return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
 
@@ -249,7 +267,7 @@ class JWTManager:
                 token,
                 self.secret_key,
                 algorithms=[self.algorithm],
-                options={"verify_exp": True, "verify_iat": True}
+                options={"verify_exp": True, "verify_iat": True},
             )
             return payload
         except jwt.ExpiredSignatureError:
@@ -260,20 +278,17 @@ class JWTManager:
     def create_refresh_token(self, user_id: int) -> str:
         """Create refresh token with longer TTL"""
         payload = {
-            'user_id': user_id,
-            'type': 'refresh',
-            'exp': datetime.utcnow() + timedelta(days=30)
+            "user_id": user_id,
+            "type": "refresh",
+            "exp": datetime.utcnow() + timedelta(days=30),
         }
         return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
 
     def refresh_access_token(self, refresh_token: str) -> Optional[str]:
         """Create new access token from refresh token"""
         payload = self.decode_token(refresh_token)
-        if payload and payload.get('type') == 'refresh':
-            new_payload = {
-                'user_id': payload['user_id'],
-                'type': 'access'
-            }
+        if payload and payload.get("type") == "refresh":
+            new_payload = {"user_id": payload["user_id"], "type": "access"}
             return self.create_token(new_payload)
         return None
 
@@ -284,35 +299,40 @@ class LoginRequest(BaseModel):
     password: str
     totp_code: Optional[str] = None
 
+
 class RegisterRequest(BaseModel):
     username: str
     email: EmailStr
     password: str
 
-    @validator('password')
+    @validator("password")
     def validate_password(cls, v):
         if len(v) < 8:
-            raise ValueError('Password must be at least 8 characters long')
+            raise ValueError("Password must be at least 8 characters long")
         if not any(c.isupper() for c in v):
-            raise ValueError('Password must contain at least one uppercase letter')
+            raise ValueError("Password must contain at least one uppercase letter")
         if not any(c.islower() for c in v):
-            raise ValueError('Password must contain at least one lowercase letter')
+            raise ValueError("Password must contain at least one lowercase letter")
         if not any(c.isdigit() for c in v):
-            raise ValueError('Password must contain at least one digit')
+            raise ValueError("Password must contain at least one digit")
         return v
+
 
 class Enable2FARequest(BaseModel):
     password: str
 
+
 class Verify2FARequest(BaseModel):
     totp_code: str
     secret: str
+
 
 class TokenResponse(BaseModel):
     access_token: str
     refresh_token: Optional[str]
     token_type: str = "Bearer"
     expires_in: int
+
 
 class UserResponse(BaseModel):
     id: int

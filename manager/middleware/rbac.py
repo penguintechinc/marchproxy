@@ -35,21 +35,21 @@ class RBACMiddleware:
     async def load_user_permissions(self):
         """Load user permissions into request context"""
         # Get current user from session/JWT
-        user_id = g.get('user_id')
+        user_id = g.get("user_id")
         if user_id:
-            db = g.get('db')
+            db = g.get("db")
             if db:
                 g.permissions = RBACModel.get_user_permissions(db, user_id)
             else:
-                g.permissions = {'global': [], 'cluster': {}, 'service': {}}
+                g.permissions = {"global": [], "cluster": {}, "service": {}}
         else:
-            g.permissions = {'global': [], 'cluster': {}, 'service': {}}
+            g.permissions = {"global": [], "cluster": {}, "service": {}}
 
 
 def requires_permission(
     permission: str,
     resource_type: Optional[str] = None,
-    resource_id_param: Optional[str] = None
+    resource_id_param: Optional[str] = None,
 ):
     """
     Decorator to require specific permission for route access.
@@ -68,16 +68,17 @@ def requires_permission(
         async def update_cluster(cluster_id):
             ...
     """
+
     def decorator(f: Callable) -> Callable:
         @functools.wraps(f)
         async def decorated_function(*args, **kwargs):
             # Check if user is authenticated
-            user_id = g.get('user_id')
+            user_id = g.get("user_id")
             if not user_id:
                 logger.warning(f"Unauthenticated access attempt to {f.__name__}")
                 abort(401, "Authentication required")
 
-            db = g.get('db')
+            db = g.get("db")
             if not db:
                 logger.error("Database not available in request context")
                 abort(500, "Internal server error")
@@ -116,13 +117,14 @@ def requires_permission(
             return await f(*args, **kwargs)
 
         return decorated_function
+
     return decorator
 
 
 def requires_role(
     role_name: str,
     scope: PermissionScope = PermissionScope.GLOBAL,
-    resource_id_param: Optional[str] = None
+    resource_id_param: Optional[str] = None,
 ):
     """
     Decorator to require specific role for route access.
@@ -141,15 +143,16 @@ def requires_role(
         async def manage_cluster(cluster_id):
             ...
     """
+
     def decorator(f: Callable) -> Callable:
         @functools.wraps(f)
         async def decorated_function(*args, **kwargs):
             # Check if user is authenticated
-            user_id = g.get('user_id')
+            user_id = g.get("user_id")
             if not user_id:
                 abort(401, "Authentication required")
 
-            db = g.get('db')
+            db = g.get("db")
             if not db:
                 abort(500, "Internal server error")
 
@@ -174,11 +177,11 @@ def requires_role(
 
             has_role = False
             for role in user_roles:
-                if role['role_name'] == role_name:
-                    if scope == PermissionScope.GLOBAL and role['scope'] == scope.value:
+                if role["role_name"] == role_name:
+                    if scope == PermissionScope.GLOBAL and role["scope"] == scope.value:
                         has_role = True
                         break
-                    elif resource_id and role['resource_id'] == resource_id:
+                    elif resource_id and role["resource_id"] == resource_id:
                         has_role = True
                         break
 
@@ -192,6 +195,7 @@ def requires_role(
             return await f(*args, **kwargs)
 
         return decorated_function
+
     return decorator
 
 
@@ -204,14 +208,15 @@ def requires_any_permission(*permissions: str):
         async def manage_resource():
             ...
     """
+
     def decorator(f: Callable) -> Callable:
         @functools.wraps(f)
         async def decorated_function(*args, **kwargs):
-            user_id = g.get('user_id')
+            user_id = g.get("user_id")
             if not user_id:
                 abort(401, "Authentication required")
 
-            db = g.get('db')
+            db = g.get("db")
             if not db:
                 abort(500, "Internal server error")
 
@@ -220,7 +225,7 @@ def requires_any_permission(*permissions: str):
 
             has_permission = False
             for perm in permissions:
-                if perm in user_perms['global']:
+                if perm in user_perms["global"]:
                     has_permission = True
                     break
                 # Could also check scoped permissions here
@@ -234,6 +239,7 @@ def requires_any_permission(*permissions: str):
             return await f(*args, **kwargs)
 
         return decorated_function
+
     return decorator
 
 
@@ -249,14 +255,15 @@ def requires_all_permissions(*permissions: str):
         async def manage_cluster():
             ...
     """
+
     def decorator(f: Callable) -> Callable:
         @functools.wraps(f)
         async def decorated_function(*args, **kwargs):
-            user_id = g.get('user_id')
+            user_id = g.get("user_id")
             if not user_id:
                 abort(401, "Authentication required")
 
-            db = g.get('db')
+            db = g.get("db")
             if not db:
                 abort(500, "Internal server error")
 
@@ -265,7 +272,7 @@ def requires_all_permissions(*permissions: str):
 
             missing_permissions = []
             for perm in permissions:
-                if perm not in user_perms['global']:
+                if perm not in user_perms["global"]:
                     missing_permissions.append(perm)
 
             if missing_permissions:
@@ -277,33 +284,34 @@ def requires_all_permissions(*permissions: str):
             return await f(*args, **kwargs)
 
         return decorated_function
+
     return decorator
 
 
 def is_admin(user_id: int, db) -> bool:
     """Helper function to check if user is admin"""
     perms = RBACModel.get_user_permissions(db, user_id)
-    return Permissions.GLOBAL_ADMIN in perms['global']
+    return Permissions.GLOBAL_ADMIN in perms["global"]
 
 
 def can_manage_users(user_id: int, db) -> bool:
     """Helper function to check if user can manage other users"""
     perms = RBACModel.get_user_permissions(db, user_id)
     return (
-        Permissions.GLOBAL_ADMIN in perms['global'] or
-        Permissions.GLOBAL_USER_WRITE in perms['global']
+        Permissions.GLOBAL_ADMIN in perms["global"]
+        or Permissions.GLOBAL_USER_WRITE in perms["global"]
     )
 
 
 def can_access_cluster(user_id: int, cluster_id: int, db) -> bool:
     """Helper function to check if user can access cluster"""
     return RBACModel.has_permission(
-        db, user_id, Permissions.CLUSTER_READ, 'cluster', cluster_id
+        db, user_id, Permissions.CLUSTER_READ, "cluster", cluster_id
     )
 
 
 def can_access_service(user_id: int, service_id: int, db) -> bool:
     """Helper function to check if user can access service"""
     return RBACModel.has_permission(
-        db, user_id, Permissions.SERVICE_READ, 'service', service_id
+        db, user_id, Permissions.SERVICE_READ, "service", service_id
     )

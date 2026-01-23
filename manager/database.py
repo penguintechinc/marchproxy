@@ -54,14 +54,14 @@ class DatabaseManager:
 
     def __init__(self):
         """Initialize DatabaseManager from environment variables."""
-        self.database_url = os.getenv('DATABASE_URL')
-        self.db_type = os.getenv('DB_TYPE', 'postgres').lower()
+        self.database_url = os.getenv("DATABASE_URL")
+        self.db_type = os.getenv("DB_TYPE", "postgres").lower()
 
         if not self.database_url:
             raise ValueError("DATABASE_URL environment variable is required")
 
         # Validate db_type
-        if self.db_type not in ['postgres', 'mysql', 'sqlite']:
+        if self.db_type not in ["postgres", "mysql", "sqlite"]:
             raise ValueError(
                 f"DB_TYPE must be 'postgres', 'mysql', or 'sqlite', got '{self.db_type}'"
             )
@@ -72,9 +72,9 @@ class DatabaseManager:
         logger.info(
             f"DatabaseManager initialized",
             extra={
-                'db_type': self.db_type,
-                'database_url': self._mask_credentials(self.database_url)
-            }
+                "db_type": self.db_type,
+                "database_url": self._mask_credentials(self.database_url),
+            },
         )
 
     @staticmethod
@@ -82,7 +82,7 @@ class DatabaseManager:
         """Mask sensitive credentials in URL for logging."""
         parsed = urlparse(url)
         if parsed.password:
-            masked_url = url.replace(parsed.password, '***')
+            masked_url = url.replace(parsed.password, "***")
             return masked_url
         return url
 
@@ -104,30 +104,30 @@ class DatabaseManager:
         """
         parsed = urlparse(database_url)
 
-        if db_type == 'postgres':
+        if db_type == "postgres":
             # Convert postgresql:// to postgres://
-            scheme = 'postgres'
+            scheme = "postgres"
             if parsed.port:
                 netloc = f"{parsed.username}:{parsed.password}@{parsed.hostname}:{parsed.port}"
             else:
                 netloc = f"{parsed.username}:{parsed.password}@{parsed.hostname}"
-            path = parsed.path or '/marchproxy'
+            path = parsed.path or "/marchproxy"
             return f"{scheme}://{netloc}{path}"
 
-        elif db_type == 'mysql':
+        elif db_type == "mysql":
             # MySQL format: mysql://user:pass@host:port/db
-            scheme = 'mysql'
+            scheme = "mysql"
             if parsed.port:
                 netloc = f"{parsed.username}:{parsed.password}@{parsed.hostname}:{parsed.port}"
             else:
                 netloc = f"{parsed.username}:{parsed.password}@{parsed.hostname}"
-            path = parsed.path or '/marchproxy'
+            path = parsed.path or "/marchproxy"
             return f"{scheme}://{netloc}{path}"
 
-        elif db_type == 'sqlite':
+        elif db_type == "sqlite":
             # SQLite format: sqlite:///path/to/database.db
             # Use the path directly
-            path = parsed.path or ':memory:'
+            path = parsed.path or ":memory:"
             return f"sqlite:///{path.lstrip('/')}"
 
         raise ValueError(f"Unsupported database type: {db_type}")
@@ -143,16 +143,14 @@ class DatabaseManager:
             True if schema was created or already exists, False on error
         """
         try:
-            logger.info(
-                "Initializing database schema",
-                extra={'db_type': self.db_type}
-            )
+            logger.info("Initializing database schema", extra={"db_type": self.db_type})
 
             # Create SQLAlchemy engine
             engine = self._create_sqlalchemy_engine()
 
             # Check if all required tables exist
             from models.sqlalchemy_schema import Base
+
             inspector = inspect(engine)
             existing_tables = set(inspector.get_table_names())
             required_tables = set(Base.metadata.tables.keys())
@@ -161,7 +159,7 @@ class DatabaseManager:
             if required_tables.issubset(existing_tables):
                 logger.info(
                     "All required tables already exist, skipping schema creation",
-                    extra={'table_count': len(existing_tables)}
+                    extra={"table_count": len(existing_tables)},
                 )
                 return True
 
@@ -169,7 +167,7 @@ class DatabaseManager:
             missing_tables = required_tables - existing_tables
             logger.info(
                 f"Creating missing tables via SQLAlchemy",
-                extra={'missing_tables': list(missing_tables)}
+                extra={"missing_tables": list(missing_tables)},
             )
             Base.metadata.create_all(engine)
             logger.info("SQLAlchemy schema created successfully")
@@ -177,10 +175,7 @@ class DatabaseManager:
             return True
 
         except Exception as e:
-            logger.error(
-                f"Failed to initialize schema: {str(e)}",
-                exc_info=True
-            )
+            logger.error(f"Failed to initialize schema: {str(e)}", exc_info=True)
             return False
 
     def _create_sqlalchemy_engine(self) -> Engine:
@@ -191,15 +186,15 @@ class DatabaseManager:
             SQLAlchemy Engine instance
         """
         engine_kwargs = {
-            'echo': os.getenv('SQL_ECHO', 'false').lower() == 'true',
-            'pool_pre_ping': True,  # Test connection before using
+            "echo": os.getenv("SQL_ECHO", "false").lower() == "true",
+            "pool_pre_ping": True,  # Test connection before using
         }
 
-        if self.db_type in ['postgres', 'mysql']:
+        if self.db_type in ["postgres", "mysql"]:
             # Configure connection pool for networked databases
-            engine_kwargs['pool_size'] = 10
-            engine_kwargs['max_overflow'] = 20
-            engine_kwargs['pool_recycle'] = 3600
+            engine_kwargs["pool_size"] = 10
+            engine_kwargs["max_overflow"] = 20
+            engine_kwargs["pool_recycle"] = 3600
 
         engine = create_engine(self.database_url, **engine_kwargs)
         logger.info("SQLAlchemy engine created successfully")
@@ -222,16 +217,16 @@ class DatabaseManager:
             RuntimeError: If connection fails
         """
         # Check thread-local storage for existing connection
-        if hasattr(self._thread_local, 'db') and self._thread_local.db:
+        if hasattr(self._thread_local, "db") and self._thread_local.db:
             return self._thread_local.db
 
         try:
             logger.info(
                 "Creating PyDAL connection",
                 extra={
-                    'db_type': self.db_type,
-                    'uri': self._mask_credentials(self.pydal_uri)
-                }
+                    "db_type": self.db_type,
+                    "uri": self._mask_credentials(self.pydal_uri),
+                },
             )
 
             # Check if tables already exist using SQLAlchemy inspector
@@ -252,7 +247,7 @@ class DatabaseManager:
                 pool_size=10,
                 migrate=not tables_exist,
                 fake_migrate=tables_exist,
-                auto_import=False
+                auto_import=False,
             )
 
             # Define all tables with retry on race condition
@@ -260,17 +255,19 @@ class DatabaseManager:
                 self._define_all_tables(db)
             except Exception as table_error:
                 error_msg = str(table_error).lower()
-                if 'already exists' in error_msg:
+                if "already exists" in error_msg:
                     # Race condition - another worker created tables
                     # Close and retry with fake_migrate
-                    logger.info("Tables created by another worker, retrying with fake_migrate")
+                    logger.info(
+                        "Tables created by another worker, retrying with fake_migrate"
+                    )
                     db.close()
                     db = DAL(
                         self.pydal_uri,
                         pool_size=10,
                         migrate=False,
                         fake_migrate=True,
-                        auto_import=False
+                        auto_import=False,
                     )
                     self._define_all_tables(db)
                 else:
@@ -280,17 +277,13 @@ class DatabaseManager:
             self._thread_local.db = db
 
             logger.info(
-                "PyDAL connection created successfully",
-                extra={'db_type': self.db_type}
+                "PyDAL connection created successfully", extra={"db_type": self.db_type}
             )
 
             return db
 
         except Exception as e:
-            logger.error(
-                f"Failed to create PyDAL connection: {str(e)}",
-                exc_info=True
-            )
+            logger.error(f"Failed to create PyDAL connection: {str(e)}", exc_info=True)
             raise RuntimeError(f"Failed to create database connection: {str(e)}")
 
     @staticmethod
@@ -344,15 +337,11 @@ class DatabaseManager:
             MediaStreamModel.define_table(db)
 
             logger.info(
-                "All database tables defined successfully",
-                extra={'table_count': 15}
+                "All database tables defined successfully", extra={"table_count": 15}
             )
 
         except Exception as e:
-            logger.error(
-                f"Failed to define database tables: {str(e)}",
-                exc_info=True
-            )
+            logger.error(f"Failed to define database tables: {str(e)}", exc_info=True)
             raise RuntimeError(f"Failed to define database tables: {str(e)}")
 
     def close(self) -> None:
@@ -361,7 +350,7 @@ class DatabaseManager:
 
         Safe to call multiple times.
         """
-        if hasattr(self._thread_local, 'db') and self._thread_local.db:
+        if hasattr(self._thread_local, "db") and self._thread_local.db:
             try:
                 self._thread_local.db.close()
                 self._thread_local.db = None
@@ -376,8 +365,8 @@ class DatabaseManager:
         Useful for testing or when connection needs to be recreated.
         """
         self.close()
-        if hasattr(self._thread_local, 'db'):
-            delattr(self._thread_local, 'db')
+        if hasattr(self._thread_local, "db"):
+            delattr(self._thread_local, "db")
 
     @staticmethod
     def health_check(db: DAL) -> bool:
@@ -435,7 +424,7 @@ def get_db() -> DAL:
     return manager.get_pydal_connection()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Example usage
     import sys
 

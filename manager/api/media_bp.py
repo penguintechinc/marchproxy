@@ -60,9 +60,14 @@ async def media_config(user_data):
                 valid_res = [360, 480, 540, 720, 1080, 1440, 2160, 4320]
                 for res in data_json["transcode_ladder_resolutions"]:
                     if res not in valid_res:
-                        return jsonify({
-                            "error": f"Invalid resolution {res}. Valid: {valid_res}"
-                        }), 400
+                        return (
+                            jsonify(
+                                {
+                                    "error": f"Invalid resolution {res}. Valid: {valid_res}"
+                                }
+                            ),
+                            400,
+                        )
 
         except Exception as e:
             return jsonify({"error": "Invalid JSON", "details": str(e)}), 400
@@ -96,19 +101,21 @@ async def list_streams(user_data):
         result = []
         for stream in streams:
             started_at = stream["started_at"]
-            result.append({
-                "id": stream["id"],
-                "stream_key": stream["stream_key"],
-                "protocol": stream["protocol"],
-                "codec": stream["codec"],
-                "resolution": stream["resolution"],
-                "bitrate_kbps": stream["bitrate_kbps"],
-                "status": stream["status"],
-                "client_ip": stream["client_ip"],
-                "started_at": started_at.isoformat() if started_at else None,
-                "bytes_in": stream["bytes_in"],
-                "bytes_out": stream["bytes_out"],
-            })
+            result.append(
+                {
+                    "id": stream["id"],
+                    "stream_key": stream["stream_key"],
+                    "protocol": stream["protocol"],
+                    "codec": stream["codec"],
+                    "resolution": stream["resolution"],
+                    "bitrate_kbps": stream["bitrate_kbps"],
+                    "status": stream["status"],
+                    "client_ip": stream["client_ip"],
+                    "started_at": started_at.isoformat() if started_at else None,
+                    "bytes_in": stream["bytes_in"],
+                    "bytes_out": stream["bytes_out"],
+                }
+            )
 
         return jsonify({"streams": result, "count": len(result)}), 200
 
@@ -130,22 +137,27 @@ async def stream_detail(user_data, stream_key):
 
         started_at = stream["started_at"]
         ended_at = stream.get("ended_at")
-        return jsonify({
-            "stream": {
-                "id": stream["id"],
-                "stream_key": stream["stream_key"],
-                "protocol": stream["protocol"],
-                "codec": stream["codec"],
-                "resolution": stream["resolution"],
-                "bitrate_kbps": stream["bitrate_kbps"],
-                "status": stream["status"],
-                "client_ip": stream["client_ip"],
-                "started_at": started_at.isoformat() if started_at else None,
-                "ended_at": ended_at.isoformat() if ended_at else None,
-                "bytes_in": stream["bytes_in"],
-                "bytes_out": stream["bytes_out"],
-            }
-        }), 200
+        return (
+            jsonify(
+                {
+                    "stream": {
+                        "id": stream["id"],
+                        "stream_key": stream["stream_key"],
+                        "protocol": stream["protocol"],
+                        "codec": stream["codec"],
+                        "resolution": stream["resolution"],
+                        "bitrate_kbps": stream["bitrate_kbps"],
+                        "status": stream["status"],
+                        "client_ip": stream["client_ip"],
+                        "started_at": started_at.isoformat() if started_at else None,
+                        "ended_at": ended_at.isoformat() if ended_at else None,
+                        "bytes_in": stream["bytes_in"],
+                        "bytes_out": stream["bytes_out"],
+                    }
+                }
+            ),
+            200,
+        )
 
     elif request.method == "DELETE":
         # Only admins can stop streams
@@ -197,22 +209,31 @@ async def get_capabilities(user_data):
     effective_max = min(admin_max, hardware_max) if admin_max else hardware_max
 
     ladder_default = [360, 540, 720, 1080]
-    return jsonify({
-        "hardware": hardware,
-        "settings": {
-            "admin_max_resolution": admin_max,
-            "enforce_codec": settings.get("enforce_codec") if settings else None,
-            "transcode_ladder_enabled": (
-                settings.get("transcode_ladder_enabled", True) if settings else True
-            ),
-            "transcode_ladder_resolutions": (
-                settings.get("transcode_ladder_resolutions", ladder_default)
-                if settings
-                else ladder_default
-            ),
-        },
-        "effective_max_resolution": effective_max,
-    }), 200
+    return (
+        jsonify(
+            {
+                "hardware": hardware,
+                "settings": {
+                    "admin_max_resolution": admin_max,
+                    "enforce_codec": (
+                        settings.get("enforce_codec") if settings else None
+                    ),
+                    "transcode_ladder_enabled": (
+                        settings.get("transcode_ladder_enabled", True)
+                        if settings
+                        else True
+                    ),
+                    "transcode_ladder_resolutions": (
+                        settings.get("transcode_ladder_resolutions", ladder_default)
+                        if settings
+                        else ladder_default
+                    ),
+                },
+                "effective_max_resolution": effective_max,
+            }
+        ),
+        200,
+    )
 
 
 @media_bp.route("/streams/<stream_key>/restream", methods=["GET", "POST", "DELETE"])
@@ -244,15 +265,20 @@ async def manage_restream(user_data, stream_key):
         # TODO: Store restream config and notify proxy-rtmp via gRPC
         logger.info(f"Restream created for {stream_key} to {restream.platform}")
 
-        return jsonify({
-            "status": "created",
-            "stream_key": stream_key,
-            "destination": {
-                "platform": restream.platform,
-                "quality": restream.quality,
-                "enabled": restream.enabled,
-            },
-        }), 201
+        return (
+            jsonify(
+                {
+                    "status": "created",
+                    "stream_key": stream_key,
+                    "destination": {
+                        "platform": restream.platform,
+                        "quality": restream.quality,
+                        "enabled": restream.enabled,
+                    },
+                }
+            ),
+            201,
+        )
 
     elif request.method == "DELETE":
         if not user_data.get("is_admin", False):
@@ -281,15 +307,20 @@ async def get_stats(user_data):
             proto = stream.get("protocol", "unknown")
             by_protocol[proto] = by_protocol.get(proto, 0) + 1
 
-        return jsonify({
-            "stats": {
-                "active_streams": len(active_streams),
-                "total_bytes_in": total_bytes_in,
-                "total_bytes_out": total_bytes_out,
-                "by_protocol": by_protocol,
-                "timestamp": datetime.utcnow().isoformat(),
-            }
-        }), 200
+        return (
+            jsonify(
+                {
+                    "stats": {
+                        "active_streams": len(active_streams),
+                        "total_bytes_in": total_bytes_in,
+                        "total_bytes_out": total_bytes_out,
+                        "by_protocol": by_protocol,
+                        "timestamp": datetime.utcnow().isoformat(),
+                    }
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         logger.error(f"Error getting stats: {str(e)}")

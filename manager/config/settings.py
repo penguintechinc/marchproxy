@@ -8,6 +8,7 @@ import json
 from typing import Dict, Any, Optional
 from pydal import DAL, Field
 
+
 class ConfigManager:
     """Manages configuration with fallback hierarchy: DB > ENV > Defaults"""
 
@@ -21,15 +22,15 @@ class ConfigManager:
     def _ensure_config_table(self):
         """Ensure configuration table exists"""
         self.db.define_table(
-            'system_config',
-            Field('key', 'string', length=255, unique=True, notnull=True),
-            Field('value', 'text'),
-            Field('category', 'string', length=100, default='general'),
-            Field('description', 'text'),
-            Field('is_secret', 'boolean', default=False),
-            Field('created_on', 'datetime', default=self.db.common_filter),
-            Field('modified_on', 'datetime', update=self.db.common_filter),
-            migrate=True
+            "system_config",
+            Field("key", "string", length=255, unique=True, notnull=True),
+            Field("value", "text"),
+            Field("category", "string", length=100, default="general"),
+            Field("description", "text"),
+            Field("is_secret", "boolean", default=False),
+            Field("created_on", "datetime", default=self.db.common_filter),
+            Field("modified_on", "datetime", update=self.db.common_filter),
+            migrate=True,
         )
         self.db.commit()
 
@@ -39,7 +40,9 @@ class ConfigManager:
 
         # Check cache first
         current_time = time.time()
-        if (current_time - self._last_cache_update) < self._cache_ttl and key in self._config_cache:
+        if (
+            current_time - self._last_cache_update
+        ) < self._cache_ttl and key in self._config_cache:
             return self._config_cache[key]
 
         # Try database first
@@ -72,15 +75,21 @@ class ConfigManager:
         self._config_cache[key] = default
         return default
 
-    def set_config(self, key: str, value: Any, category: str = 'general',
-                  description: str = '', is_secret: bool = False) -> bool:
+    def set_config(
+        self,
+        key: str,
+        value: Any,
+        category: str = "general",
+        description: str = "",
+        is_secret: bool = False,
+    ) -> bool:
         """Set configuration value in database"""
         try:
             # Convert complex values to JSON
             if isinstance(value, (dict, list)):
                 value_str = json.dumps(value)
             else:
-                value_str = str(value) if value is not None else ''
+                value_str = str(value) if value is not None else ""
 
             # Update or insert
             existing = self.db(self.db.system_config.key == key).select().first()
@@ -89,7 +98,7 @@ class ConfigManager:
                     value=value_str,
                     category=category,
                     description=description,
-                    is_secret=is_secret
+                    is_secret=is_secret,
                 )
             else:
                 self.db.system_config.insert(
@@ -97,7 +106,7 @@ class ConfigManager:
                     value=value_str,
                     category=category,
                     description=description,
-                    is_secret=is_secret
+                    is_secret=is_secret,
                 )
 
             self.db.commit()
@@ -113,37 +122,95 @@ class ConfigManager:
     def get_database_config(self) -> Dict[str, Any]:
         """Get database configuration with fallbacks"""
         return {
-            'host': self.get_config('db_host', os.getenv('DB_HOST', 'postgres'), 'database'),
-            'port': int(self.get_config('db_port', os.getenv('DB_PORT', 5432), 'database')),
-            'database': self.get_config('db_name', os.getenv('DB_NAME', 'marchproxy'), 'database'),
-            'username': self.get_config('db_username', os.getenv('DB_USERNAME', 'marchproxy'), 'database'),
-            'password': self.get_config('db_password', os.getenv('DB_PASSWORD', 'marchproxy123'), 'database'),
-            'ssl_mode': self.get_config('db_ssl_mode', os.getenv('DB_SSL_MODE', 'prefer'), 'database'),
-            'pool_size': int(self.get_config('db_pool_size', os.getenv('DB_POOL_SIZE', 20), 'database')),
-            'max_overflow': int(self.get_config('db_max_overflow', os.getenv('DB_MAX_OVERFLOW', 10), 'database')),
+            "host": self.get_config(
+                "db_host", os.getenv("DB_HOST", "postgres"), "database"
+            ),
+            "port": int(
+                self.get_config("db_port", os.getenv("DB_PORT", 5432), "database")
+            ),
+            "database": self.get_config(
+                "db_name", os.getenv("DB_NAME", "marchproxy"), "database"
+            ),
+            "username": self.get_config(
+                "db_username", os.getenv("DB_USERNAME", "marchproxy"), "database"
+            ),
+            "password": self.get_config(
+                "db_password", os.getenv("DB_PASSWORD", "marchproxy123"), "database"
+            ),
+            "ssl_mode": self.get_config(
+                "db_ssl_mode", os.getenv("DB_SSL_MODE", "prefer"), "database"
+            ),
+            "pool_size": int(
+                self.get_config(
+                    "db_pool_size", os.getenv("DB_POOL_SIZE", 20), "database"
+                )
+            ),
+            "max_overflow": int(
+                self.get_config(
+                    "db_max_overflow", os.getenv("DB_MAX_OVERFLOW", 10), "database"
+                )
+            ),
         }
 
     def get_smtp_config(self) -> Dict[str, Any]:
         """Get SMTP configuration with fallbacks"""
         return {
-            'host': self.get_config('smtp_host', os.getenv('SMTP_HOST', 'localhost'), 'smtp'),
-            'port': int(self.get_config('smtp_port', os.getenv('SMTP_PORT', 587), 'smtp')),
-            'username': self.get_config('smtp_username', os.getenv('SMTP_USERNAME', ''), 'smtp'),
-            'password': self.get_config('smtp_password', os.getenv('SMTP_PASSWORD', ''), 'smtp'),
-            'from_address': self.get_config('smtp_from', os.getenv('SMTP_FROM', 'marchproxy@company.com'), 'smtp'),
-            'use_tls': bool(self.get_config('smtp_use_tls', os.getenv('SMTP_USE_TLS', 'true').lower() == 'true', 'smtp')),
-            'use_ssl': bool(self.get_config('smtp_use_ssl', os.getenv('SMTP_USE_SSL', 'false').lower() == 'true', 'smtp')),
+            "host": self.get_config(
+                "smtp_host", os.getenv("SMTP_HOST", "localhost"), "smtp"
+            ),
+            "port": int(
+                self.get_config("smtp_port", os.getenv("SMTP_PORT", 587), "smtp")
+            ),
+            "username": self.get_config(
+                "smtp_username", os.getenv("SMTP_USERNAME", ""), "smtp"
+            ),
+            "password": self.get_config(
+                "smtp_password", os.getenv("SMTP_PASSWORD", ""), "smtp"
+            ),
+            "from_address": self.get_config(
+                "smtp_from", os.getenv("SMTP_FROM", "marchproxy@company.com"), "smtp"
+            ),
+            "use_tls": bool(
+                self.get_config(
+                    "smtp_use_tls",
+                    os.getenv("SMTP_USE_TLS", "true").lower() == "true",
+                    "smtp",
+                )
+            ),
+            "use_ssl": bool(
+                self.get_config(
+                    "smtp_use_ssl",
+                    os.getenv("SMTP_USE_SSL", "false").lower() == "true",
+                    "smtp",
+                )
+            ),
         }
 
     def get_syslog_config(self) -> Dict[str, Any]:
         """Get syslog configuration with fallbacks"""
         return {
-            'enabled': bool(self.get_config('syslog_enabled', os.getenv('SYSLOG_ENABLED', 'true').lower() == 'true', 'syslog')),
-            'host': self.get_config('syslog_host', os.getenv('SYSLOG_HOST', 'localhost'), 'syslog'),
-            'port': int(self.get_config('syslog_port', os.getenv('SYSLOG_PORT', 514), 'syslog')),
-            'protocol': self.get_config('syslog_protocol', os.getenv('SYSLOG_PROTOCOL', 'udp'), 'syslog'),
-            'facility': self.get_config('syslog_facility', os.getenv('SYSLOG_FACILITY', 'local0'), 'syslog'),
-            'tag': self.get_config('syslog_tag', os.getenv('SYSLOG_TAG', 'marchproxy'), 'syslog'),
+            "enabled": bool(
+                self.get_config(
+                    "syslog_enabled",
+                    os.getenv("SYSLOG_ENABLED", "true").lower() == "true",
+                    "syslog",
+                )
+            ),
+            "host": self.get_config(
+                "syslog_host", os.getenv("SYSLOG_HOST", "localhost"), "syslog"
+            ),
+            "port": int(
+                self.get_config("syslog_port", os.getenv("SYSLOG_PORT", 514), "syslog")
+            ),
+            "protocol": self.get_config(
+                "syslog_protocol", os.getenv("SYSLOG_PROTOCOL", "udp"), "syslog"
+            ),
+            "facility": self.get_config(
+                "syslog_facility", os.getenv("SYSLOG_FACILITY", "local0"), "syslog"
+            ),
+            "tag": self.get_config(
+                "syslog_tag", os.getenv("SYSLOG_TAG", "marchproxy"), "syslog"
+            ),
         }
 
     def get_monitoring_config(self) -> Dict[str, Any]:
@@ -151,89 +218,284 @@ class ConfigManager:
         smtp = self.get_smtp_config()
 
         return {
-            'smtp': smtp,
-            'alerts': {
-                'default_email': self.get_config('alert_email_default', os.getenv('ALERT_EMAIL_DEFAULT', 'ops-team@company.com'), 'monitoring'),
-                'critical_email': self.get_config('alert_email_critical', os.getenv('ALERT_EMAIL_CRITICAL', 'critical-alerts@company.com'), 'monitoring'),
-                'license_email': self.get_config('alert_email_license', os.getenv('ALERT_EMAIL_LICENSE', 'license-admin@company.com'), 'monitoring'),
-                'performance_email': self.get_config('alert_email_performance', os.getenv('ALERT_EMAIL_PERFORMANCE', 'performance-team@company.com'), 'monitoring'),
-                'security_email': self.get_config('alert_email_security', os.getenv('ALERT_EMAIL_SECURITY', 'security-team@company.com'), 'monitoring'),
-                'slack_webhook': self.get_config('slack_webhook_url', os.getenv('SLACK_WEBHOOK_URL', ''), 'monitoring'),
-                'pagerduty_url': self.get_config('pagerduty_url', os.getenv('PAGERDUTY_URL', ''), 'monitoring'),
+            "smtp": smtp,
+            "alerts": {
+                "default_email": self.get_config(
+                    "alert_email_default",
+                    os.getenv("ALERT_EMAIL_DEFAULT", "ops-team@company.com"),
+                    "monitoring",
+                ),
+                "critical_email": self.get_config(
+                    "alert_email_critical",
+                    os.getenv("ALERT_EMAIL_CRITICAL", "critical-alerts@company.com"),
+                    "monitoring",
+                ),
+                "license_email": self.get_config(
+                    "alert_email_license",
+                    os.getenv("ALERT_EMAIL_LICENSE", "license-admin@company.com"),
+                    "monitoring",
+                ),
+                "performance_email": self.get_config(
+                    "alert_email_performance",
+                    os.getenv(
+                        "ALERT_EMAIL_PERFORMANCE", "performance-team@company.com"
+                    ),
+                    "monitoring",
+                ),
+                "security_email": self.get_config(
+                    "alert_email_security",
+                    os.getenv("ALERT_EMAIL_SECURITY", "security-team@company.com"),
+                    "monitoring",
+                ),
+                "slack_webhook": self.get_config(
+                    "slack_webhook_url",
+                    os.getenv("SLACK_WEBHOOK_URL", ""),
+                    "monitoring",
+                ),
+                "pagerduty_url": self.get_config(
+                    "pagerduty_url", os.getenv("PAGERDUTY_URL", ""), "monitoring"
+                ),
             },
-            'retention': {
-                'metrics_days': int(self.get_config('metrics_retention_days', os.getenv('METRICS_RETENTION_DAYS', 30), 'monitoring')),
-                'logs_days': int(self.get_config('logs_retention_days', os.getenv('LOGS_RETENTION_DAYS', 7), 'monitoring')),
-                'traces_days': int(self.get_config('traces_retention_days', os.getenv('TRACES_RETENTION_DAYS', 3), 'monitoring')),
-            }
+            "retention": {
+                "metrics_days": int(
+                    self.get_config(
+                        "metrics_retention_days",
+                        os.getenv("METRICS_RETENTION_DAYS", 30),
+                        "monitoring",
+                    )
+                ),
+                "logs_days": int(
+                    self.get_config(
+                        "logs_retention_days",
+                        os.getenv("LOGS_RETENTION_DAYS", 7),
+                        "monitoring",
+                    )
+                ),
+                "traces_days": int(
+                    self.get_config(
+                        "traces_retention_days",
+                        os.getenv("TRACES_RETENTION_DAYS", 3),
+                        "monitoring",
+                    )
+                ),
+            },
         }
 
     def get_redis_config(self) -> Dict[str, Any]:
         """Get Redis configuration with fallbacks"""
         return {
-            'host': self.get_config('redis_host', os.getenv('REDIS_HOST', 'redis'), 'redis'),
-            'port': int(self.get_config('redis_port', os.getenv('REDIS_PORT', 6379), 'redis')),
-            'password': self.get_config('redis_password', os.getenv('REDIS_PASSWORD', ''), 'redis'),
-            'database': int(self.get_config('redis_database', os.getenv('REDIS_DATABASE', 0), 'redis')),
-            'ssl': bool(self.get_config('redis_ssl', os.getenv('REDIS_SSL', 'false').lower() == 'true', 'redis')),
-            'pool_size': int(self.get_config('redis_pool_size', os.getenv('REDIS_POOL_SIZE', 10), 'redis')),
+            "host": self.get_config(
+                "redis_host", os.getenv("REDIS_HOST", "redis"), "redis"
+            ),
+            "port": int(
+                self.get_config("redis_port", os.getenv("REDIS_PORT", 6379), "redis")
+            ),
+            "password": self.get_config(
+                "redis_password", os.getenv("REDIS_PASSWORD", ""), "redis"
+            ),
+            "database": int(
+                self.get_config(
+                    "redis_database", os.getenv("REDIS_DATABASE", 0), "redis"
+                )
+            ),
+            "ssl": bool(
+                self.get_config(
+                    "redis_ssl",
+                    os.getenv("REDIS_SSL", "false").lower() == "true",
+                    "redis",
+                )
+            ),
+            "pool_size": int(
+                self.get_config(
+                    "redis_pool_size", os.getenv("REDIS_POOL_SIZE", 10), "redis"
+                )
+            ),
         }
 
     def get_killkrill_config(self) -> Dict[str, Any]:
         """Get KillKrill configuration with fallbacks"""
         import socket
+
         hostname = socket.gethostname()
 
         return {
-            'enabled': bool(self.get_config('killkrill_enabled', os.getenv('KILLKRILL_ENABLED', 'false').lower() == 'true', 'killkrill')),
-            'log_endpoint': self.get_config('killkrill_log_endpoint', os.getenv('KILLKRILL_LOG_ENDPOINT', ''), 'killkrill'),
-            'metrics_endpoint': self.get_config('killkrill_metrics_endpoint', os.getenv('KILLKRILL_METRICS_ENDPOINT', ''), 'killkrill'),
-            'api_key': self.get_config('killkrill_api_key', os.getenv('KILLKRILL_API_KEY', ''), 'killkrill'),
-            'source_name': self.get_config('killkrill_source_name', os.getenv('KILLKRILL_SOURCE_NAME', f'marchproxy-manager-{hostname}'), 'killkrill'),
-            'application': self.get_config('killkrill_application', os.getenv('KILLKRILL_APPLICATION', 'manager'), 'killkrill'),
-            'batch_size': int(self.get_config('killkrill_batch_size', os.getenv('KILLKRILL_BATCH_SIZE', 50), 'killkrill')),
-            'flush_interval': int(self.get_config('killkrill_flush_interval', os.getenv('KILLKRILL_FLUSH_INTERVAL', 10), 'killkrill')),
-            'timeout': int(self.get_config('killkrill_timeout', os.getenv('KILLKRILL_TIMEOUT', 30), 'killkrill')),
-            'use_http3': bool(self.get_config('killkrill_use_http3', os.getenv('KILLKRILL_USE_HTTP3', 'true').lower() == 'true', 'killkrill')),
+            "enabled": bool(
+                self.get_config(
+                    "killkrill_enabled",
+                    os.getenv("KILLKRILL_ENABLED", "false").lower() == "true",
+                    "killkrill",
+                )
+            ),
+            "log_endpoint": self.get_config(
+                "killkrill_log_endpoint",
+                os.getenv("KILLKRILL_LOG_ENDPOINT", ""),
+                "killkrill",
+            ),
+            "metrics_endpoint": self.get_config(
+                "killkrill_metrics_endpoint",
+                os.getenv("KILLKRILL_METRICS_ENDPOINT", ""),
+                "killkrill",
+            ),
+            "api_key": self.get_config(
+                "killkrill_api_key", os.getenv("KILLKRILL_API_KEY", ""), "killkrill"
+            ),
+            "source_name": self.get_config(
+                "killkrill_source_name",
+                os.getenv("KILLKRILL_SOURCE_NAME", f"marchproxy-manager-{hostname}"),
+                "killkrill",
+            ),
+            "application": self.get_config(
+                "killkrill_application",
+                os.getenv("KILLKRILL_APPLICATION", "manager"),
+                "killkrill",
+            ),
+            "batch_size": int(
+                self.get_config(
+                    "killkrill_batch_size",
+                    os.getenv("KILLKRILL_BATCH_SIZE", 50),
+                    "killkrill",
+                )
+            ),
+            "flush_interval": int(
+                self.get_config(
+                    "killkrill_flush_interval",
+                    os.getenv("KILLKRILL_FLUSH_INTERVAL", 10),
+                    "killkrill",
+                )
+            ),
+            "timeout": int(
+                self.get_config(
+                    "killkrill_timeout", os.getenv("KILLKRILL_TIMEOUT", 30), "killkrill"
+                )
+            ),
+            "use_http3": bool(
+                self.get_config(
+                    "killkrill_use_http3",
+                    os.getenv("KILLKRILL_USE_HTTP3", "true").lower() == "true",
+                    "killkrill",
+                )
+            ),
         }
 
     def get_license_config(self) -> Dict[str, Any]:
         """Get license configuration"""
         return {
-            'key': self.get_config('license_key', os.getenv('LICENSE_KEY', ''), 'license'),
-            'server_url': self.get_config('license_server_url', os.getenv('LICENSE_SERVER_URL', 'https://license.penguintech.io'), 'license'),
-            'check_interval_hours': int(self.get_config('license_check_interval', os.getenv('LICENSE_CHECK_INTERVAL', 24), 'license')),
-            'offline_grace_days': int(self.get_config('license_offline_grace', os.getenv('LICENSE_OFFLINE_GRACE', 7), 'license')),
+            "key": self.get_config(
+                "license_key", os.getenv("LICENSE_KEY", ""), "license"
+            ),
+            "server_url": self.get_config(
+                "license_server_url",
+                os.getenv("LICENSE_SERVER_URL", "https://license.penguintech.io"),
+                "license",
+            ),
+            "check_interval_hours": int(
+                self.get_config(
+                    "license_check_interval",
+                    os.getenv("LICENSE_CHECK_INTERVAL", 24),
+                    "license",
+                )
+            ),
+            "offline_grace_days": int(
+                self.get_config(
+                    "license_offline_grace",
+                    os.getenv("LICENSE_OFFLINE_GRACE", 7),
+                    "license",
+                )
+            ),
         }
 
     def initialize_default_config(self):
         """Initialize default configuration values if not present"""
         defaults = [
             # Database
-            ('db_host', os.getenv('DB_HOST', 'postgres'), 'database', 'Database hostname'),
-            ('db_port', os.getenv('DB_PORT', 5432), 'database', 'Database port'),
-            ('db_name', os.getenv('DB_NAME', 'marchproxy'), 'database', 'Database name'),
-            ('db_username', os.getenv('DB_USERNAME', 'marchproxy'), 'database', 'Database username'),
-            ('db_password', os.getenv('DB_PASSWORD', 'marchproxy123'), 'database', 'Database password', True),
-
+            (
+                "db_host",
+                os.getenv("DB_HOST", "postgres"),
+                "database",
+                "Database hostname",
+            ),
+            ("db_port", os.getenv("DB_PORT", 5432), "database", "Database port"),
+            (
+                "db_name",
+                os.getenv("DB_NAME", "marchproxy"),
+                "database",
+                "Database name",
+            ),
+            (
+                "db_username",
+                os.getenv("DB_USERNAME", "marchproxy"),
+                "database",
+                "Database username",
+            ),
+            (
+                "db_password",
+                os.getenv("DB_PASSWORD", "marchproxy123"),
+                "database",
+                "Database password",
+                True,
+            ),
             # SMTP
-            ('smtp_host', os.getenv('SMTP_HOST', 'localhost'), 'smtp', 'SMTP server hostname'),
-            ('smtp_port', os.getenv('SMTP_PORT', 587), 'smtp', 'SMTP server port'),
-            ('smtp_username', os.getenv('SMTP_USERNAME', ''), 'smtp', 'SMTP username'),
-            ('smtp_password', os.getenv('SMTP_PASSWORD', ''), 'smtp', 'SMTP password', True),
-            ('smtp_from', os.getenv('SMTP_FROM', 'marchproxy@company.com'), 'smtp', 'Default from address'),
-
+            (
+                "smtp_host",
+                os.getenv("SMTP_HOST", "localhost"),
+                "smtp",
+                "SMTP server hostname",
+            ),
+            ("smtp_port", os.getenv("SMTP_PORT", 587), "smtp", "SMTP server port"),
+            ("smtp_username", os.getenv("SMTP_USERNAME", ""), "smtp", "SMTP username"),
+            (
+                "smtp_password",
+                os.getenv("SMTP_PASSWORD", ""),
+                "smtp",
+                "SMTP password",
+                True,
+            ),
+            (
+                "smtp_from",
+                os.getenv("SMTP_FROM", "marchproxy@company.com"),
+                "smtp",
+                "Default from address",
+            ),
             # Syslog
-            ('syslog_enabled', os.getenv('SYSLOG_ENABLED', 'true'), 'syslog', 'Enable syslog forwarding'),
-            ('syslog_host', os.getenv('SYSLOG_HOST', 'localhost'), 'syslog', 'Syslog server hostname'),
-            ('syslog_port', os.getenv('SYSLOG_PORT', 514), 'syslog', 'Syslog server port'),
-
+            (
+                "syslog_enabled",
+                os.getenv("SYSLOG_ENABLED", "true"),
+                "syslog",
+                "Enable syslog forwarding",
+            ),
+            (
+                "syslog_host",
+                os.getenv("SYSLOG_HOST", "localhost"),
+                "syslog",
+                "Syslog server hostname",
+            ),
+            (
+                "syslog_port",
+                os.getenv("SYSLOG_PORT", 514),
+                "syslog",
+                "Syslog server port",
+            ),
             # Monitoring
-            ('alert_email_default', os.getenv('ALERT_EMAIL_DEFAULT', 'ops-team@company.com'), 'monitoring', 'Default alert email'),
-            ('metrics_retention_days', os.getenv('METRICS_RETENTION_DAYS', 30), 'monitoring', 'Metrics retention period'),
-
+            (
+                "alert_email_default",
+                os.getenv("ALERT_EMAIL_DEFAULT", "ops-team@company.com"),
+                "monitoring",
+                "Default alert email",
+            ),
+            (
+                "metrics_retention_days",
+                os.getenv("METRICS_RETENTION_DAYS", 30),
+                "monitoring",
+                "Metrics retention period",
+            ),
             # License
-            ('license_key', os.getenv('LICENSE_KEY', ''), 'license', 'Enterprise license key', True),
+            (
+                "license_key",
+                os.getenv("LICENSE_KEY", ""),
+                "license",
+                "Enterprise license key",
+                True,
+            ),
         ]
 
         for config_item in defaults:
@@ -248,7 +510,9 @@ class ConfigManager:
             if not existing:
                 self.set_config(key, value, category, description, is_secret)
 
-    def get_all_config(self, category: Optional[str] = None, include_secrets: bool = False) -> Dict[str, Any]:
+    def get_all_config(
+        self, category: Optional[str] = None, include_secrets: bool = False
+    ) -> Dict[str, Any]:
         """Get all configuration values for management interface"""
         query = self.db.system_config.id > 0
         if category:
@@ -265,10 +529,10 @@ class ConfigManager:
                 value = row.value
 
             configs[row.key] = {
-                'value': value,
-                'category': row.category,
-                'description': row.description,
-                'is_secret': row.is_secret
+                "value": value,
+                "category": row.category,
+                "description": row.description,
+                "is_secret": row.is_secret,
             }
 
         return configs
@@ -282,6 +546,7 @@ class ConfigManager:
 # Global config manager instance
 _config_manager = None
 
+
 def get_config_manager(db: DAL = None) -> ConfigManager:
     """Get global configuration manager instance"""
     global _config_manager
@@ -289,6 +554,7 @@ def get_config_manager(db: DAL = None) -> ConfigManager:
         _config_manager = ConfigManager(db)
         _config_manager.initialize_default_config()
     return _config_manager
+
 
 def get_config(key: str, default: Any = None, category: str = None) -> Any:
     """Convenience function to get configuration value"""

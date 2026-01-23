@@ -24,10 +24,10 @@ from middleware.auth import require_auth
 
 logger = logging.getLogger(__name__)
 
-auth_bp = Blueprint('auth', __name__)
+auth_bp = Blueprint("auth", __name__)
 
 
-@auth_bp.route('/login', methods=['POST'])
+@auth_bp.route("/login", methods=["POST"])
 async def login():
     """User login endpoint"""
     try:
@@ -61,18 +61,19 @@ async def login():
 
     # Create session
     session_id = SessionModel.create_session(
-        db, user.id,
+        db,
+        user.id,
         ip_address=request.remote_addr,
-        user_agent=request.headers.get('User-Agent')
+        user_agent=request.headers.get("User-Agent"),
     )
 
     # Create JWT tokens
     access_payload = {
-        'user_id': user.id,
-        'username': user.username,
-        'is_admin': user.is_admin,
-        'session_id': session_id,
-        'type': 'access'
+        "user_id": user.id,
+        "username": user.username,
+        "is_admin": user.is_admin,
+        "session_id": session_id,
+        "type": "access",
     }
     access_token = jwt_manager.create_token(access_payload)
     refresh_token = jwt_manager.create_refresh_token(user.id)
@@ -80,17 +81,17 @@ async def login():
     response = TokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
-        expires_in=jwt_manager.ttl_hours * 3600
+        expires_in=jwt_manager.ttl_hours * 3600,
     )
     return jsonify(response.dict()), 200
 
 
-@auth_bp.route('/logout', methods=['POST'])
+@auth_bp.route("/logout", methods=["POST"])
 @require_auth()
 async def logout(user_data):
     """User logout endpoint"""
     db = current_app.db
-    session_id = user_data.get('session_id')
+    session_id = user_data.get("session_id")
 
     if session_id:
         SessionModel.destroy_session(db, session_id)
@@ -98,7 +99,7 @@ async def logout(user_data):
     return jsonify({"message": "Logged out successfully"}), 200
 
 
-@auth_bp.route('/register', methods=['POST'])
+@auth_bp.route("/register", methods=["POST"])
 @require_auth(admin_required=True)
 async def register(user_data):
     """User registration endpoint (admin only)"""
@@ -111,10 +112,11 @@ async def register(user_data):
     db = current_app.db
 
     # Check if username or email already exists
-    existing = db(
-        (db.users.username == data.username) |
-        (db.users.email == data.email)
-    ).select().first()
+    existing = (
+        db((db.users.username == data.username) | (db.users.email == data.email))
+        .select()
+        .first()
+    )
 
     if existing:
         return jsonify({"error": "Username or email already exists"}), 409
@@ -122,9 +124,7 @@ async def register(user_data):
     # Create user
     password_hash = UserModel.hash_password(data.password)
     user_id = db.users.insert(
-        username=data.username,
-        email=data.email,
-        password_hash=password_hash
+        username=data.username, email=data.email, password_hash=password_hash
     )
 
     user = db.users[user_id]
@@ -136,16 +136,16 @@ async def register(user_data):
         is_active=user.is_active,
         totp_enabled=user.totp_enabled,
         auth_provider=user.auth_provider,
-        created_at=user.created_at
+        created_at=user.created_at,
     )
     return jsonify(response.dict()), 201
 
 
-@auth_bp.route('/refresh', methods=['POST'])
+@auth_bp.route("/refresh", methods=["POST"])
 async def refresh():
     """Refresh access token"""
     data = await request.get_json()
-    refresh_token = data.get('refresh_token')
+    refresh_token = data.get("refresh_token")
 
     if not refresh_token:
         return jsonify({"error": "Refresh token required"}), 400
@@ -156,14 +156,19 @@ async def refresh():
     if not new_access_token:
         return jsonify({"error": "Invalid or expired refresh token"}), 401
 
-    return jsonify({
-        "access_token": new_access_token,
-        "token_type": "Bearer",
-        "expires_in": jwt_manager.ttl_hours * 3600
-    }), 200
+    return (
+        jsonify(
+            {
+                "access_token": new_access_token,
+                "token_type": "Bearer",
+                "expires_in": jwt_manager.ttl_hours * 3600,
+            }
+        ),
+        200,
+    )
 
 
-@auth_bp.route('/2fa/enable', methods=['POST'])
+@auth_bp.route("/2fa/enable", methods=["POST"])
 @require_auth()
 async def enable_2fa(user_data):
     """Enable 2FA for user"""
@@ -174,7 +179,7 @@ async def enable_2fa(user_data):
         return jsonify({"error": "Validation error", "details": str(e)}), 400
 
     db = current_app.db
-    user_id = user_data['user_id']
+    user_id = user_data["user_id"]
 
     # Verify current password
     user = db.users[user_id]
@@ -188,14 +193,19 @@ async def enable_2fa(user_data):
     # Store secret (but don't enable yet)
     user.update_record(totp_secret=totp_secret)
 
-    return jsonify({
-        "secret": totp_secret,
-        "qr_uri": totp_uri,
-        "message": "Scan QR code and verify with TOTP code to complete setup"
-    }), 200
+    return (
+        jsonify(
+            {
+                "secret": totp_secret,
+                "qr_uri": totp_uri,
+                "message": "Scan QR code and verify with TOTP code to complete setup",
+            }
+        ),
+        200,
+    )
 
 
-@auth_bp.route('/2fa/verify', methods=['POST'])
+@auth_bp.route("/2fa/verify", methods=["POST"])
 @require_auth()
 async def verify_2fa(user_data):
     """Verify and complete 2FA setup"""
@@ -206,7 +216,7 @@ async def verify_2fa(user_data):
         return jsonify({"error": "Validation error", "details": str(e)}), 400
 
     db = current_app.db
-    user_id = user_data['user_id']
+    user_id = user_data["user_id"]
 
     # Verify TOTP code
     if not UserModel.verify_totp(data.secret, data.totp_code):
@@ -219,22 +229,22 @@ async def verify_2fa(user_data):
     return jsonify({"message": "2FA enabled successfully"}), 200
 
 
-@auth_bp.route('/2fa/disable', methods=['POST'])
+@auth_bp.route("/2fa/disable", methods=["POST"])
 @require_auth()
 async def disable_2fa(user_data):
     """Disable 2FA for user"""
     data = await request.get_json()
     db = current_app.db
-    user_id = user_data['user_id']
+    user_id = user_data["user_id"]
 
     # Verify current password
     user = db.users[user_id]
-    if not UserModel.verify_password(data.get('password', ''), user.password_hash):
+    if not UserModel.verify_password(data.get("password", ""), user.password_hash):
         return jsonify({"error": "Invalid password"}), 401
 
     # Verify TOTP code if 2FA is currently enabled
     if user.totp_enabled:
-        totp_code = data.get('totp_code')
+        totp_code = data.get("totp_code")
         if not totp_code or not UserModel.verify_totp(user.totp_secret, totp_code):
             return jsonify({"error": "Invalid TOTP code"}), 400
 
@@ -244,15 +254,15 @@ async def disable_2fa(user_data):
     return jsonify({"message": "2FA disabled successfully"}), 200
 
 
-@auth_bp.route('/profile', methods=['GET', 'PUT'])
+@auth_bp.route("/profile", methods=["GET", "PUT"])
 @require_auth()
 async def profile(user_data):
     """Get/update user profile"""
     db = current_app.db
-    user_id = user_data['user_id']
+    user_id = user_data["user_id"]
     user = db.users[user_id]
 
-    if request.method == 'GET':
+    if request.method == "GET":
         response = UserResponse(
             id=user.id,
             username=user.username,
@@ -261,25 +271,30 @@ async def profile(user_data):
             is_active=user.is_active,
             totp_enabled=user.totp_enabled,
             auth_provider=user.auth_provider,
-            created_at=user.created_at
+            created_at=user.created_at,
         )
         return jsonify(response.dict()), 200
 
-    elif request.method == 'PUT':
+    elif request.method == "PUT":
         data = await request.get_json()
         update_data = {}
 
         # Allow updating email
-        if 'email' in data:
-            update_data['email'] = data['email']
+        if "email" in data:
+            update_data["email"] = data["email"]
 
         # Allow updating password with current password verification
-        if 'new_password' in data:
-            current_password = data.get('current_password')
-            if not current_password or not UserModel.verify_password(current_password, user.password_hash):
-                return jsonify({"error": "Current password required for password change"}), 401
+        if "new_password" in data:
+            current_password = data.get("current_password")
+            if not current_password or not UserModel.verify_password(
+                current_password, user.password_hash
+            ):
+                return (
+                    jsonify({"error": "Current password required for password change"}),
+                    401,
+                )
 
-            update_data['password_hash'] = UserModel.hash_password(data['new_password'])
+            update_data["password_hash"] = UserModel.hash_password(data["new_password"])
 
         if update_data:
             user.update_record(**update_data)

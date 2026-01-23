@@ -32,29 +32,31 @@ def upgrade(db):
     for user in admin_users:
         try:
             from models.rbac import PermissionScope
+
             RBACModel.assign_role(
                 db,
                 user.id,
-                'admin',
+                "admin",
                 scope=PermissionScope.GLOBAL,
-                granted_by=None  # System migration
+                granted_by=None,  # System migration
             )
             logger.info(f"Assigned Admin role to existing admin user: {user.username}")
         except Exception as e:
             logger.warning(f"Could not assign admin role to {user.username}: {e}")
 
     # Migrate existing service owners to Service Owner role
-    service_assignments = db(db.user_service_assignments.role == 'owner').select()
+    service_assignments = db(db.user_service_assignments.role == "owner").select()
     for assignment in service_assignments:
         try:
             from models.rbac import PermissionScope
+
             RBACModel.assign_role(
                 db,
                 assignment.user_id,
-                'service_owner',
+                "service_owner",
                 scope=PermissionScope.SERVICE,
                 resource_id=assignment.service_id,
-                granted_by=None  # System migration
+                granted_by=None,  # System migration
             )
             logger.info(
                 f"Assigned Service Owner role for service {assignment.service_id} "
@@ -72,11 +74,7 @@ def downgrade(db):
     logger.warning("Rolling back RBAC migration - this will delete all role data")
 
     # Drop tables in reverse order
-    tables_to_drop = [
-        'user_permissions_cache',
-        'user_roles',
-        'roles'
-    ]
+    tables_to_drop = ["user_permissions_cache", "user_roles", "roles"]
 
     for table_name in tables_to_drop:
         if table_name in db.tables:
@@ -87,7 +85,7 @@ def downgrade(db):
     logger.info("RBAC migration rollback completed")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     """Run migration standalone"""
     import sys
     import os
@@ -99,25 +97,26 @@ if __name__ == '__main__':
     import os
 
     # Get database URL from environment
-    db_url = os.getenv('DATABASE_URL', 'sqlite://storage.db')
+    db_url = os.getenv("DATABASE_URL", "sqlite://storage.db")
 
     # Initialize database
-    db = DAL(db_url, folder='databases', migrate=True)
+    db = DAL(db_url, folder="databases", migrate=True)
 
     # Import models to define tables
     from models.auth import UserModel, SessionModel
+
     UserModel.define_table(db)
     SessionModel.define_table(db)
 
     # Run migration
     choice = input("Run migration? (upgrade/downgrade): ").strip().lower()
 
-    if choice == 'upgrade':
+    if choice == "upgrade":
         upgrade(db)
         print("✓ RBAC tables added successfully")
-    elif choice == 'downgrade':
+    elif choice == "downgrade":
         confirm = input("⚠️  This will DELETE all role data. Continue? (yes/no): ")
-        if confirm.lower() == 'yes':
+        if confirm.lower() == "yes":
             downgrade(db)
             print("✓ RBAC tables removed")
         else:
