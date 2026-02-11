@@ -31,6 +31,7 @@ on:
       - 'proxy-nlb/**'
       - 'proxy-rtmp/**'
       - '.version'
+  workflow_dispatch:
 
 jobs:
   # Python linting and formatting
