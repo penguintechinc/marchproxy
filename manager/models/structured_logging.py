@@ -9,10 +9,10 @@ import json
 import logging
 import os
 import sys
-from datetime import datetime
-from typing import Dict, Any, Optional
-from logging.handlers import RotatingFileHandler
 import threading
+from datetime import datetime
+from logging.handlers import RotatingFileHandler
+from typing import Any, Dict
 
 
 class StructuredFormatter(logging.Formatter):
@@ -378,7 +378,7 @@ def log_api_request():
 
                 return result
 
-            except Exception as e:
+            except Exception:
                 # Log failed request
                 duration_ms = (time.time() - start_time) * 1000
                 ip_address = request.environ.get("REMOTE_ADDR", "unknown")

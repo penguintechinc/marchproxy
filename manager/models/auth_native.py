@@ -14,14 +14,15 @@ except ImportError:
     Auth = None
     Mailer = None
 
-from pydal import DAL
+import base64
+import io
 import secrets
+from datetime import datetime, timedelta
+from typing import Any, Dict, Optional
+
 import pyotp
 import qrcode
-import io
-import base64
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
+from pydal import DAL
 
 
 def setup_auth(db: DAL, base_url: str = "http://localhost:8000") -> Auth:
@@ -235,9 +236,9 @@ class APITokenManager:
 
         # Try to find token by checking hash
         for token_record in self.db(
-            (self.db.api_tokens.is_active == True)
+            (self.db.api_tokens.is_active == True)  # noqa: E712
             & (
-                (self.db.api_tokens.expires_at == None)
+                (self.db.api_tokens.expires_at == None)  # noqa: E711
                 | (self.db.api_tokens.expires_at > datetime.utcnow())
             )
         ).select():

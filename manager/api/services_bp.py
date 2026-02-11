@@ -5,22 +5,23 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-from quart import Blueprint, request, current_app, jsonify
-from pydantic import ValidationError
 import logging
 from datetime import datetime
-from models.service import (
-    ServiceModel,
-    UserServiceAssignmentModel,
-    CreateServiceRequest,
-    UpdateServiceRequest,
-    ServiceResponse,
-    ServiceAuthResponse,
-    AssignUserToServiceRequest,
-    SetServiceAuthRequest,
-    CreateJwtTokenRequest,
-)
+
 from middleware.auth import require_auth
+from models.service import (
+    AssignUserToServiceRequest,
+    CreateJwtTokenRequest,
+    CreateServiceRequest,
+    ServiceAuthResponse,
+    ServiceModel,
+    ServiceResponse,
+    SetServiceAuthRequest,
+    UpdateServiceRequest,
+    UserServiceAssignmentModel,
+)
+from pydantic import ValidationError
+from quart import Blueprint, current_app, jsonify, request
 
 logger = logging.getLogger(__name__)
 
@@ -293,7 +294,7 @@ async def create_service_token(service_id, user_data):
     try:
         data_json = await request.get_json()
         data = CreateJwtTokenRequest(**data_json)
-    except (ValidationError, Exception) as e:
+    except (ValidationError, Exception):
         data = CreateJwtTokenRequest(service_id=service_id)
 
     try:

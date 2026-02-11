@@ -5,21 +5,22 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-from quart import Blueprint, request, current_app, jsonify
-from pydantic import ValidationError
 import logging
-from models.proxy import (
-    ProxyServerModel,
-    ProxyMetricsModel,
-    ProxyRegistrationRequest,
-    ProxyHeartbeatRequest,
-    ProxyConfigRequest,
-    ProxyResponse,
-    ProxyStatsResponse,
-    ProxyMetricsResponse,
-)
-from models.cluster import ClusterModel, UserClusterAssignmentModel
+
 from middleware.auth import require_auth
+from models.cluster import UserClusterAssignmentModel
+from models.proxy import (
+    ProxyConfigRequest,
+    ProxyHeartbeatRequest,
+    ProxyMetricsModel,
+    ProxyMetricsResponse,
+    ProxyRegistrationRequest,
+    ProxyResponse,
+    ProxyServerModel,
+    ProxyStatsResponse,
+)
+from pydantic import ValidationError
+from quart import Blueprint, current_app, jsonify, request
 
 logger = logging.getLogger(__name__)
 

@@ -5,12 +5,13 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-from quart import Blueprint, request, current_app, jsonify
-from pydantic import ValidationError, BaseModel
 import logging
-from typing import Optional, Dict, Any
 from datetime import datetime
+from typing import Any, Optional
+
 from middleware.auth import require_auth
+from pydantic import BaseModel
+from quart import Blueprint, current_app, jsonify, request
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +88,7 @@ async def health_check():
 
         # Try a simple database query
         try:
-            test_query = db().select().first()
+            db().select().first()
             db_status = "healthy"
         except Exception as e:
             logger.error(f"Database health check failed: {str(e)}")
@@ -313,6 +314,7 @@ async def features_config(user_data):
     """Get available features based on license"""
     try:
         import os
+
         from models.license import LicenseCacheModel
 
         db = current_app.db

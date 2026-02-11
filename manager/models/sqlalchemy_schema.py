@@ -17,7 +17,8 @@ For runtime operations, use the PyDAL models in:
 - rate_limiting.py (rate_limits, xdp_rate_limits, xdp_rate_limit_stats, xdp_rate_limit_whitelist)
 
 SQLAlchemy 2.0 declarative syntax with proper relationships and indexes.
-Run: python -c "from manager.models.sqlalchemy_schema import Base, engine; Base.metadata.create_all(engine)"
+Run: python -c "from manager.models.sqlalchemy_schema import Base, engine; \
+Base.metadata.create_all(engine)"
 
 Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
@@ -25,22 +26,21 @@ Licensed under GNU Affero General Public License v3.0
 
 import os
 from datetime import datetime
-from typing import Optional
+
 from sqlalchemy import (
-    create_engine,
+    JSON,
+    BigInteger,
+    Boolean,
     Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
     Integer,
     String,
-    Boolean,
-    DateTime,
     Text,
-    Float,
-    BigInteger,
-    ForeignKey,
-    JSON,
-    Index,
     UniqueConstraint,
-    event,
+    create_engine,
 )
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 from sqlalchemy.pool import StaticPool

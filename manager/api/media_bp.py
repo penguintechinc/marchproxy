@@ -8,18 +8,13 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-from quart import Blueprint, request, current_app, jsonify
-from pydantic import ValidationError
 import logging
 from datetime import datetime
-from models.media_settings import (
-    MediaSettingsModel,
-    MediaStreamModel,
-    MediaSettingsResponse,
-    MediaStreamResponse,
-    CreateRestreamRequest,
-)
+
 from middleware.auth import require_auth
+from models.media_settings import CreateRestreamRequest, MediaSettingsModel, MediaStreamModel
+from pydantic import ValidationError
+from quart import Blueprint, current_app, jsonify, request
 
 logger = logging.getLogger(__name__)
 

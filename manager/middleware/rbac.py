@@ -10,12 +10,10 @@ Licensed under GNU Affero General Public License v3.0
 
 import functools
 import logging
-from typing import Callable, List, Optional, Union
+from typing import Callable, Optional
 
-from quart import abort, request, g
-from werkzeug.exceptions import Forbidden, Unauthorized
-
-from models.rbac import RBACModel, Permissions, PermissionScope
+from models.rbac import Permissions, PermissionScope, RBACModel
+from quart import abort, g, request
 
 logger = logging.getLogger(__name__)
 

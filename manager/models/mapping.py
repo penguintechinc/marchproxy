@@ -5,9 +5,9 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import re
 from datetime import datetime
-from typing import Optional, Dict, Any, List, Union
+from typing import Any, Dict, List, Optional, Union
+
 from pydal import DAL, Field
 from pydantic import BaseModel, validator
 
@@ -100,7 +100,8 @@ class MappingModel:
             if service == "all":
                 # Special case: all services in cluster
                 cluster_services = db(
-                    (db.services.cluster_id == cluster_id) & (db.services.is_active == True)
+                    (db.services.cluster_id == cluster_id)
+                    & (db.services.is_active == True)  # noqa: E712
                 ).select()
 
                 normalized.append(
@@ -118,7 +119,7 @@ class MappingModel:
                 collection_services = db(
                     (db.services.cluster_id == cluster_id)
                     & (db.services.collection == collection_name)
-                    & (db.services.is_active == True)
+                    & (db.services.is_active == True)  # noqa: E712
                 ).select()
 
                 if collection_services:
@@ -139,7 +140,7 @@ class MappingModel:
                     db(
                         (db.services.id == service_id)
                         & (db.services.cluster_id == cluster_id)
-                        & (db.services.is_active == True)
+                        & (db.services.is_active == True)  # noqa: E712
                     )
                     .select()
                     .first()
@@ -205,7 +206,9 @@ class MappingModel:
     @staticmethod
     def get_cluster_mappings(db: DAL, cluster_id: int, user_id: int = None) -> List[Dict[str, Any]]:
         """Get mappings for cluster (with user access control)"""
-        query = (db.mappings.cluster_id == cluster_id) & (db.mappings.is_active == True)
+        query = (db.mappings.cluster_id == cluster_id) & (
+            db.mappings.is_active == True
+        )  # noqa: E712
 
         # If user_id provided and user is not admin, filter by accessible services
         if user_id:
@@ -214,7 +217,7 @@ class MappingModel:
                 # Get user's accessible services
                 user_services = db(
                     (db.user_service_assignments.user_id == user_id)
-                    & (db.user_service_assignments.is_active == True)
+                    & (db.user_service_assignments.is_active == True)  # noqa: E712
                 ).select(db.user_service_assignments.service_id)
 
                 accessible_service_ids = [assignment.service_id for assignment in user_services]
@@ -287,7 +290,9 @@ class MappingModel:
     def resolve_mapping_services(db: DAL, mapping_id: int) -> Optional[Dict[str, Any]]:
         """Resolve mapping to concrete service configurations for proxy"""
         mapping = (
-            db((db.mappings.id == mapping_id) & (db.mappings.is_active == True)).select().first()
+            db((db.mappings.id == mapping_id) & (db.mappings.is_active == True))
+            .select()
+            .first()  # noqa: E712
         )
 
         if not mapping:
@@ -326,7 +331,8 @@ class MappingModel:
         if service_ref["type"] == "all":
             # All services in cluster
             services = db(
-                (db.services.cluster_id == cluster_id) & (db.services.is_active == True)
+                (db.services.cluster_id == cluster_id)
+                & (db.services.is_active == True)  # noqa: E712
             ).select()
 
         elif service_ref["type"] == "collection":
@@ -334,13 +340,14 @@ class MappingModel:
             services = db(
                 (db.services.cluster_id == cluster_id)
                 & (db.services.collection == service_ref["name"])
-                & (db.services.is_active == True)
+                & (db.services.is_active == True)  # noqa: E712
             ).select()
 
         elif service_ref["type"] == "service":
             # Single service
             services = db(
-                (db.services.id == service_ref["id"]) & (db.services.is_active == True)
+                (db.services.id == service_ref["id"])
+                & (db.services.is_active == True)  # noqa: E712
             ).select()
 
         else:
@@ -373,7 +380,7 @@ class MappingModel:
 
         # Get all active mappings for cluster
         mappings = db(
-            (db.mappings.cluster_id == cluster_id) & (db.mappings.is_active == True)
+            (db.mappings.cluster_id == cluster_id) & (db.mappings.is_active == True)  # noqa: E712
         ).select(orderby=db.mappings.priority)
 
         matching = []

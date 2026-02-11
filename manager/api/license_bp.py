@@ -5,14 +5,15 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-from quart import Blueprint, request, current_app, jsonify
-from pydantic import ValidationError, BaseModel
 import logging
-import httpx
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
-from models.license import LicenseCacheModel
+from typing import Any, Dict, Optional
+
+import httpx
 from middleware.auth import require_auth
+from models.license import LicenseCacheModel
+from pydantic import BaseModel, ValidationError
+from quart import Blueprint, current_app, jsonify, request
 
 logger = logging.getLogger(__name__)
 

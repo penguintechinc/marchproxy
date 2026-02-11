@@ -5,12 +5,13 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-from quart import Blueprint, request, current_app, jsonify
-from pydantic import ValidationError, BaseModel
 import logging
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import Optional
+
 from middleware.auth import require_auth
+from pydantic import BaseModel, ValidationError
+from quart import Blueprint, current_app, jsonify, request
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,7 @@ async def routes_list():
             try:
                 routes = db(
                     (db.ingress_routes.cluster_id == cluster_id)
-                    & (db.ingress_routes.is_active == True)
+                    & (db.ingress_routes.is_active == True)  # noqa: E712
                 ).select(orderby=db.ingress_routes.source_port)
 
                 result = []
@@ -110,7 +111,7 @@ async def routes_list():
                     db(
                         (db.services.id == data.dest_service_id)
                         & (db.services.cluster_id == data.cluster_id)
-                        & (db.services.is_active == True)
+                        & (db.services.is_active == True)  # noqa: E712
                     )
                     .select()
                     .first()
@@ -128,7 +129,7 @@ async def routes_list():
                         (db.ingress_routes.cluster_id == data.cluster_id)
                         & (db.ingress_routes.source_port == data.source_port)
                         & (db.ingress_routes.protocol == data.protocol)
-                        & (db.ingress_routes.is_active == True)
+                        & (db.ingress_routes.is_active == True)  # noqa: E712
                     )
                     .select()
                     .first()
@@ -228,7 +229,7 @@ async def route_detail(route_id):
                         db(
                             (db.services.id == data.dest_service_id)
                             & (db.services.cluster_id == route.cluster_id)
-                            & (db.services.is_active == True)
+                            & (db.services.is_active == True)  # noqa: E712
                         )
                         .select()
                         .first()
@@ -246,7 +247,7 @@ async def route_detail(route_id):
                             & (db.ingress_routes.source_port == data.source_port)
                             & (db.ingress_routes.protocol == protocol)
                             & (db.ingress_routes.id != route_id)
-                            & (db.ingress_routes.is_active == True)
+                            & (db.ingress_routes.is_active == True)  # noqa: E712
                         )
                         .select()
                         .first()
@@ -319,7 +320,7 @@ async def get_route_by_port(port, user_data):
             db(
                 (db.ingress_routes.cluster_id == cluster_id)
                 & (db.ingress_routes.source_port == port)
-                & (db.ingress_routes.is_active == True)
+                & (db.ingress_routes.is_active == True)  # noqa: E712
             )
             .select()
             .first()
@@ -409,7 +410,7 @@ async def validate_route_config(user_data):
             db(
                 (db.services.id == data.dest_service_id)
                 & (db.services.cluster_id == data.cluster_id)
-                & (db.services.is_active == True)
+                & (db.services.is_active == True)  # noqa: E712
             )
             .select()
             .first()
@@ -424,7 +425,7 @@ async def validate_route_config(user_data):
                 (db.ingress_routes.cluster_id == data.cluster_id)
                 & (db.ingress_routes.source_port == data.source_port)
                 & (db.ingress_routes.protocol == data.protocol)
-                & (db.ingress_routes.is_active == True)
+                & (db.ingress_routes.is_active == True)  # noqa: E712
             )
             .select()
             .first()

@@ -5,19 +5,20 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-from quart import Blueprint, request, current_app, jsonify
-from pydantic import ValidationError
 import logging
 from datetime import datetime
+
+from middleware.auth import require_auth
 from models.cluster import (
+    AssignUserToClusterRequest,
     ClusterModel,
-    UserClusterAssignmentModel,
+    ClusterResponse,
     CreateClusterRequest,
     UpdateClusterRequest,
-    ClusterResponse,
-    AssignUserToClusterRequest,
+    UserClusterAssignmentModel,
 )
-from middleware.auth import require_auth
+from pydantic import ValidationError
+from quart import Blueprint, current_app, jsonify, request
 
 logger = logging.getLogger(__name__)
 
@@ -49,13 +50,16 @@ async def clusters_list():
 
         if user["is_admin"]:
             # Admin sees all clusters
-            clusters_list = db(db.clusters.is_active == True).select(orderby=db.clusters.name)
+            clusters_list = db(db.clusters.is_active == True).select(
+                orderby=db.clusters.name
+            )  # noqa: E712
         else:
             # Regular user sees only assigned clusters
             user_clusters = UserClusterAssignmentModel.get_user_clusters(db, user["id"])
             cluster_ids = [uc["cluster_id"] for uc in user_clusters]
             clusters_list = db(
-                (db.clusters.id.belongs(cluster_ids)) & (db.clusters.is_active == True)
+                (db.clusters.id.belongs(cluster_ids))
+                & (db.clusters.is_active == True)  # noqa: E712
             ).select(orderby=db.clusters.name)
 
         result = []
@@ -163,7 +167,7 @@ async def cluster_detail(cluster_id):
                     return jsonify({"error": "Access denied to cluster"}), 403
 
             cluster = (
-                db((db.clusters.id == cluster_id) & (db.clusters.is_active == True))
+                db((db.clusters.id == cluster_id) & (db.clusters.is_active == True))  # noqa: E712
                 .select()
                 .first()
             )

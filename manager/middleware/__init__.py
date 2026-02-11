@@ -8,6 +8,6 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-from .auth import require_auth, get_current_user, is_admin, AuthContext
+from .auth import AuthContext, get_current_user, is_admin, require_auth
 
 __all__ = ["require_auth", "get_current_user", "is_admin", "AuthContext"]

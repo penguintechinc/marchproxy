@@ -5,10 +5,11 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import socket
 import ipaddress
+import socket
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
+
 from pydal import DAL, Field
 from pydantic import BaseModel, validator
 

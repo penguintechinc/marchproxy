@@ -10,8 +10,9 @@ Licensed under GNU Affero General Public License v3.0
 import logging
 import os
 from datetime import datetime
-from quart import Blueprint, current_app, jsonify, Response
-from prometheus_client import Counter, Gauge, generate_latest, REGISTRY
+
+from prometheus_client import REGISTRY, Gauge, generate_latest
+from quart import Blueprint, Response, current_app, jsonify
 
 logger = logging.getLogger(__name__)
 
@@ -121,12 +122,12 @@ async def metrics():
 
         # Query metrics from database
         total_users = db(db.users).count()
-        active_users = db(db.users.is_active == True).count()
-        total_clusters = db(db.clusters.is_active == True).count()
+        active_users = db(db.users.is_active == True).count()  # noqa: E712
+        total_clusters = db(db.clusters.is_active == True).count()  # noqa: E712
         total_proxies = db(db.proxy_servers).count()
         active_proxies = db(db.proxy_servers.status == "active").count()
-        total_services = db(db.services.is_active == True).count()
-        total_mappings = db(db.mappings.is_active == True).count()
+        total_services = db(db.services.is_active == True).count()  # noqa: E712
+        total_mappings = db(db.mappings.is_active == True).count()  # noqa: E712
 
         # Update Prometheus gauges
         marchproxy_users_total.set(total_users)

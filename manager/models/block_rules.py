@@ -9,7 +9,8 @@ import hashlib
 import json
 import re
 from datetime import datetime
-from typing import Optional, Dict, Any, List, Literal
+from typing import Any, Dict, List, Literal, Optional
+
 from pydal import DAL, Field
 from pydantic import BaseModel, validator
 
@@ -205,9 +206,9 @@ class BlockRuleModel:
         query = db.block_rules.cluster_id == cluster_id
 
         if not include_inactive:
-            query &= db.block_rules.is_active == True
+            query &= db.block_rules.is_active == True  # noqa: E712
             # Exclude expired rules
-            query &= (db.block_rules.expires_at == None) | (
+            query &= (db.block_rules.expires_at == None) | (  # noqa: E711
                 db.block_rules.expires_at > datetime.utcnow()
             )
 
@@ -219,11 +220,11 @@ class BlockRuleModel:
 
         if proxy_type:
             if proxy_type == "alb":
-                query &= db.block_rules.apply_to_alb == True
+                query &= db.block_rules.apply_to_alb == True  # noqa: E712
             elif proxy_type == "nlb":
-                query &= db.block_rules.apply_to_nlb == True
+                query &= db.block_rules.apply_to_nlb == True  # noqa: E712
             elif proxy_type == "egress":
-                query &= db.block_rules.apply_to_egress == True
+                query &= db.block_rules.apply_to_egress == True  # noqa: E712
 
         rules = db(query).select(orderby=db.block_rules.priority)
         return [BlockRuleModel._format_rule(rule) for rule in rules]

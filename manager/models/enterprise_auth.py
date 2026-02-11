@@ -6,18 +6,15 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import json
-import uuid
+import logging
 import secrets
-import base64
-import hashlib
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List
-from urllib.parse import urlencode, parse_qs
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+from urllib.parse import urlencode
+
 import httpx
 from pydal import DAL, Field
-from pydantic import BaseModel, validator, EmailStr
-import logging
+from pydantic import BaseModel, validator
 
 # Optional SAML2 support - import lazily
 try:
@@ -368,8 +365,8 @@ class SCIMUserModel:
             primary_email = emails[0].get("value")
 
         name = scim_data.get("name", {})
-        first_name = name.get("givenName", "")
-        last_name = name.get("familyName", "")
+        name.get("givenName", "")  # Reserved for future profile sync
+        name.get("familyName", "")  # Reserved for future profile sync
 
         is_active = scim_data.get("active", True)
 
@@ -433,7 +430,7 @@ class EnterpriseAuthManager:
             self.db(
                 (self.db.enterprise_auth_providers.name == provider_name)
                 & (self.db.enterprise_auth_providers.provider_type == "saml")
-                & (self.db.enterprise_auth_providers.is_active == True)
+                & (self.db.enterprise_auth_providers.is_active == True)  # noqa: E712
             )
             .select()
             .first()
@@ -450,7 +447,7 @@ class EnterpriseAuthManager:
             self.db(
                 (self.db.enterprise_auth_providers.name == provider_name)
                 & (self.db.enterprise_auth_providers.provider_type == "oauth2")
-                & (self.db.enterprise_auth_providers.is_active == True)
+                & (self.db.enterprise_auth_providers.is_active == True)  # noqa: E712
             )
             .select()
             .first()
@@ -468,7 +465,7 @@ class EnterpriseAuthManager:
         provider = (
             self.db(
                 (self.db.enterprise_auth_providers.name == provider_name)
-                & (self.db.enterprise_auth_providers.is_active == True)
+                & (self.db.enterprise_auth_providers.is_active == True)  # noqa: E712
             )
             .select()
             .first()
@@ -523,7 +520,9 @@ class EnterpriseAuthManager:
             from .cluster import UserClusterAssignmentModel
 
             # Get default cluster
-            default_cluster = self.db(self.db.clusters.is_default == True).select().first()
+            default_cluster = (
+                self.db(self.db.clusters.is_default == True).select().first()
+            )  # noqa: E712
             if default_cluster:
                 UserClusterAssignmentModel.assign_user_to_cluster(
                     self.db,

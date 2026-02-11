@@ -9,18 +9,12 @@ Licensed under GNU Affero General Public License v3.0
 
 import logging
 from datetime import datetime
-from typing import Dict, List
+from typing import List
 
-from quart import Blueprint, g, jsonify, request
+from middleware.rbac import requires_permission
+from models.rbac import Permissions, PermissionScope, RBACModel
 from pydantic import BaseModel, Field, validator
-
-from middleware.rbac import (
-    requires_permission,
-    requires_role,
-    is_admin,
-    can_manage_users,
-)
-from models.rbac import RBACModel, Permissions, PermissionScope, RoleType, DEFAULT_ROLES
+from quart import Blueprint, g, jsonify, request
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +69,7 @@ async def list_roles():
     """
     db = g.db
 
-    roles = db(db.roles.is_active == True).select(orderby=db.roles.name)
+    roles = db(db.roles.is_active == True).select(orderby=db.roles.name)  # noqa: E712
 
     return (
         jsonify(
@@ -115,7 +109,9 @@ async def get_role(role_id: int):
         return jsonify({"error": "Role not found"}), 404
 
     # Get users with this role
-    assignments = db((db.user_roles.role_id == role_id) & (db.user_roles.is_active == True)).select(
+    assignments = db(
+        (db.user_roles.role_id == role_id) & (db.user_roles.is_active == True)
+    ).select(  # noqa: E712
         db.user_roles.ALL,
         db.users.id,
         db.users.username,
@@ -250,7 +246,7 @@ async def update_role(role_id: int):
 
         # Invalidate permission cache for all users with this role
         assignments = db(
-            (db.user_roles.role_id == role_id) & (db.user_roles.is_active == True)
+            (db.user_roles.role_id == role_id) & (db.user_roles.is_active == True)  # noqa: E712
         ).select(db.user_roles.user_id, distinct=True)
 
         for assignment in assignments:

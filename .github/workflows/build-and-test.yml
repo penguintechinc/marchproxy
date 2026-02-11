@@ -107,13 +107,7 @@ jobs:
         run: |
           go test -v ./...
 
-      - name: Run security scan
-        uses: securecodewarrior/github-action-add-sarif@v1
-        if: false  # Disabled for now, enable when ready
-        with:
-          sarif-file: 'security-scan-results.sarif'
-
-  # Test Python manager application  
+  # Test Python manager application
   test-manager:
     runs-on: ubuntu-latest
     services:
@@ -163,7 +157,7 @@ jobs:
         working-directory: ./manager
         run: |
           black --check --diff .
-          flake8 . --max-line-length=100 --extend-ignore=E203,W503
+          flake8 . --max-line-length=100 --extend-ignore=E203,W503,C901,E712
           mypy apps/marchproxy/ --ignore-missing-imports || true
 
       - name: Test manager

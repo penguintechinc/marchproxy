@@ -3,17 +3,14 @@ SAML Authentication Service for MarchProxy Enterprise
 Handles SAML SSO integration with enterprise identity providers
 """
 
-import hashlib
-import json
 import logging
 import time
 import uuid
-from datetime import datetime, timedelta
-from typing import Dict, Optional, Tuple
-from urllib.parse import urlencode, urlparse
+from datetime import datetime
+from typing import Dict, Optional
+from urllib.parse import urlencode
 
-import requests
-from py4web import URL, abort, redirect, request, session
+from py4web import URL, abort, session
 from py4web.utils.auth import Auth
 
 from ...models import get_db

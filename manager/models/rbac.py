@@ -13,7 +13,8 @@ Licensed under GNU Affero General Public License v3.0
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional
+
 from pydal import DAL, Field
 
 
@@ -250,7 +251,7 @@ class RBACModel:
                 & (db.user_roles.role_id == role.id)
                 & (db.user_roles.scope == scope.value)
                 & (db.user_roles.resource_id == resource_id)
-                & (db.user_roles.is_active == True)
+                & (db.user_roles.is_active == True)  # noqa: E712
             )
             .select()
             .first()
@@ -287,7 +288,7 @@ class RBACModel:
         query = (
             (db.user_roles.user_id == user_id)
             & (db.user_roles.role_id == role.id)
-            & (db.user_roles.is_active == True)
+            & (db.user_roles.is_active == True)  # noqa: E712
         )
 
         if resource_id is not None:
@@ -322,7 +323,7 @@ class RBACModel:
 
         # Get all active role assignments
         assignments = db(
-            (db.user_roles.user_id == user_id) & (db.user_roles.is_active == True)
+            (db.user_roles.user_id == user_id) & (db.user_roles.is_active == True)  # noqa: E712
         ).select(
             db.user_roles.ALL,
             db.roles.ALL,
@@ -417,7 +418,7 @@ class RBACModel:
         """Get all roles assigned to user"""
 
         assignments = db(
-            (db.user_roles.user_id == user_id) & (db.user_roles.is_active == True)
+            (db.user_roles.user_id == user_id) & (db.user_roles.is_active == True)  # noqa: E712
         ).select(
             db.user_roles.ALL,
             db.roles.ALL,

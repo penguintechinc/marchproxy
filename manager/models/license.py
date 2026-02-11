@@ -5,13 +5,13 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import httpx
-import json
+import logging
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
+
+import httpx
 from pydal import DAL, Field
 from pydantic import BaseModel, validator
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +107,8 @@ class LicenseCacheModel:
             keepalive_cutoff = datetime.utcnow() - timedelta(hours=24)
             if cache_entry.last_keepalive < keepalive_cutoff:
                 logger.warning(
-                    f"License {license_key} expired due to missed keepalives (last: {cache_entry.last_keepalive})"
+                    f"License {license_key} expired due to missed "
+                    f"keepalives (last: {cache_entry.last_keepalive})"
                 )
                 return {
                     "is_valid": False,
@@ -163,29 +164,37 @@ class LicenseCacheModel:
         now = datetime.utcnow()
         time_since_keepalive = now - cache_entry.last_keepalive
 
+        hours_since = time_since_keepalive.total_seconds() / 3600
+
         if time_since_keepalive > timedelta(hours=24):
             return {
                 "status": "expired",
-                "message": f"License expired due to missed keepalives (last: {cache_entry.last_keepalive})",
-                "hours_since_keepalive": time_since_keepalive.total_seconds() / 3600,
+                "message": (
+                    f"License expired due to missed keepalives"
+                    f" (last: {cache_entry.last_keepalive})"
+                ),
+                "hours_since_keepalive": hours_since,
             }
         elif time_since_keepalive > timedelta(hours=20):
+            hours_left = 24 - hours_since
             return {
                 "status": "critical",
-                "message": f"Keepalive critical - will expire in {24 - time_since_keepalive.total_seconds() / 3600:.1f} hours",
-                "hours_since_keepalive": time_since_keepalive.total_seconds() / 3600,
+                "message": (f"Keepalive critical - will expire" f" in {hours_left:.1f} hours"),
+                "hours_since_keepalive": hours_since,
             }
         elif time_since_keepalive > timedelta(hours=12):
             return {
                 "status": "warning",
-                "message": f"Keepalive warning - {time_since_keepalive.total_seconds() / 3600:.1f} hours since last keepalive",
-                "hours_since_keepalive": time_since_keepalive.total_seconds() / 3600,
+                "message": (
+                    f"Keepalive warning - {hours_since:.1f}" f" hours since last keepalive"
+                ),
+                "hours_since_keepalive": hours_since,
             }
         else:
             return {
                 "status": "healthy",
-                "message": f"Keepalive healthy - last sent {time_since_keepalive.total_seconds() / 3600:.1f} hours ago",
-                "hours_since_keepalive": time_since_keepalive.total_seconds() / 3600,
+                "message": (f"Keepalive healthy - last sent" f" {hours_since:.1f} hours ago"),
+                "hours_since_keepalive": hours_since,
                 "keepalive_count": cache_entry.keepalive_count,
             }
 
@@ -244,7 +253,7 @@ class LicenseValidator:
             if cached and cached.is_valid:
                 grace_cutoff = datetime.utcnow() - timedelta(hours=self.grace_period_hours)
                 if cached.last_validated > grace_cutoff:
-                    logger.warning(f"Using cached license validation during grace period")
+                    logger.warning("Using cached license validation during grace period")
                     return {
                         "is_valid": cached.is_valid,
                         "is_enterprise": cached.is_enterprise,
@@ -355,7 +364,6 @@ class LicenseValidator:
 
     def enforce_proxy_limits(self, db: DAL, license_key: str) -> bool:
         """Enforce proxy count limits across all clusters"""
-        from .proxy import ProxyServerModel
 
         # Get license validation
         license_data = LicenseCacheModel.get_cached_validation(db, license_key)
@@ -635,8 +643,8 @@ class LicenseManager:
                 return False
 
         try:
-            import time
             import socket
+            import time
 
             if not hostname:
                 hostname = socket.gethostname()
@@ -668,9 +676,8 @@ class LicenseManager:
                 if response.status_code == 200:
                     data = response.json()
                     logger.info("License keepalive sent successfully")
-                    logger.debug(
-                        f"Next keepalive suggested: {data.get('metadata', {}).get('next_keepalive_suggested')}"
-                    )
+                    next_keepalive = data.get("metadata", {}).get("next_keepalive_suggested")
+                    logger.debug(f"Next keepalive suggested: {next_keepalive}")
 
                     # Update keepalive timestamp in cache
                     LicenseCacheModel.update_keepalive(self.db, self.license_key)
@@ -697,10 +704,10 @@ class LicenseManager:
             ).count()
 
             # Count clusters
-            active_clusters = self.db(self.db.clusters.is_active == True).count()
+            active_clusters = self.db(self.db.clusters.is_active == True).count()  # noqa: E712
 
             # Count services
-            active_services = self.db(self.db.services.is_active == True).count()
+            active_services = self.db(self.db.services.is_active == True).count()  # noqa: E712
 
             return {
                 "active_users": active_users,

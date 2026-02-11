@@ -3,18 +3,15 @@ OAuth2 Authentication Service for MarchProxy Enterprise
 Handles OAuth2 integration with Google, Microsoft, GitHub, etc.
 """
 
-import hashlib
-import json
 import logging
 import secrets
 import time
-import uuid
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
-from urllib.parse import urlencode, urlparse
+from datetime import datetime
+from typing import Dict, List, Optional
+from urllib.parse import urlencode
 
 import requests
-from py4web import URL, abort, redirect, request, session
+from py4web import URL, abort, session
 from py4web.utils.auth import Auth
 
 from ...models import get_db
@@ -55,8 +52,10 @@ class OAuth2Service:
                 "name": "Microsoft",
                 "client_id": None,
                 "client_secret": None,
-                "authorization_endpoint": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
-                "token_endpoint": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+                "authorization_endpoint": (
+                    "https://login.microsoftonline.com" "/common/oauth2/v2.0/authorize"
+                ),
+                "token_endpoint": ("https://login.microsoftonline.com" "/common/oauth2/v2.0/token"),
                 "userinfo_endpoint": "https://graph.microsoft.com/v1.0/me",
                 "scopes": ["openid", "email", "profile"],
                 "user_mapping": {
@@ -89,8 +88,12 @@ class OAuth2Service:
                 "client_id": None,
                 "client_secret": None,
                 "tenant_id": None,  # Required for Azure AD
-                "authorization_endpoint": "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize",
-                "token_endpoint": "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token",
+                "authorization_endpoint": (
+                    "https://login.microsoftonline.com" "/{tenant}/oauth2/v2.0/authorize"
+                ),
+                "token_endpoint": (
+                    "https://login.microsoftonline.com" "/{tenant}/oauth2/v2.0/token"
+                ),
                 "userinfo_endpoint": "https://graph.microsoft.com/v1.0/me",
                 "scopes": ["openid", "email", "profile"],
                 "user_mapping": {
@@ -184,7 +187,7 @@ class OAuth2Service:
         if request_age > 600:
             abort(400, "OAuth2 request timeout")
 
-        config = self.providers[provider]
+        self.providers[provider]  # Validate provider exists
 
         try:
             # Exchange authorization code for access token

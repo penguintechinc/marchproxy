@@ -12,7 +12,7 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
   GO_VERSION: '1.24'
-  PYTHON_VERSION: '3.11'
+  PYTHON_VERSION: '3.12'
 
 jobs:
   lint-and-test:
@@ -61,7 +61,7 @@ jobs:
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
         black --check .
-        isort --check-only .
+        isort --check-only --profile black --line-length 100 .
 
     - name: Test Python code
       if: matrix.component == 'manager'
@@ -81,7 +81,7 @@ jobs:
         cd ${{ matrix.component }}
         go fmt ./...
         go vet ./...
-        curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.54.2
+        curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.62.2
         golangci-lint run --timeout 5m || true
 
     - name: Test Go code

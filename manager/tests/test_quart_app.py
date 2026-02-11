@@ -4,10 +4,10 @@ Async integration tests for Quart application.
 Tests API endpoints using pytest-asyncio.
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
 import pytest_asyncio
-from unittest.mock import MagicMock, patch, AsyncMock
-import json
 
 
 @pytest_asyncio.fixture
@@ -22,7 +22,12 @@ async def app():
 
         from quart_app import create_app
 
-        app = create_app()
+        test_config = {
+            "DATABASE_URL": "sqlite:///test.db",
+            "JWT_SECRET": "test-secret-key-for-testing-only",
+            "DB_TYPE": "sqlite",
+        }
+        app = create_app(config=test_config)
         app.config["TESTING"] = True
         yield app
 

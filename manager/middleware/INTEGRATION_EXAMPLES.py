@@ -9,9 +9,10 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-from py4web import application, request, response
-from middleware.auth import require_auth, get_current_user, is_admin, AuthContext
 import logging
+
+from middleware.auth import AuthContext, get_current_user, is_admin, require_auth
+from py4web import application, request, response
 
 logger = logging.getLogger(__name__)
 
@@ -224,7 +225,7 @@ def manage_cluster_config(cluster_id):
 
         # Handle GET
         if request.method == "GET":
-            user = auth.get_user()
+            user = auth.get_user()  # noqa: F841
             # Check user has access to this cluster
             # (In real implementation, check database)
             return {"config": {"cluster_id": cluster_id}}
@@ -235,7 +236,7 @@ def manage_cluster_config(cluster_id):
                 response.status = 403
                 return {"error": "Admin required for updates"}
 
-            data = request.json
+            data = request.json  # noqa: F841
             # Update cluster config in database
             return {"status": "updated"}
 
@@ -282,7 +283,7 @@ async def get_proxy_health():
 
     The middleware supports async handlers seamlessly.
     """
-    user = get_current_user()
+    user = get_current_user()  # noqa: F841
 
     # In real implementation, could do async database queries,
     # HTTP requests to proxies, etc.
@@ -306,8 +307,8 @@ def manage_cluster_rules(cluster_id):
     - GET: User must be assigned to cluster
     - DELETE: User must be assigned AND have admin role for cluster
     """
-    user = get_current_user()
-    user_id = user["user_id"]
+    user = get_current_user()  # noqa: F841
+    user_id = user["user_id"]  # noqa: F841
 
     # In real implementation, check database for cluster membership
     # and roles

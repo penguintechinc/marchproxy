@@ -5,14 +5,12 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
+import logging
 import socket
-import json
-import time
 import threading
 from datetime import datetime
-from typing import Optional, Dict, Any, List
 from enum import IntEnum
-import logging
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +101,7 @@ class SyslogClient:
             if self.socket:
                 try:
                     self.socket.close()
-                except:
+                except Exception:
                     pass
                 self.socket = None
             self.connected = False
@@ -148,7 +146,10 @@ class SyslogClient:
             structured_part = "-"
 
         # Format final message (RFC 5424 format)
-        return f"<{priority}>1 {timestamp} {self.hostname} {self.app_name} - - {structured_part} {message}"
+        return (
+            f"<{priority}>1 {timestamp} {self.hostname}"
+            f" {self.app_name} - - {structured_part} {message}"
+        )
 
     def log(
         self,

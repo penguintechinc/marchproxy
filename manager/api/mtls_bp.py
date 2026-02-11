@@ -10,20 +10,18 @@ Licensed under GNU Affero General Public License v3.0
 
 import hashlib
 import logging
-import ssl
 import socket
+import ssl
 from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
-from quart import Blueprint, request, current_app, jsonify, Response
 from cryptography import x509
-from cryptography.hazmat.primitives import serialization, hashes
-from cryptography.hazmat.primitives.asymmetric import rsa, ec
-from pydantic import ValidationError
-
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from middleware.auth import require_auth
 from models.certificate import CertificateModel, TLSProxyCAModel
+from quart import Blueprint, Response, current_app, jsonify, request
 
 logger = logging.getLogger(__name__)
 
@@ -257,7 +255,7 @@ class MTLSManager:
         # Get active certificates for this cluster
         certs = self.db(
             (self.db.certificates.cluster_id == cluster_id)
-            & (self.db.certificates.is_active == True)
+            & (self.db.certificates.is_active == True)  # noqa: E712
         ).select()
 
         server_certs = []

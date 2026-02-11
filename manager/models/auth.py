@@ -5,12 +5,13 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import bcrypt
-import pyotp
 import secrets
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
+import bcrypt
 import jwt
+import pyotp
 from pydal import DAL, Field
 from pydantic import BaseModel, EmailStr, validator
 
@@ -221,8 +222,11 @@ class APITokenModel:
         """Validate API token and return associated info"""
         # Try to find token by checking hash
         for token_record in db(
-            (db.api_tokens.is_active == True)
-            & ((db.api_tokens.expires_at == None) | (db.api_tokens.expires_at > datetime.utcnow()))
+            (db.api_tokens.is_active == True)  # noqa: E712
+            & (
+                (db.api_tokens.expires_at == None)  # noqa: E711
+                | (db.api_tokens.expires_at > datetime.utcnow())
+            )
         ).select():
             if APITokenModel.verify_token(token, token_record.token_hash):
                 # Update last used

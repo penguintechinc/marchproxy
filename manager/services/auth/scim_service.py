@@ -3,13 +3,12 @@ SCIM (System for Cross-domain Identity Management) Service for MarchProxy Enterp
 Handles automated user provisioning from enterprise identity providers
 """
 
-import json
 import logging
 import uuid
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List
 
-from py4web import Field, abort, request
+from py4web import abort
 from py4web.utils.auth import Auth
 
 from ...models import get_db
@@ -185,7 +184,12 @@ class SCIMService:
                                 "name": "primary",
                                 "type": "boolean",
                                 "multiValued": False,
-                                "description": "A Boolean value indicating the 'primary' or preferred attribute value for this attribute",
+                                "description": (
+                                    "A Boolean value indicating the"
+                                    " 'primary' or preferred"
+                                    " attribute value for this"
+                                    " attribute"
+                                ),
                                 "required": False,
                                 "mutability": "readWrite",
                                 "returned": "default",
@@ -199,7 +203,9 @@ class SCIMService:
                         "name": "active",
                         "type": "boolean",
                         "multiValued": False,
-                        "description": "A Boolean value indicating the User's administrative status",
+                        "description": (
+                            "A Boolean value indicating the" " User's administrative status"
+                        ),
                         "required": False,
                         "mutability": "readWrite",
                         "returned": "default",
@@ -207,7 +213,9 @@ class SCIMService:
                 ],
                 "meta": {
                     "resourceType": "Schema",
-                    "location": f"{self.base_url}/Schemas/urn:ietf:params:scim:schemas:core:2.0:User",
+                    "location": (
+                        f"{self.base_url}/Schemas/" "urn:ietf:params:scim:schemas" ":core:2.0:User"
+                    ),
                 },
             }
         ]

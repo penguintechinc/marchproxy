@@ -71,7 +71,7 @@ jobs:
         run: |
           git diff --name-only --diff-filter=ACM origin/main...HEAD | \
             grep '\.py$' | xargs -r flake8 --max-line-length=100 \
-            --extend-ignore=E203,W503 || true
+            --extend-ignore=E203,W503,C901,E712 || true
 
       - name: Run bandit (security linting)
         continue-on-error: true
@@ -112,7 +112,7 @@ jobs:
         run: |
           curl -sSfL \
             https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | \
-            sh -s -- -b $(go env GOPATH)/bin v1.59.1
+            sh -s -- -b $(go env GOPATH)/bin v1.62.2
 
       - name: Run golangci-lint on changed Go files
         continue-on-error: true

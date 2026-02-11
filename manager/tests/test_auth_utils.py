@@ -4,13 +4,10 @@ Self-contained unit tests for authentication utilities.
 No external dependencies required - tests run in isolation.
 """
 
-import unittest
-import hashlib
-import secrets
 import base64
-import json
+import secrets
 import time
-from unittest.mock import patch, MagicMock
+import unittest
 
 
 class TestPasswordHashing(unittest.TestCase):

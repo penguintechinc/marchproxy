@@ -8,16 +8,12 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-from quart import Blueprint, request, current_app, jsonify
-from pydantic import ValidationError
 import logging
-from datetime import datetime
-from models.media_settings import (
-    MediaSettingsModel,
-    UpdateMediaSettingsRequest,
-    MediaSettingsResponse,
-)
+
 from middleware.auth import require_auth
+from models.media_settings import MediaSettingsModel, UpdateMediaSettingsRequest
+from pydantic import ValidationError
+from quart import Blueprint, current_app, jsonify, request
 
 logger = logging.getLogger(__name__)
 
@@ -232,7 +228,6 @@ async def notify_rtmp_config_change(settings: dict):
     """
     logger.info(f"Notifying proxy-rtmp of config change: {settings}")
     # Placeholder for gRPC call
-    pass
 
 
 def get_resolution_label(height: int) -> str:

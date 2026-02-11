@@ -6,13 +6,14 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-from quart import Blueprint, request, current_app, jsonify
-from pydantic import ValidationError, BaseModel
 import logging
 from datetime import datetime
-from typing import Optional, Dict, Any, List
-from models.enterprise_auth import EnterpriseAuthProviderModel
+from typing import Optional
+
 from middleware.auth import require_auth
+from models.enterprise_auth import EnterpriseAuthProviderModel
+from pydantic import BaseModel, ValidationError
+from quart import Blueprint, current_app, jsonify, request
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +74,7 @@ async def providers_list():
 
         @require_auth(admin_required=True)
         async def get_providers(user_data):
-            providers = db(db.enterprise_auth_providers.is_active == True).select()
+            providers = db(db.enterprise_auth_providers.is_active == True).select()  # noqa: E712
 
             result = []
             for provider in providers:

@@ -8,17 +8,14 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import os
 import logging
-from datetime import datetime
+import os
 from typing import Optional
 
-from quart import Quart, jsonify, request
-from quart_cors import cors
-from pydal import DAL
-
-from database import get_db_manager, DatabaseManager
+from database import get_db_manager
 from models.auth import JWTManager
+from quart import Quart, jsonify
+from quart_cors import cors
 
 # Configure logging
 logging.basicConfig(
@@ -503,7 +500,7 @@ async def _initialize_default_data(app: Quart) -> None:
     try:
         from models.auth import UserModel
         from models.cluster import ClusterModel
-        from models.rbac import RBACModel, PermissionScope
+        from models.rbac import PermissionScope, RBACModel
 
         db = app.db
 
@@ -556,7 +553,7 @@ async def _initialize_default_data(app: Quart) -> None:
             # Assign Admin role to default admin user
             try:
                 RBACModel.assign_role(db, admin_id, "admin", scope=PermissionScope.GLOBAL)
-                logger.info(f"Assigned Admin role to default admin user")
+                logger.info("Assigned Admin role to default admin user")
             except Exception as e:
                 logger.warning(f"Could not assign admin role: {e}")
 

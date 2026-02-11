@@ -6,12 +6,11 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import time
-import json
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, Tuple, List
-from pydal import DAL, Field
 import logging
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Tuple
+
+from pydal import DAL, Field
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +126,7 @@ class RateLimitModel:
         deleted = db(
             (db.rate_limits.last_request < cutoff)
             & (
-                (db.rate_limits.is_blocked == False)
+                (db.rate_limits.is_blocked == False)  # noqa: E712
                 | (db.rate_limits.block_until < datetime.utcnow())
             )
         ).delete()
@@ -425,7 +424,8 @@ class XDPRateLimitModel:
     def get_cluster_configs(db: DAL, cluster_id: int) -> List[Dict[str, Any]]:
         """Get all XDP rate limiting configurations for a cluster"""
         configs = db(
-            (db.xdp_rate_limits.cluster_id == cluster_id) & (db.xdp_rate_limits.is_active == True)
+            (db.xdp_rate_limits.cluster_id == cluster_id)
+            & (db.xdp_rate_limits.is_active == True)  # noqa: E712
         ).select(orderby=db.xdp_rate_limits.priority)
 
         result = []

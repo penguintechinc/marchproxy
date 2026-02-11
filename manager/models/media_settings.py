@@ -6,7 +6,8 @@ Licensed under GNU Affero General Public License v3.0
 """
 
 from datetime import datetime
-from typing import Optional, List
+from typing import List, Optional
+
 from pydal import DAL, Field
 from pydantic import BaseModel, validator
 

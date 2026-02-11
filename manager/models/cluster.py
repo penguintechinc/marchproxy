@@ -5,10 +5,11 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import secrets
 import hashlib
+import secrets
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
+
 from pydal import DAL, Field
 from pydantic import BaseModel, validator
 
@@ -86,7 +87,7 @@ class ClusterModel:
     def create_default_cluster(db: DAL, created_by: int) -> tuple[int, str]:
         """Create default cluster for Community edition"""
         # Check if default cluster already exists
-        existing = db(db.clusters.is_default == True).select().first()
+        existing = db(db.clusters.is_default == True).select().first()  # noqa: E712
         if existing:
             return existing.id, None
 
@@ -110,7 +111,9 @@ class ClusterModel:
         """Validate cluster API key and return cluster info"""
         api_key_hash = ClusterModel.hash_api_key(api_key)
         cluster = (
-            db((db.clusters.api_key_hash == api_key_hash) & (db.clusters.is_active == True))
+            db(
+                (db.clusters.api_key_hash == api_key_hash) & (db.clusters.is_active == True)
+            )  # noqa: E712
             .select()
             .first()
         )
@@ -174,7 +177,9 @@ class ClusterModel:
     def get_cluster_config(db: DAL, cluster_id: int) -> Optional[Dict[str, Any]]:
         """Get complete cluster configuration for proxy"""
         cluster = (
-            db((db.clusters.id == cluster_id) & (db.clusters.is_active == True)).select().first()
+            db((db.clusters.id == cluster_id) & (db.clusters.is_active == True))
+            .select()
+            .first()  # noqa: E712
         )
 
         if not cluster:
@@ -182,16 +187,16 @@ class ClusterModel:
 
         # Get services for this cluster
         services = db(
-            (db.services.cluster_id == cluster_id) & (db.services.is_active == True)
+            (db.services.cluster_id == cluster_id) & (db.services.is_active == True)  # noqa: E712
         ).select()
 
         # Get mappings for this cluster
         mappings = db(
-            (db.mappings.cluster_id == cluster_id) & (db.mappings.is_active == True)
+            (db.mappings.cluster_id == cluster_id) & (db.mappings.is_active == True)  # noqa: E712
         ).select()
 
         # Get certificates available to this cluster
-        certificates = db(db.certificates.is_active == True).select()
+        certificates = db(db.certificates.is_active == True).select()  # noqa: E712
 
         return {
             "cluster": {
@@ -257,7 +262,7 @@ class UserClusterAssignmentModel:
             db(
                 (db.user_cluster_assignments.user_id == user_id)
                 & (db.user_cluster_assignments.cluster_id == cluster_id)
-                & (db.user_cluster_assignments.is_active == True)
+                & (db.user_cluster_assignments.is_active == True)  # noqa: E712
             )
             .select()
             .first()
@@ -277,8 +282,8 @@ class UserClusterAssignmentModel:
         """Get all clusters assigned to user"""
         assignments = db(
             (db.user_cluster_assignments.user_id == user_id)
-            & (db.user_cluster_assignments.is_active == True)
-            & (db.clusters.is_active == True)
+            & (db.user_cluster_assignments.is_active == True)  # noqa: E712
+            & (db.clusters.is_active == True)  # noqa: E712
         ).select(
             db.user_cluster_assignments.ALL,
             db.clusters.ALL,
@@ -303,7 +308,7 @@ class UserClusterAssignmentModel:
             db(
                 (db.user_cluster_assignments.user_id == user_id)
                 & (db.user_cluster_assignments.cluster_id == cluster_id)
-                & (db.user_cluster_assignments.is_active == True)
+                & (db.user_cluster_assignments.is_active == True)  # noqa: E712
             )
             .select()
             .first()

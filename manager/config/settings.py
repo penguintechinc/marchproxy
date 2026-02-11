@@ -3,9 +3,10 @@ Configuration management for MarchProxy Manager.
 Priority: Control Panel DB Settings > Environment Variables > Defaults
 """
 
-import os
 import json
-from typing import Dict, Any, Optional
+import os
+from typing import Any, Dict, Optional
+
 from pydal import DAL, Field
 
 
@@ -478,7 +479,7 @@ class ConfigManager:
         if category:
             query &= self.db.system_config.category == category
         if not include_secrets:
-            query &= self.db.system_config.is_secret == False
+            query &= self.db.system_config.is_secret == False  # noqa: E712
 
         configs = {}
         for row in self.db(query).select():

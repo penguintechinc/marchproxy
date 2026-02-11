@@ -5,19 +5,16 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import ssl
-import socket
-import base64
-import httpx
 import hashlib
+import logging
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
+import httpx
 from cryptography import x509
-from cryptography.hazmat.primitives import serialization, hashes
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization
 from pydal import DAL, Field
 from pydantic import BaseModel, validator
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -184,8 +181,8 @@ class CertificateModel:
         """Get certificates that need renewal checking"""
         now = datetime.utcnow()
         certs = db(
-            (db.certificates.auto_renew == True)
-            & (db.certificates.is_active == True)
+            (db.certificates.auto_renew == True)  # noqa: E712
+            & (db.certificates.is_active == True)  # noqa: E712
             & (db.certificates.next_renewal_check <= now)
         ).select()
 
@@ -263,7 +260,8 @@ class CertificateModel:
         """Get certificates expiring within specified days"""
         cutoff_date = datetime.utcnow() + timedelta(days=days)
         certs = db(
-            (db.certificates.expires_at <= cutoff_date) & (db.certificates.is_active == True)
+            (db.certificates.expires_at <= cutoff_date)
+            & (db.certificates.is_active == True)  # noqa: E712
         ).select(orderby=db.certificates.expires_at)
 
         return [
@@ -679,11 +677,10 @@ class TLSProxyCAModel:
         lifetime_years: int = 10,
     ) -> Dict[str, str]:
         """Generate self-signed CA and wildcard certificate with modern crypto"""
+
+        from cryptography.hazmat.primitives import hashes
         from cryptography.hazmat.primitives.asymmetric import ec, rsa
-        from cryptography.hazmat.primitives import serialization, hashes
-        from cryptography import x509
-        from cryptography.x509.oid import NameOID, ExtendedKeyUsageOID
-        import ipaddress
+        from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
         try:
             # Generate CA private key
@@ -937,8 +934,8 @@ class TLSProxyCAModel:
         ca = (
             db(
                 (db.tls_proxy_cas.cluster_id == cluster_id)
-                & (db.tls_proxy_cas.enabled == True)
-                & (db.tls_proxy_cas.is_active == True)
+                & (db.tls_proxy_cas.enabled == True)  # noqa: E712
+                & (db.tls_proxy_cas.is_active == True)  # noqa: E712
             )
             .select()
             .first()
@@ -967,8 +964,8 @@ class TLSProxyCAModel:
         ca = (
             db(
                 (db.tls_proxy_cas.cluster_id == cluster_id)
-                & (db.tls_proxy_cas.enabled == True)
-                & (db.tls_proxy_cas.is_active == True)
+                & (db.tls_proxy_cas.enabled == True)  # noqa: E712
+                & (db.tls_proxy_cas.is_active == True)  # noqa: E712
             )
             .select()
             .first()
@@ -1041,8 +1038,8 @@ class TLSProxyConfigManager:
         config = (
             self.db(
                 (self.db.tls_proxy_configs.cluster_id == cluster_id)
-                & (self.db.tls_proxy_configs.enabled == True)
-                & (self.db.tls_proxy_configs.is_active == True)
+                & (self.db.tls_proxy_configs.enabled == True)  # noqa: E712
+                & (self.db.tls_proxy_configs.is_active == True)  # noqa: E712
             )
             .select()
             .first()

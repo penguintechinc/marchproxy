@@ -5,19 +5,18 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-from quart import Blueprint, request, current_app, jsonify
-from pydantic import ValidationError
 import logging
-from datetime import datetime
+
+from middleware.auth import require_auth
 from models.block_rules import (
     BlockRuleModel,
     BlockRuleSyncModel,
     CreateBlockRuleRequest,
     UpdateBlockRuleRequest,
-    BlockRuleResponse,
 )
 from models.cluster import ClusterModel, UserClusterAssignmentModel
-from middleware.auth import require_auth
+from pydantic import ValidationError
+from quart import Blueprint, current_app, jsonify, request
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +41,9 @@ async def manage_block_rules(user_data, cluster_id):
 
         # Verify cluster exists
         cluster = (
-            db((db.clusters.id == cluster_id) & (db.clusters.is_active == True)).select().first()
+            db((db.clusters.id == cluster_id) & (db.clusters.is_active == True))
+            .select()
+            .first()  # noqa: E712
         )
         if not cluster:
             return jsonify({"error": "Cluster not found"}), 404
@@ -74,7 +75,9 @@ async def manage_block_rules(user_data, cluster_id):
 
         # Verify cluster exists
         cluster = (
-            db((db.clusters.id == cluster_id) & (db.clusters.is_active == True)).select().first()
+            db((db.clusters.id == cluster_id) & (db.clusters.is_active == True))
+            .select()
+            .first()  # noqa: E712
         )
         if not cluster:
             return jsonify({"error": "Cluster not found"}), 404
@@ -210,13 +213,15 @@ async def bulk_create_block_rules(user_data, cluster_id):
     user = user_data
 
     # Verify cluster exists
-    cluster = db((db.clusters.id == cluster_id) & (db.clusters.is_active == True)).select().first()
+    cluster = (
+        db((db.clusters.id == cluster_id) & (db.clusters.is_active == True)).select().first()
+    )  # noqa: E712
     if not cluster:
         return jsonify({"error": "Cluster not found"}), 404
 
     try:
         data_json = await request.get_json()
-    except Exception as e:
+    except Exception:
         return jsonify({"error": "Invalid JSON"}), 400
 
     rules_data = data_json.get("rules", [])

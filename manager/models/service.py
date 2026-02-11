@@ -5,11 +5,12 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import secrets
-import jwt
 import base64
+import secrets
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
+
+import jwt
 from pydal import DAL, Field
 from pydantic import BaseModel, validator
 
@@ -186,7 +187,9 @@ class ServiceModel:
     @staticmethod
     def get_cluster_services(db: DAL, cluster_id: int, user_id: int = None) -> List[Dict[str, Any]]:
         """Get services for cluster (with user access control)"""
-        query = (db.services.cluster_id == cluster_id) & (db.services.is_active == True)
+        query = (db.services.cluster_id == cluster_id) & (
+            db.services.is_active == True
+        )  # noqa: E712
 
         # If user_id provided, filter by user assignments
         if user_id:
@@ -221,7 +224,9 @@ class ServiceModel:
     def get_service_config(db: DAL, service_id: int) -> Optional[Dict[str, Any]]:
         """Get complete service configuration for proxy"""
         service = (
-            db((db.services.id == service_id) & (db.services.is_active == True)).select().first()
+            db((db.services.id == service_id) & (db.services.is_active == True))
+            .select()
+            .first()  # noqa: E712
         )
 
         if not service:
@@ -282,7 +287,7 @@ class UserServiceAssignmentModel:
             db(
                 (db.user_service_assignments.user_id == user_id)
                 & (db.user_service_assignments.service_id == service_id)
-                & (db.user_service_assignments.is_active == True)
+                & (db.user_service_assignments.is_active == True)  # noqa: E712
             )
             .select()
             .first()
@@ -312,8 +317,8 @@ class UserServiceAssignmentModel:
         """Get all services assigned to user"""
         assignments = db(
             (db.user_service_assignments.user_id == user_id)
-            & (db.user_service_assignments.is_active == True)
-            & (db.services.is_active == True)
+            & (db.user_service_assignments.is_active == True)  # noqa: E712
+            & (db.services.is_active == True)  # noqa: E712
         ).select(
             db.user_service_assignments.ALL,
             db.services.ALL,
@@ -347,7 +352,7 @@ class UserServiceAssignmentModel:
             db(
                 (db.user_service_assignments.user_id == user_id)
                 & (db.user_service_assignments.service_id == service_id)
-                & (db.user_service_assignments.is_active == True)
+                & (db.user_service_assignments.is_active == True)  # noqa: E712
             )
             .select()
             .first()

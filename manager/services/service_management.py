@@ -4,17 +4,13 @@ Handles service CRUD operations, authentication configuration, and cluster assig
 """
 
 import base64
-import hashlib
 import json
 import logging
 import secrets
-import time
-import uuid
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional
 
-import jwt
-from py4web import Field, abort, request
+from py4web import abort
 from py4web.utils.auth import Auth
 
 from ..models import get_db
@@ -479,7 +475,7 @@ class ServiceManagementService:
         user = self.db.auth_user[user_id]
 
         # Start with active services
-        query = self.db.services.is_active == True
+        query = self.db.services.is_active == True  # noqa: E712
 
         # Add cluster filter if specified
         if cluster_id:

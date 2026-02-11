@@ -10,9 +10,9 @@ Licensed under GNU Affero General Public License v3.0
 
 import logging
 from functools import wraps
-from typing import Optional, Callable, Any
-from quart import request, g, current_app
-import inspect
+from typing import Any, Callable, Optional
+
+from quart import current_app, g, request
 
 logger = logging.getLogger(__name__)
 

@@ -5,13 +5,12 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import json
-import time
-import threading
 import logging
 import os
-from typing import Dict, List, Any, Optional
+import threading
 from datetime import datetime, timezone
+from typing import Any, Dict, Optional
+
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry

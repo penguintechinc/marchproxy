@@ -5,22 +5,22 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-from quart import Blueprint, request, current_app, jsonify
-from pydantic import ValidationError
 import logging
 from datetime import datetime
+
+from middleware.auth import require_auth
 from models.auth import (
-    UserModel,
-    SessionModel,
-    JWTManager,
+    Enable2FARequest,
     LoginRequest,
     RegisterRequest,
-    Enable2FARequest,
-    Verify2FARequest,
+    SessionModel,
     TokenResponse,
+    UserModel,
     UserResponse,
+    Verify2FARequest,
 )
-from middleware.auth import require_auth
+from pydantic import ValidationError
+from quart import Blueprint, current_app, jsonify, request
 
 logger = logging.getLogger(__name__)
 

@@ -8,9 +8,8 @@ Created: 2026-01-13
 """
 
 import logging
-from datetime import datetime
 
-from models.rbac import RBACModel, DEFAULT_ROLES
+from models.rbac import RBACModel
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +27,7 @@ def upgrade(db):
     logger.info("Default roles initialized")
 
     # Migrate existing admin users to Admin role
-    admin_users = db(db.users.is_admin == True).select()
+    admin_users = db(db.users.is_admin == True).select()  # noqa: E712
     for user in admin_users:
         try:
             from models.rbac import PermissionScope

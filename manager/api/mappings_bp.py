@@ -5,18 +5,19 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-from quart import Blueprint, request, current_app, jsonify
-from pydantic import ValidationError
 import logging
 from datetime import datetime
+
+from middleware.auth import require_auth
 from models.mapping import (
-    MappingModel,
     CreateMappingRequest,
-    UpdateMappingRequest,
+    MappingModel,
     MappingResponse,
     ResolvedMappingResponse,
+    UpdateMappingRequest,
 )
-from middleware.auth import require_auth
+from pydantic import ValidationError
+from quart import Blueprint, current_app, jsonify, request
 
 logger = logging.getLogger(__name__)
 
@@ -258,7 +259,8 @@ async def find_matching_mappings(user_data):
             return (
                 jsonify(
                     {
-                        "error": "Missing required parameters: source_service_id, dest_service_id, port"
+                        "error": "Missing required parameters: "
+                        "source_service_id, dest_service_id, port"
                     }
                 ),
                 400,

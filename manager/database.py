@@ -8,28 +8,27 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import os
 import logging
+import os
 import threading
 from typing import Optional
 from urllib.parse import urlparse
 
+# Import all model classes for table definitions
+from models.auth import APITokenModel, SessionModel, UserModel
+from models.block_rules import BlockRuleModel
+from models.certificate import CertificateModel
+from models.cluster import ClusterModel, UserClusterAssignmentModel
+from models.enterprise_auth import EnterpriseAuthProviderModel
+from models.license import LicenseCacheModel
+from models.mapping import MappingModel
+from models.media_settings import MediaSettingsModel, MediaStreamModel
+from models.proxy import ProxyMetricsModel, ProxyServerModel
+from models.rate_limiting import RateLimitModel
+from models.service import ServiceModel
+from pydal import DAL
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.engine import Engine
-from pydal import DAL
-
-# Import all model classes for table definitions
-from models.auth import UserModel, SessionModel, APITokenModel
-from models.cluster import ClusterModel, UserClusterAssignmentModel
-from models.proxy import ProxyServerModel, ProxyMetricsModel
-from models.service import ServiceModel
-from models.mapping import MappingModel
-from models.certificate import CertificateModel
-from models.license import LicenseCacheModel
-from models.rate_limiting import RateLimitModel
-from models.block_rules import BlockRuleModel
-from models.enterprise_auth import EnterpriseAuthProviderModel
-from models.media_settings import MediaSettingsModel, MediaStreamModel
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +69,7 @@ class DatabaseManager:
         self.pydal_uri = self._convert_url_to_pydal(self.database_url, self.db_type)
 
         logger.info(
-            f"DatabaseManager initialized",
+            "DatabaseManager initialized",
             extra={
                 "db_type": self.db_type,
                 "database_url": self._mask_credentials(self.database_url),
@@ -166,7 +165,7 @@ class DatabaseManager:
             # Create missing tables using SQLAlchemy Base metadata
             missing_tables = required_tables - existing_tables
             logger.info(
-                f"Creating missing tables via SQLAlchemy",
+                "Creating missing tables via SQLAlchemy",
                 extra={"missing_tables": list(missing_tables)},
             )
             Base.metadata.create_all(engine)
