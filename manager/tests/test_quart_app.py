@@ -13,13 +13,13 @@ import pytest_asyncio
 @pytest_asyncio.fixture
 async def app():
     """Create test application."""
-    # Mock the database manager
-    with patch("quart_app.DatabaseManager") as MockDB:
-        mock_db = MagicMock()
-        mock_db.initialize_schema = MagicMock()
-        mock_db.get_pydal_connection = MagicMock(return_value=MagicMock())
-        MockDB.return_value = mock_db
+    # Mock get_db_manager which is called by quart_app._initialize_database()
+    mock_db_manager = MagicMock()
+    mock_db_manager.initialize_schema.return_value = True
+    mock_db_manager.get_pydal_connection.return_value = MagicMock()
+    mock_db_manager.db_type = "sqlite"
 
+    with patch("database.get_db_manager", return_value=mock_db_manager):
         from quart_app import create_app
 
         test_config = {
