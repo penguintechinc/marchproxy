@@ -1,0 +1,62 @@
+namespace: marchproxy-beta
+
+manager:
+  replicas: 2
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  image:
+    registry: registry-dal2.penguintech.io
+    repository: marchproxy/manager
+
+proxy:
+  replicas: 2
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  image:
+    registry: registry-dal2.penguintech.io
+    repository: marchproxy/proxy
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: marchproxy.penguintech.cloud
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: penguintech-wildcard-tls
+      hosts:
+        - marchproxy.penguintech.cloud
+
+postgresql:
+  enabled: true
+  primary:
+    persistence:
+      enabled: true
+      storageClass: longhorn
+      size: 20Gi
+
+redis:
+  enabled: true
+  master:
+    persistence:
+      enabled: true
+      storageClass: longhorn
+      size: 8Gi
+
+networkPolicy:
+  enabled: true
+
+config:
+  logLevel: info

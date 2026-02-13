@@ -9,8 +9,8 @@ env:
   RELEASE_MODE: "false"
 ingress:
   hosts:
-    - host: marchproxy.penguintech.io
+    - host: marchproxy.penguintech.cloud
   tls:
     - secretName: penguintech-wildcard-tls
       hosts:
-        - marchproxy.penguintech.io
+        - marchproxy.penguintech.cloud

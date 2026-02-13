@@ -103,10 +103,10 @@ patches:
     patch: |-
       - op: replace
         path: /spec/rules/0/host
-        value: marchproxy.penguintech.io
+        value: marchproxy.penguintech.cloud
       - op: replace
         path: /spec/tls/0/hosts/0
-        value: marchproxy.penguintech.io
+        value: marchproxy.penguintech.cloud
 
 configMapGenerator:
   - name: marchproxy-config
