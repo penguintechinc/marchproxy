@@ -1,0 +1,116 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: marchproxy-alpha
+
+bases:
+  - ../../base
+
+nameSuffix: -alpha
+namePrefix: ""
+
+replicas:
+  - name: manager-deployment
+    count: 1
+  - name: proxy-deployment
+    count: 1
+
+commonLabels:
+  environment: alpha
+  tier: testing
+
+commonAnnotations:
+  environment: "alpha"
+  deployment-version: "latest"
+
+images:
+  - name: marchproxy-manager
+    newName: registry-dal2.penguintech.io/marchproxy-manager
+    newTag: latest
+  - name: marchproxy-webui
+    newName: registry-dal2.penguintech.io/marchproxy-webui
+    newTag: latest
+  - name: marchproxy-proxy
+    newName: registry-dal2.penguintech.io/marchproxy-proxy
+    newTag: latest
+
+patches:
+  - target:
+      kind: Namespace
+      name: marchproxy
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: marchproxy-alpha
+
+  - target:
+      kind: Deployment
+      name: manager-deployment
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "128Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "100m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "256Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "250m"
+      - op: replace
+        path: /spec/template/spec/containers/0/env
+        value:
+          - name: LOG_LEVEL
+            value: "DEBUG"
+          - name: DEBUG
+            value: "true"
+          - name: ENVIRONMENT
+            value: "alpha"
+
+  - target:
+      kind: Deployment
+      name: proxy-deployment
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "128Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "100m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "256Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "250m"
+      - op: replace
+        path: /spec/template/spec/containers/0/env
+        value:
+          - name: LOG_LEVEL
+            value: "DEBUG"
+          - name: DEBUG
+            value: "true"
+          - name: ENVIRONMENT
+            value: "alpha"
+
+configMapGenerator:
+  - name: marchproxy-config
+    behavior: merge
+    literals:
+      - LOG_LEVEL=DEBUG
+      - ENVIRONMENT=alpha
+      - DEBUG=true
+
+secretGenerator:
+  - name: marchproxy-secrets
+    behavior: merge
+    literals:
+      - CLUSTER_API_KEY=alpha-api-key

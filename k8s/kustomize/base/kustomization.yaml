@@ -1,0 +1,62 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: marchproxy
+
+metadata:
+  name: marchproxy
+  namespace: marchproxy
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - services.yaml
+  - secrets.yaml
+
+commonLabels:
+  app.kubernetes.io/name: marchproxy
+  app.kubernetes.io/managed-by: kustomize
+  app.kubernetes.io/part-of: marchproxy
+
+commonAnnotations:
+  description: "MarchProxy - Unified Load Balancing Platform"
+  documentation: "https://docs.marchproxy.io"
+
+replicas:
+  - name: manager-deployment
+    count: 2
+  - name: proxy-deployment
+    count: 3
+
+images:
+  - name: marchproxy-manager
+    newName: registry-dal2.penguintech.io/marchproxy-manager
+    newTag: v1.0.4
+  - name: marchproxy-webui
+    newName: registry-dal2.penguintech.io/marchproxy-webui
+    newTag: v1.0.0
+  - name: marchproxy-proxy
+    newName: registry-dal2.penguintech.io/marchproxy-proxy
+    newTag: v1.0.0
+
+configMapGenerator:
+  - name: marchproxy-config
+    behavior: merge
+    literals:
+      - APP_NAME=marchproxy
+      - ENVIRONMENT=production
+
+secretGenerator:
+  - name: marchproxy-secrets
+    behavior: merge
+    literals:
+      - CLUSTER_API_KEY=default-api-key
+
+vars:
+  - name: NAMESPACE
+    objref:
+      kind: Namespace
+      name: marchproxy
+      apiVersion: v1
+    fieldref:
+      fieldpath: metadata.name

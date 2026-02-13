@@ -1,0 +1,29 @@
+apiVersion: v2
+name: marchproxy-ingress
+description: MarchProxy Ingress - High-performance reverse proxy with eBPF/XDP acceleration and mTLS
+type: application
+version: 1.0.0
+appVersion: "v1.0.0"
+home: https://github.com/marchproxy/marchproxy
+sources:
+  - https://github.com/marchproxy/marchproxy
+maintainers:
+  - name: MarchProxy Team
+    email: support@marchproxy.io
+keywords:
+  - proxy
+  - ingress
+  - reverse-proxy
+  - networking
+  - security
+  - ebpf
+  - xdp
+  - mtls
+  - performance
+annotations:
+  category: Networking
+  license: AGPL-3.0
+  artifacthub.io/changes: |
+    - kind: added
+      description: Initial Helm chart for MarchProxy Ingress
+  artifacthub.io/prerelease: "false"
