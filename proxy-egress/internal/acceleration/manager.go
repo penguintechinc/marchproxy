@@ -6,11 +6,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/penguintech/marchproxy/internal/acceleration/afxdp"
-	"github.com/penguintech/marchproxy/internal/acceleration/dpdk"
-	"github.com/penguintech/marchproxy/internal/acceleration/sriov"
-	"github.com/penguintech/marchproxy/internal/acceleration/xdp"
-	"github.com/penguintech/marchproxy/internal/proxy"
+	"marchproxy-egress/internal/acceleration/afxdp"
+	_ "marchproxy-egress/internal/acceleration/dpdk" // DPDK support not yet integrated
+	"marchproxy-egress/internal/acceleration/sriov"
+	"marchproxy-egress/internal/acceleration/xdp"
+	"marchproxy-egress/internal/proxy"
 )
 
 // AccelerationManager coordinates all network acceleration technologies
@@ -391,10 +391,11 @@ func (am *AccelerationManager) updateStats() {
 	defer am.mu.Unlock()
 
 	// Collect stats from each technology
-	if am.dpdkManager != nil {
-		am.stats.DPDKStats = am.dpdkManager.GetStats()
-		am.stats.DPDKPackets = am.stats.DPDKStats.RxPackets
-	}
+	// DPDK manager not available in current struct
+	// if am.dpdkManager != nil {
+	//     am.stats.DPDKStats = am.dpdkManager.GetStats()
+	//     am.stats.DPDKPackets = am.stats.DPDKStats.RxPackets
+	// }
 
 	if am.xdpManager != nil {
 		am.stats.XDPStats = am.xdpManager.GetStats()
@@ -411,8 +412,8 @@ func (am *AccelerationManager) updateStats() {
 	}
 
 	// Calculate overall metrics
-	totalPackets := am.stats.DPDKPackets + am.stats.XDPPackets +
-	               am.stats.AFXDPPackets + am.stats.GoProxyPackets
+	// Note: DPDKPackets commented out as DPDK manager not available
+	totalPackets := am.stats.XDPPackets + am.stats.AFXDPPackets + am.stats.GoProxyPackets
 
 	if totalPackets > 0 {
 		timeDiff := time.Since(am.stats.LastUpdate)
@@ -458,9 +459,10 @@ func (am *AccelerationManager) Stop() error {
 		am.xdpManager.Stop()
 	}
 
-	if am.dpdkManager != nil {
-		am.dpdkManager.Stop()
-	}
+	// DPDK manager not available in current struct
+	// if am.dpdkManager != nil {
+	//     am.dpdkManager.Stop()
+	// }
 
 	if am.sriovManager != nil {
 		am.sriovManager.Stop()
@@ -491,9 +493,10 @@ func (am *AccelerationManager) GetActiveTechnologies() []string {
 
 	var active []string
 
-	if am.dpdkManager != nil && am.dpdkManager.IsRunning() {
-		active = append(active, "DPDK")
-	}
+	// DPDK manager not available in current struct
+	// if am.dpdkManager != nil && am.dpdkManager.IsRunning() {
+	//     active = append(active, "DPDK")
+	// }
 	if am.xdpManager != nil && am.xdpManager.IsRunning() {
 		active = append(active, "XDP")
 	}

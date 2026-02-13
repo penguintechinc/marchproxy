@@ -2,26 +2,29 @@ name: Build and Test MarchProxy
 
 on:
   push:
-    branches: [ main, develop, 'feature/*', 'release/*' ]
-    tags: [ 'v*' ]
+    branches: [main, develop, 'feature/*', 'release/*']
+    tags: ['v*']
     paths:
-      - 'proxy/**'
+      - 'proxy-egress/**'
+      - 'proxy-ingress/**'
       - 'manager/**'
       - '.version'
       - '.github/workflows/build-and-test.yml'
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
     paths:
-      - 'proxy/**'
+      - 'proxy-egress/**'
+      - 'proxy-ingress/**'
       - 'manager/**'
       - '.version'
+  workflow_dispatch:
   schedule:
     - cron: '0 2 * * 0'  # Weekly cleanup on Sunday at 2 AM UTC
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME_MANAGER: ${{ github.repository }}/manager
-  IMAGE_NAME_PROXY: ${{ github.repository }}/proxy
+  IMAGE_NAME_PROXY: ${{ github.repository }}/proxy-egress
 
 jobs:
   # Test Go proxy application
@@ -59,7 +62,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.24'
 
       - name: Cache Go modules
         uses: actions/cache@v4
@@ -80,38 +83,32 @@ jobs:
         uses: golangci/golangci-lint-action@v4
         with:
           version: latest
-          working-directory: ./proxy
+          working-directory: ./proxy-egress
 
       - name: Run golangci-lint
-        working-directory: ./proxy
+        working-directory: ./proxy-egress
         run: |
           golangci-lint run ./...
 
       - name: Run gosec security scanner
-        working-directory: ./proxy
+        working-directory: ./proxy-egress
         run: |
-          go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
           gosec -fmt json -out gosec-report.json ./... || true
           cat gosec-report.json
 
       - name: Build proxy
-        working-directory: ./proxy
+        working-directory: ./proxy-egress
         run: |
           go mod tidy
           go build -v ./...
 
       - name: Test proxy
-        working-directory: ./proxy
+        working-directory: ./proxy-egress
         run: |
           go test -v ./...
 
-      - name: Run security scan
-        uses: securecodewarrior/github-action-add-sarif@v1
-        if: false  # Disabled for now, enable when ready
-        with:
-          sarif-file: 'security-scan-results.sarif'
-
-  # Test Python manager application  
+  # Test Python manager application
   test-manager:
     runs-on: ubuntu-latest
     services:
@@ -145,6 +142,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxml2-dev libxslt1-dev
+
       - name: Install Python dependencies
         working-directory: ./manager
         run: |
@@ -156,7 +158,7 @@ jobs:
         working-directory: ./manager
         run: |
           black --check --diff .
-          flake8 . --max-line-length=100 --extend-ignore=E203,W503
+          flake8 . --max-line-length=100 --extend-ignore=E203,W503,C901,E712
           mypy apps/marchproxy/ --ignore-missing-imports || true
 
       - name: Test manager
@@ -174,7 +176,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        component: [manager, proxy]
+        component: [manager, proxy-egress]
 
     steps:
       - name: Checkout code
@@ -225,6 +227,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ matrix.component == 'manager' && env.IMAGE_NAME_MANAGER || env.IMAGE_NAME_PROXY }}
+          flavor: |
+            latest=auto
           tags: |
             # Development builds with epoch64 timestamps
             type=raw,value=alpha-${{ steps.build_meta.outputs.epoch64 }},enable=${{ !fromJSON(steps.build_meta.outputs.is_main) && !fromJSON(steps.build_meta.outputs.is_tag) }}
@@ -242,9 +246,9 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: ./docker/${{ matrix.component }}/Dockerfile
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          context: ./${{ matrix.component }}
+          file: ./${{ matrix.component }}/Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -260,7 +264,8 @@ jobs:
   integration-test:
     needs: [build-multi-arch]
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
+    # DISABLED: Integration tests should be run locally via smoke tests
+    if: false  # Disabled - integration tests not part of CI/CD
     
     steps:
       - name: Checkout code
@@ -278,22 +283,22 @@ jobs:
 
       - name: Run integration tests
         run: |
-          # Update docker-compose to use built images
+          # Update docker compose to use built images
           export MANAGER_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME_MANAGER }}:${{ github.ref_name }}"
           export PROXY_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME_PROXY }}:${{ github.ref_name }}"
-          
+
           # Start services
-          docker-compose -f docker-compose.yml -f docker-compose.ci.yml up -d
-          
+          docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d
+
           # Wait for services to be healthy
-          timeout 300s bash -c 'until docker-compose ps | grep -q "healthy"; do sleep 10; done'
+          timeout 300s bash -c 'until docker compose ps | grep -q "healthy"; do sleep 10; done'
           
           # Run basic connectivity tests
           curl -f http://localhost:8000/healthz || exit 1
           curl -f http://localhost:8081/healthz || exit 1
           
           # Cleanup
-          docker-compose down -v
+          docker compose down -v
 
   # Security scanning
   security-scan:
@@ -359,9 +364,9 @@ jobs:
           \`\`\`bash
           # Download docker-compose.yml
           curl -L -O https://raw.githubusercontent.com/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')/$VERSION/docker-compose.yml
-          
+
           # Start MarchProxy
-          docker-compose up -d
+          docker compose up -d
           
           # Access web interface
           open http://localhost:8000

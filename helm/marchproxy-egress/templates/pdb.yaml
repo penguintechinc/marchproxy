@@ -1,0 +1,14 @@
+{{- if and (eq .Values.deploymentMode "deployment") .Values.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "marchproxy-egress.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "marchproxy-egress.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "marchproxy-egress.selectorLabels" . | nindent 6 }}
+{{- end }}

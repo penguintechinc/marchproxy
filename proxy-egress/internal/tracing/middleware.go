@@ -4,13 +4,12 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/MarchProxy/proxy/internal/middleware"
+	"marchproxy-egress/internal/middleware"
 )
 
 type TracingMiddleware struct {

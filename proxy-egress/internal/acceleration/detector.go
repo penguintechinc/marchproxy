@@ -452,7 +452,7 @@ func (hd *HardwareDetector) evaluateAccelerationTechnologies() {
 
 // printResults prints the detection results
 func (hd *HardwareDetector) printResults() {
-	fmt.Println("\n=== Hardware Acceleration Capability Report ===\n")
+	fmt.Println("\n=== Hardware Acceleration Capability Report ===")
 
 	// CPU Information
 	fmt.Println("CPU Information:")

@@ -1,5 +1,16 @@
 # MarchProxy Egress Dockerfile
-# High-performance Go egress proxy with eBPF/XDP acceleration and mTLS
+# High-performance Go egress proxy with eBPF/XDP acceleration, mTLS, and L7 (Envoy) support
+#
+# Features:
+# - L4 TCP/UDP proxy with eBPF/XDP acceleration
+# - L7 HTTP/1.1, HTTP/2 proxy via Envoy
+# - HTTP/3 (QUIC) support (EXPERIMENTAL)
+# - TLS interception (MITM and pre-configured modes)
+# - Threat intelligence integration
+# - External authorization for traffic control
+
+# Envoy version to use
+ARG ENVOY_VERSION=v1.28-latest
 
 # Build stage
 FROM golang:1.24-bookworm AS builder
@@ -37,32 +48,42 @@ RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo \
     -tags netgo,osusergo \
     -o marchproxy-egress ./cmd/proxy
 
-# Build health check binary
-RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo \
+# Build health check binary if it exists
+RUN if [ -d "./cmd/health" ]; then \
+    CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo \
     -ldflags='-w -s -extldflags "-static"' \
     -tags netgo,osusergo \
-    -o marchproxy-health ./cmd/health
+    -o marchproxy-health ./cmd/health; \
+    fi
 
-# Build metrics binary
-RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo \
+# Build metrics binary if it exists
+RUN if [ -d "./cmd/metrics" ]; then \
+    CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo \
     -ldflags='-w -s -extldflags "-static"' \
     -tags netgo,osusergo \
-    -o marchproxy-metrics ./cmd/metrics
+    -o marchproxy-metrics ./cmd/metrics; \
+    fi
 
-# Build test client for testing
-RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo \
+# Build test client for testing if it exists
+RUN if [ -d "./cmd/test-client" ]; then \
+    CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo \
     -ldflags='-w -s -extldflags "-static"' \
     -tags netgo,osusergo \
-    -o test-client ./cmd/test-client
+    -o test-client ./cmd/test-client; \
+    fi
 
-# Production stage - using debian:12-slim as standard
-FROM debian:12-slim AS production
+# Production stage - using Envoy as base for L7 support
+ARG ENVOY_VERSION=v1.28-latest
+FROM envoyproxy/envoy:${ENVOY_VERSION} AS production
+
+# Switch to root for package installation
+USER root
 
 # Install runtime dependencies for eBPF and networking
+# Note: libbpf1 not available in Ubuntu Focal (Envoy base), skip for now
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     tzdata \
-    libbpf1 \
     libelf1 \
     dumb-init \
     curl \
@@ -72,29 +93,30 @@ RUN apt-get update && apt-get install -y \
     openssl \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user
-RUN groupadd -g 1000 marchproxy && \
-    useradd -u 1000 -g marchproxy -s /bin/bash -m marchproxy
+# Create marchproxy user (envoy user already exists in base image)
+RUN groupadd -g 1000 marchproxy || true && \
+    useradd -u 1000 -g marchproxy -s /bin/bash -m marchproxy || true
 
 # Set working directory
 WORKDIR /app
 
 # Copy binaries from builder
 COPY --from=builder /build/marchproxy-egress /app/
-COPY --from=builder /build/marchproxy-health /app/
-COPY --from=builder /build/marchproxy-metrics /app/
+COPY --from=builder /build/test-client /app/
 
 # Copy configuration files
 COPY --chown=marchproxy:marchproxy configs/ /app/configs/
 
+# Copy Envoy configuration
+COPY --chown=marchproxy:marchproxy envoy/bootstrap.yaml /etc/envoy/envoy.yaml
+
 # Create necessary directories
-RUN mkdir -p /app/logs /app/certs /app/ebpf && \
-    chown -R marchproxy:marchproxy /app/logs /app/certs /app/ebpf
+RUN mkdir -p /app/logs /app/certs /app/ebpf /etc/envoy && \
+    chown -R marchproxy:marchproxy /app/logs /app/certs /app/ebpf && \
+    chown -R marchproxy:marchproxy /etc/envoy && \
+    chmod +x /app/marchproxy-egress /app/test-client
 
-# Make binaries executable
-RUN chmod +x /app/marchproxy-egress /app/marchproxy-health /app/marchproxy-metrics
-
-# Environment variables
+# Environment variables - L4 proxy
 ENV PROXY_TYPE=egress
 ENV PROXY_CONFIG_PATH=/app/configs
 ENV PROXY_LOG_PATH=/app/logs
@@ -104,17 +126,41 @@ ENV MTLS_SERVER_CERT_PATH=/app/certs/egress-server.crt
 ENV MTLS_SERVER_KEY_PATH=/app/certs/egress-server.key
 ENV MTLS_CLIENT_CA_PATH=/app/certs/client-ca-bundle.crt
 
-# Health check
+# Environment variables - L7 Envoy
+ENV L7_ENABLED=true
+ENV ENVOY_BINARY=/usr/local/bin/envoy
+ENV ENVOY_CONFIG_PATH=/etc/envoy/envoy.yaml
+ENV ENVOY_ADMIN_PORT=9901
+ENV ENVOY_LISTEN_PORT=10000
+ENV ENVOY_HTTPS_PORT=10443
+ENV ENVOY_LOG_LEVEL=info
+
+# HTTP/3 (QUIC) - EXPERIMENTAL - disabled by default
+ENV ENVOY_HTTP3_ENABLED=false
+
+# Threat intelligence
+ENV THREAT_IP_BLOCKING_ENABLED=true
+ENV THREAT_DOMAIN_BLOCKING_ENABLED=true
+ENV THREAT_URL_MATCHING_ENABLED=true
+ENV THREAT_DNS_CACHE_ENABLED=true
+
+# External authorization server port
+ENV EXTAUTH_PORT=9002
+
+# Health check - checks both Go proxy and Envoy
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD /app/marchproxy-health || exit 1
+    CMD /app/marchproxy-health && curl -sf http://localhost:9901/ready || exit 1
 
 # Expose ports
-EXPOSE 80 443 8080 8081
+# L4: 8080 (TCP proxy), 8081 (admin/metrics)
+# L7: 10000 (HTTP), 10443 (HTTPS/QUIC), 9901 (Envoy admin)
+# ext_authz: 9002
+EXPOSE 8080 8081 10000 10443 9901 9002
 
 # Switch to non-root user for security
 USER marchproxy
 
-# Start command
+# Start command - Go supervisor manages both L4 proxy and Envoy
 CMD ["dumb-init", "/app/marchproxy-egress"]
 
 # Development stage
@@ -241,14 +287,16 @@ WORKDIR /app
 
 # Copy binary from builder
 COPY --from=builder /build/marchproxy-egress /app/
-COPY --from=builder /build/marchproxy-health /app/
 COPY --from=builder /build/test-client /app/
 
 # Copy configuration
 COPY configs/ /app/configs/
 
+# Copy Envoy configuration
+COPY envoy/bootstrap.yaml /etc/envoy/envoy.yaml
+
 # Make executable
-RUN chmod +x /app/*
+RUN chmod +x /app/marchproxy-egress /app/test-client
 
 # Debug entrypoint
 CMD ["bash"]

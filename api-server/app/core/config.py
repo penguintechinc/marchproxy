@@ -5,7 +5,7 @@ Centralized configuration for MarchProxy API Server.
 Environment variables override defaults defined here.
 """
 
-from typing import List, Optional
+from typing import List, Optional, Union
 from pydantic import Field, PostgresDsn, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -21,7 +21,13 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=True,
-        extra="ignore"
+        extra="ignore",
+        json_schema_extra={
+            "CORS_ORIGINS": {
+                "type": "string",
+                "description": "Comma-separated CORS origins"
+            }
+        }
     )
 
     # Application
@@ -74,10 +80,7 @@ class Settings(BaseSettings):
     HEALTH_CHECK_PATH: str = "/healthz"
 
     # CORS
-    CORS_ORIGINS: List[str] = [
-        "http://localhost:3000",
-        "http://webui:3000"
-    ]
+    CORS_ORIGINS_STR: str = "http://localhost:3010,http://webui:3010"
     CORS_ALLOW_CREDENTIALS: bool = True
     CORS_ALLOW_METHODS: List[str] = ["*"]
     CORS_ALLOW_HEADERS: List[str] = ["*"]
@@ -112,13 +115,12 @@ class Settings(BaseSettings):
         description="Vault namespace (for Vault Enterprise)"
     )
 
-    @field_validator("CORS_ORIGINS", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, v: str | List[str]) -> List[str]:
-        """Parse CORS origins from comma-separated string or list."""
-        if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",")]
-        return v
+    @property
+    def CORS_ORIGINS(self) -> List[str]:
+        """Parse CORS origins from comma-separated string."""
+        if not self.CORS_ORIGINS_STR:
+            return ["http://localhost:3010", "http://webui:3010"]
+        return [origin.strip() for origin in self.CORS_ORIGINS_STR.split(",") if origin.strip()]
 
 
 # Global settings instance

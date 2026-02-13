@@ -1,0 +1,101 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "marchproxy-egress.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "marchproxy-egress.labels" . | nindent 4 }}
+data:
+  # Proxy configuration
+  proxy.yaml: |
+    proxy:
+      type: {{ .Values.config.proxyType }}
+      log_level: {{ .Values.config.logLevel }}
+
+      # mTLS configuration
+      mtls:
+        enabled: {{ .Values.config.mtls.enabled }}
+        {{- if .Values.config.mtls.enabled }}
+        server_cert: {{ .Values.config.mtls.serverCertPath }}
+        server_key: {{ .Values.config.mtls.serverKeyPath }}
+        client_ca: {{ .Values.config.mtls.clientCaPath }}
+        verify_client: {{ .Values.config.mtls.verifyClient }}
+        {{- end }}
+
+      # L7 Envoy configuration
+      l7:
+        enabled: {{ .Values.config.l7.enabled }}
+        {{- if .Values.config.l7.enabled }}
+        envoy_binary: {{ .Values.config.l7.envoyBinary }}
+        envoy_config: {{ .Values.config.l7.envoyConfigPath }}
+        admin_port: {{ .Values.config.l7.envoyAdminPort }}
+        listen_port: {{ .Values.config.l7.envoyListenPort }}
+        https_port: {{ .Values.config.l7.envoyHttpsPort }}
+        log_level: {{ .Values.config.l7.envoyLogLevel }}
+        http3_enabled: {{ .Values.config.l7.http3Enabled }}
+        {{- end }}
+
+      # eBPF/XDP configuration
+      ebpf:
+        enabled: {{ .Values.config.ebpf.enabled }}
+      xdp:
+        enabled: {{ .Values.config.xdp.enabled }}
+        {{- if .Values.config.xdp.enabled }}
+        interface: {{ .Values.config.xdp.interface }}
+        {{- end }}
+
+      # Threat intelligence
+      threat_intel:
+        ip_blocking: {{ .Values.config.threatIntel.ipBlockingEnabled }}
+        domain_blocking: {{ .Values.config.threatIntel.domainBlockingEnabled }}
+        url_matching: {{ .Values.config.threatIntel.urlMatchingEnabled }}
+        dns_cache: {{ .Values.config.threatIntel.dnsCacheEnabled }}
+        {{- if .Values.config.threatIntel.feeds }}
+        feeds:
+          {{- toYaml .Values.config.threatIntel.feeds | nindent 10 }}
+        {{- end }}
+
+      # TLS interception
+      tls_interception:
+        enabled: {{ .Values.config.tlsInterception.enabled }}
+        {{- if .Values.config.tlsInterception.enabled }}
+        mode: {{ .Values.config.tlsInterception.mode }}
+        ca_cert: {{ .Values.config.tlsInterception.caCertPath }}
+        ca_key: {{ .Values.config.tlsInterception.caKeyPath }}
+        {{- end }}
+
+      # External authorization
+      ext_auth:
+        enabled: {{ .Values.config.extAuth.enabled }}
+        {{- if .Values.config.extAuth.enabled }}
+        port: {{ .Values.config.extAuth.port }}
+        {{- end }}
+
+      # Rate limiting
+      rate_limit:
+        enabled: {{ .Values.config.rateLimit.enabled }}
+        {{- if .Values.config.rateLimit.enabled }}
+        requests_per_second: {{ .Values.config.rateLimit.requestsPerSecond }}
+        burst_size: {{ .Values.config.rateLimit.burstSize }}
+        {{- end }}
+
+      # Health check
+      health_check:
+        enabled: {{ .Values.config.healthCheck.enabled }}
+        {{- if .Values.config.healthCheck.enabled }}
+        interval: {{ .Values.config.healthCheck.interval }}
+        timeout: {{ .Values.config.healthCheck.timeout }}
+        unhealthy_threshold: {{ .Values.config.healthCheck.unhealthyThreshold }}
+        {{- end }}
+
+      # Connection settings
+      connection:
+        max_idle_conns: {{ .Values.config.connection.maxIdleConns }}
+        max_idle_conns_per_host: {{ .Values.config.connection.maxIdleConnsPerHost }}
+        idle_conn_timeout: {{ .Values.config.connection.idleConnTimeout }}
+        tls_handshake_timeout: {{ .Values.config.connection.tlsHandshakeTimeout }}
+        expect_continue_timeout: {{ .Values.config.connection.expectContinueTimeout }}
+
+  {{- with .Values.configMap.data }}
+  {{- toYaml . | nindent 2 }}
+  {{- end }}

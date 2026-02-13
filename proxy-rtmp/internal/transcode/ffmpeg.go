@@ -15,12 +15,12 @@ import (
 type ProcessStatus string
 
 const (
-	StatusIdle       ProcessStatus = "idle"
-	StatusStarting   ProcessStatus = "starting"
-	StatusRunning    ProcessStatus = "running"
-	StatusStopping   ProcessStatus = "stopping"
-	StatusStopped    ProcessStatus = "stopped"
-	StatusError      ProcessStatus = "error"
+	StatusIdle     ProcessStatus = "idle"
+	StatusStarting ProcessStatus = "starting"
+	StatusRunning  ProcessStatus = "running"
+	StatusStopping ProcessStatus = "stopping"
+	StatusStopped  ProcessStatus = "stopped"
+	StatusError    ProcessStatus = "error"
 )
 
 // Process represents a running FFmpeg process
@@ -121,9 +121,18 @@ func (m *Manager) buildFFmpegArgs(input string, outputs map[string]string, bitra
 	// Input
 	args = append(args, "-i", input)
 
-	// Video encoding based on encoder type
-	switch m.encoder.HWAccel {
-	case "cuda": // NVIDIA
+	// Video encoding based on encoder type and codec
+	switch {
+	case m.encoder.HWAccel == "cuda" && m.encoder.Codec == "av1": // NVIDIA AV1
+		args = append(args,
+			"-hwaccel", "cuda",
+			"-hwaccel_output_format", "cuda",
+			"-c:v", m.encoder.Encoder,
+			"-preset", m.encoder.Preset,
+			"-vf", fmt.Sprintf("scale_cuda=%d:%d", bitrate.Width, bitrate.Height),
+			"-pix_fmt", "p010le", // 10-bit for better AV1 quality
+		)
+	case m.encoder.HWAccel == "cuda": // NVIDIA H.264/H.265
 		args = append(args,
 			"-hwaccel", "cuda",
 			"-hwaccel_output_format", "cuda",
@@ -131,14 +140,32 @@ func (m *Manager) buildFFmpegArgs(input string, outputs map[string]string, bitra
 			"-preset", m.encoder.Preset,
 			"-vf", fmt.Sprintf("scale_cuda=%d:%d", bitrate.Width, bitrate.Height),
 		)
-	case "amf": // AMD
+	case m.encoder.HWAccel == "amf" && m.encoder.Codec == "av1": // AMD AV1
+		args = append(args,
+			"-hwaccel", "auto",
+			"-c:v", m.encoder.Encoder,
+			"-quality", m.encoder.Preset,
+			"-vf", fmt.Sprintf("scale=%d:%d", bitrate.Width, bitrate.Height),
+			"-pix_fmt", "p010le",
+		)
+	case m.encoder.HWAccel == "amf": // AMD H.264/H.265
 		args = append(args,
 			"-hwaccel", "auto",
 			"-c:v", m.encoder.Encoder,
 			"-quality", m.encoder.Preset,
 			"-vf", fmt.Sprintf("scale=%d:%d", bitrate.Width, bitrate.Height),
 		)
-	default: // CPU
+	case m.encoder.Codec == "av1": // CPU AV1 (libaom or SVT-AV1)
+		args = append(args,
+			"-c:v", m.encoder.Encoder,
+			"-vf", fmt.Sprintf("scale=%d:%d", bitrate.Width, bitrate.Height),
+			"-pix_fmt", "yuv420p",
+		)
+		// SVT-AV1 uses preset differently
+		if m.encoder.Encoder == "libsvtav1" {
+			args = append(args, "-preset", m.encoder.Preset)
+		}
+	default: // CPU H.264/H.265
 		args = append(args,
 			"-c:v", m.encoder.Encoder,
 			"-preset", m.encoder.Preset,
@@ -146,10 +173,19 @@ func (m *Manager) buildFFmpegArgs(input string, outputs map[string]string, bitra
 		)
 	}
 
+	// Bitrate settings - AV1 uses different maxrate ratios
+	maxrateMult := 1
+	if m.encoder.Codec == "av1" {
+		maxrateMult = 15 // AV1 can have higher peak bitrate for same quality
+	} else {
+		maxrateMult = 10
+	}
+	maxrate := bitrate.Bitrate + (bitrate.Bitrate * maxrateMult / 100)
+
 	// Common video params
 	args = append(args,
 		"-b:v", fmt.Sprintf("%dk", bitrate.Bitrate),
-		"-maxrate", fmt.Sprintf("%dk", bitrate.Bitrate),
+		"-maxrate", fmt.Sprintf("%dk", maxrate),
 		"-bufsize", fmt.Sprintf("%dk", bitrate.Bitrate*bitrate.BufferSize),
 		"-r", fmt.Sprintf("%d", bitrate.Framerate),
 		"-g", "60", // GOP size

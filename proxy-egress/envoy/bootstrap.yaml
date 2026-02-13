@@ -1,0 +1,247 @@
+# MarchProxy Egress - Envoy Bootstrap Configuration
+# This is a static configuration file for the L7 egress proxy
+#
+# Features:
+# - HTTP/1.1 and HTTP/2 support on port 10000
+# - HTTPS with TLS termination on port 10443
+# - HTTP/3 (QUIC) support (EXPERIMENTAL) - disabled by default
+# - External Authorization (ext_authz) for threat intelligence
+# - Dynamic forward proxy for egress traffic
+#
+# WARNING: HTTP/3 (QUIC) support is EXPERIMENTAL and may not be stable
+# To enable HTTP/3, set the environment variable ENVOY_HTTP3_ENABLED=true
+
+admin:
+  address:
+    socket_address:
+      address: 0.0.0.0
+      port_value: 9901
+
+node:
+  id: egress-node
+  cluster: marchproxy-egress-cluster
+
+static_resources:
+  listeners:
+    # HTTP/1.1 and HTTP/2 Listener
+    - name: egress_http_listener
+      address:
+        socket_address:
+          address: 0.0.0.0
+          port_value: 10000
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: egress_http
+                codec_type: AUTO
+                access_log:
+                  - name: envoy.access_loggers.stdout
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.access_loggers.stream.v3.StdoutAccessLog
+                      log_format:
+                        json_format:
+                          timestamp: "%START_TIME%"
+                          client_ip: "%DOWNSTREAM_REMOTE_ADDRESS_WITHOUT_PORT%"
+                          method: "%REQ(:METHOD)%"
+                          path: "%REQ(:PATH)%"
+                          host: "%REQ(:AUTHORITY)%"
+                          protocol: "%PROTOCOL%"
+                          response_code: "%RESPONSE_CODE%"
+                          response_flags: "%RESPONSE_FLAGS%"
+                          bytes_sent: "%BYTES_SENT%"
+                          duration_ms: "%DURATION%"
+                          upstream_host: "%UPSTREAM_HOST%"
+                          user_agent: "%REQ(USER-AGENT)%"
+                          x_forwarded_for: "%REQ(X-FORWARDED-FOR)%"
+                          request_id: "%REQ(X-REQUEST-ID)%"
+                http_filters:
+                  # External Authorization filter for threat intelligence
+                  # This calls the Go ext_authz server to check:
+                  # - IP blocklists
+                  # - Domain blocklists
+                  # - URL pattern matching
+                  # - Resolved domain blocking
+                  - name: envoy.filters.http.ext_authz
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
+                      transport_api_version: V3
+                      grpc_service:
+                        envoy_grpc:
+                          cluster_name: ext_authz_cluster
+                        timeout: 0.1s
+                      failure_mode_allow: false
+                      with_request_body:
+                        max_request_bytes: 8192
+                        allow_partial_message: true
+                        pack_as_bytes: true
+                      status_on_error:
+                        code: ServiceUnavailable
+                      include_peer_certificate: true
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+                route_config:
+                  name: egress_route
+                  virtual_hosts:
+                    - name: egress_service
+                      domains:
+                        - "*"
+                      routes:
+                        - match:
+                            prefix: "/"
+                          route:
+                            cluster: dynamic_forward_proxy_cluster
+                            timeout: 30s
+                            retry_policy:
+                              retry_on: "5xx,reset,connect-failure"
+                              num_retries: 2
+                              per_try_timeout: 10s
+
+    # HTTPS Listener with TLS termination/interception
+    - name: egress_https_listener
+      address:
+        socket_address:
+          address: 0.0.0.0
+          port_value: 10443
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: egress_https
+                codec_type: AUTO
+                http2_protocol_options:
+                  max_concurrent_streams: 100
+                  initial_stream_window_size: 65536
+                  initial_connection_window_size: 1048576
+                access_log:
+                  - name: envoy.access_loggers.stdout
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.access_loggers.stream.v3.StdoutAccessLog
+                      log_format:
+                        json_format:
+                          timestamp: "%START_TIME%"
+                          client_ip: "%DOWNSTREAM_REMOTE_ADDRESS_WITHOUT_PORT%"
+                          method: "%REQ(:METHOD)%"
+                          path: "%REQ(:PATH)%"
+                          host: "%REQ(:AUTHORITY)%"
+                          protocol: "%PROTOCOL%"
+                          response_code: "%RESPONSE_CODE%"
+                          tls_version: "%DOWNSTREAM_TLS_VERSION%"
+                          tls_cipher: "%DOWNSTREAM_TLS_CIPHER%"
+                http_filters:
+                  - name: envoy.filters.http.ext_authz
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
+                      transport_api_version: V3
+                      grpc_service:
+                        envoy_grpc:
+                          cluster_name: ext_authz_cluster
+                        timeout: 0.1s
+                      failure_mode_allow: false
+                      include_peer_certificate: true
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+                route_config:
+                  name: egress_https_route
+                  virtual_hosts:
+                    - name: egress_https_service
+                      domains:
+                        - "*"
+                      routes:
+                        - match:
+                            prefix: "/"
+                          route:
+                            cluster: dynamic_forward_proxy_cluster
+                            timeout: 30s
+                            retry_policy:
+                              retry_on: "5xx,reset,connect-failure"
+                              num_retries: 2
+
+  clusters:
+    # External Authorization cluster (Go ext_authz server)
+    # This is the threat intelligence decision engine
+    - name: ext_authz_cluster
+      type: STATIC
+      connect_timeout: 0.25s
+      typed_extension_protocol_options:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          explicit_http_config:
+            http2_protocol_options: {}
+      load_assignment:
+        cluster_name: ext_authz_cluster
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: 127.0.0.1
+                      port_value: 9002
+
+    # Dynamic forward proxy cluster for egress traffic
+    # This handles actual outbound connections to internet destinations
+    - name: dynamic_forward_proxy_cluster
+      type: LOGICAL_DNS
+      connect_timeout: 5s
+      dns_lookup_family: V4_ONLY
+      lb_policy: ROUND_ROBIN
+      circuit_breakers:
+        thresholds:
+          - priority: DEFAULT
+            max_connections: 10000
+            max_pending_requests: 10000
+            max_requests: 10000
+            max_retries: 3
+      load_assignment:
+        cluster_name: dynamic_forward_proxy_cluster
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      # This is a placeholder - actual routing is done dynamically
+                      # based on the Host header via DNS lookup
+                      address: 0.0.0.0
+                      port_value: 443
+
+    # xDS Control Plane cluster (for dynamic configuration)
+    - name: xds_cluster
+      type: STRICT_DNS
+      connect_timeout: 5s
+      typed_extension_protocol_options:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          explicit_http_config:
+            http2_protocol_options: {}
+      load_assignment:
+        cluster_name: xds_cluster
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: api-server
+                      port_value: 18000
+
+# Runtime configuration for resource limits and overload protection
+layered_runtime:
+  layers:
+    - name: static_layer_0
+      static_layer:
+        envoy:
+          resource_limits:
+            listener:
+              egress_http_listener:
+                connection_limit: 50000
+              egress_https_listener:
+                connection_limit: 50000
+        overload:
+          global_downstream_max_connections: 100000
+        re2:
+          max_program_size:
+            error_level: 1000
+            warn_level: 500

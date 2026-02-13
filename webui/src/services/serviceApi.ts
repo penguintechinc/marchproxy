@@ -45,7 +45,7 @@ export const serviceApi = {
    * Get all services with optional filtering
    */
   list: async (params?: ServiceListParams): Promise<PaginatedResponse<Service>> => {
-    const response = await apiClient.get<PaginatedResponse<Service>>('/api/services', {
+    const response = await apiClient.get<PaginatedResponse<Service>>('/api/v1/services', {
       params
     });
     return response.data;
@@ -55,7 +55,7 @@ export const serviceApi = {
    * Get a single service by ID
    */
   get: async (id: number): Promise<Service> => {
-    const response = await apiClient.get<Service>(`/api/services/${id}`);
+    const response = await apiClient.get<Service>(`/api/v1/services/${id}`);
     return response.data;
   },
 
@@ -63,7 +63,7 @@ export const serviceApi = {
    * Create a new service
    */
   create: async (data: CreateServiceRequest): Promise<Service> => {
-    const response = await apiClient.post<ApiResponse<Service>>('/api/services', data);
+    const response = await apiClient.post<ApiResponse<Service>>('/api/v1/services', data);
     return response.data.data;
   },
 
@@ -71,7 +71,7 @@ export const serviceApi = {
    * Update an existing service
    */
   update: async (id: number, data: UpdateServiceRequest): Promise<Service> => {
-    const response = await apiClient.put<ApiResponse<Service>>(`/api/services/${id}`, data);
+    const response = await apiClient.put<ApiResponse<Service>>(`/api/v1/services/${id}`, data);
     return response.data.data;
   },
 
@@ -79,7 +79,7 @@ export const serviceApi = {
    * Delete a service
    */
   delete: async (id: number): Promise<void> => {
-    await apiClient.delete(`/api/services/${id}`);
+    await apiClient.delete(`/api/v1/services/${id}`);
   },
 
   /**
@@ -87,7 +87,7 @@ export const serviceApi = {
    */
   regenerateToken: async (id: number): Promise<ServiceToken> => {
     const response = await apiClient.post<ServiceToken>(
-      `/api/services/${id}/regenerate-token`
+      `/api/v1/services/${id}/regenerate-token`
     );
     return response.data;
   },
@@ -96,7 +96,7 @@ export const serviceApi = {
    * Get service token
    */
   getToken: async (id: number): Promise<ServiceToken> => {
-    const response = await apiClient.get<ServiceToken>(`/api/services/${id}/token`);
+    const response = await apiClient.get<ServiceToken>(`/api/v1/services/${id}/token`);
     return response.data;
   },
 
@@ -104,7 +104,7 @@ export const serviceApi = {
    * Get service mappings (source services that can access this service)
    */
   getMappings: async (id: number): Promise<Service[]> => {
-    const response = await apiClient.get<Service[]>(`/api/services/${id}/mappings`);
+    const response = await apiClient.get<Service[]>(`/api/v1/services/${id}/mappings`);
     return response.data;
   },
 
@@ -112,7 +112,7 @@ export const serviceApi = {
    * Add service mapping
    */
   addMapping: async (serviceId: number, targetServiceId: number): Promise<void> => {
-    await apiClient.post(`/api/services/${serviceId}/mappings`, {
+    await apiClient.post(`/api/v1/services/${serviceId}/mappings`, {
       target_service_id: targetServiceId
     });
   },
@@ -121,6 +121,6 @@ export const serviceApi = {
    * Remove service mapping
    */
   removeMapping: async (serviceId: number, targetServiceId: number): Promise<void> => {
-    await apiClient.delete(`/api/services/${serviceId}/mappings/${targetServiceId}`);
+    await apiClient.delete(`/api/v1/services/${serviceId}/mappings/${targetServiceId}`);
   }
 };

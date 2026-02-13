@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/penguintech/marchproxy/internal/auth"
-	"github.com/penguintech/marchproxy/internal/manager"
+	"marchproxy-egress/internal/auth"
+	"marchproxy-egress/internal/manager"
 )
 
 func main() {

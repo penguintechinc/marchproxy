@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/MarchProxy/proxy/internal/manager"
-	"github.com/MarchProxy/proxy/internal/middleware"
+	"marchproxy-egress/internal/manager"
+	"marchproxy-egress/internal/middleware"
 )
 
 type CircuitBreakerMiddleware struct {
@@ -89,7 +89,7 @@ func (cbm *CircuitBreakerMiddleware) ProcessError(err error, ctx *middleware.Mid
 		return err
 	}
 
-	breaker, ok := ctx.GetData("circuit_breaker").(*CircuitBreaker)
+	_, ok := ctx.GetData("circuit_breaker").(*CircuitBreaker)
 	if !ok {
 		return err
 	}
@@ -142,8 +142,8 @@ type CircuitBreakerError struct {
 }
 
 func (cbe *CircuitBreakerError) Error() string {
-	return fmt.Sprintf("circuit breaker for service %s:%d is %s: %v", 
-		cbe.Service.Host, cbe.Service.Port, cbe.State, cbe.Err)
+	return fmt.Sprintf("circuit breaker for service %s:%d is %s: %v",
+		cbe.Service.IPFQDN, cbe.Service.Port, cbe.State, cbe.Err)
 }
 
 func (cbe *CircuitBreakerError) Unwrap() error {
@@ -167,14 +167,22 @@ func NewCircuitBreakerProxy(config Config) *CircuitBreakerProxy {
 }
 
 func (cbp *CircuitBreakerProxy) ExecuteRequest(service *manager.Service, req *http.Request) (*http.Response, error) {
-	return cbp.serviceBreaker.ExecuteRequestWithContext(req.Context(), service, func(ctx context.Context) (interface{}, error) {
+	result, err := cbp.serviceBreaker.ExecuteRequestWithContext(req.Context(), service, func(ctx context.Context) (interface{}, error) {
 		reqCopy := req.Clone(ctx)
 		reqCopy.URL.Scheme = service.Scheme
 		reqCopy.URL.Host = fmt.Sprintf("%s:%d", service.Host, service.Port)
 		reqCopy.RequestURI = ""
-		
+
 		return cbp.client.Do(reqCopy)
 	})
+	if err != nil {
+		return nil, err
+	}
+	resp, ok := result.(*http.Response)
+	if !ok {
+		return nil, fmt.Errorf("unexpected response type")
+	}
+	return resp, nil
 }
 
 func (cbp *CircuitBreakerProxy) GetBreaker(service *manager.Service) *CircuitBreaker {

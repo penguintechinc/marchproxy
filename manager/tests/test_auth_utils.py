@@ -4,13 +4,10 @@ Self-contained unit tests for authentication utilities.
 No external dependencies required - tests run in isolation.
 """
 
-import unittest
-import hashlib
-import secrets
 import base64
-import json
+import secrets
 import time
-from unittest.mock import patch, MagicMock
+import unittest
 
 
 class TestPasswordHashing(unittest.TestCase):
@@ -24,19 +21,19 @@ class TestPasswordHashing(unittest.TestCase):
         salt = bcrypt.gensalt()
 
         # Test hashing
-        hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+        hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
         self.assertIsInstance(hashed, bytes)
-        self.assertTrue(hashed.startswith(b'$2b$'))
+        self.assertTrue(hashed.startswith(b"$2b$"))
 
         # Test verification
-        self.assertTrue(bcrypt.checkpw(password.encode('utf-8'), hashed))
-        self.assertFalse(bcrypt.checkpw("wrong_password".encode('utf-8'), hashed))
+        self.assertTrue(bcrypt.checkpw(password.encode("utf-8"), hashed))
+        self.assertFalse(bcrypt.checkpw("wrong_password".encode("utf-8"), hashed))
 
     def test_token_generation(self):
         """Test secure token generation."""
         # Test Base64 token generation
         token = secrets.token_urlsafe(32)
-        self.assertEqual(len(base64.urlsafe_b64decode(token + '==')), 32)
+        self.assertEqual(len(base64.urlsafe_b64decode(token + "==")), 32)
 
         # Test different tokens are unique
         tokens = [secrets.token_urlsafe(32) for _ in range(100)]
@@ -53,7 +50,7 @@ class TestJWTUtilities(unittest.TestCase):
             "service_id": 1,
             "service_name": "test-service",
             "iat": int(time.time()),
-            "exp": int(time.time()) + 3600
+            "exp": int(time.time()) + 3600,
         }
 
     def test_jwt_creation_verification(self):
@@ -102,16 +99,16 @@ class TestLicenseValidation(unittest.TestCase):
         valid_formats = [
             "PENG-1234-5678-9012-3456-ABCD",
             "PENG-0000-0000-0000-0000-0000",
-            "PENG-FFFF-EEEE-DDDD-CCCC-BBBB"
+            "PENG-FFFF-EEEE-DDDD-CCCC-BBBB",
         ]
 
         invalid_formats = [
             "INVALID-1234-5678-9012-3456-ABCD",  # Wrong prefix
-            "PENG-123-5678-9012-3456-ABCD",      # Wrong segment length
-            "PENG-1234-5678-9012-3456",          # Missing segment
-            "peng-1234-5678-9012-3456-abcd",     # Wrong case
-            "",                                   # Empty
-            "PENG-1234-5678-9012-3456-ABCD-EXTRA"  # Too many segments
+            "PENG-123-5678-9012-3456-ABCD",  # Wrong segment length
+            "PENG-1234-5678-9012-3456",  # Missing segment
+            "peng-1234-5678-9012-3456-abcd",  # Wrong case
+            "",  # Empty
+            "PENG-1234-5678-9012-3456-ABCD-EXTRA",  # Too many segments
         ]
 
         def validate_license_format(license_key):
@@ -119,17 +116,17 @@ class TestLicenseValidation(unittest.TestCase):
             if not license_key:
                 return False
 
-            parts = license_key.split('-')
+            parts = license_key.split("-")
             if len(parts) != 6:
                 return False
 
-            if parts[0] != 'PENG':
+            if parts[0] != "PENG":
                 return False
 
             for part in parts[1:]:
                 if len(part) != 4:
                     return False
-                if not all(c.isalnum() and c.isupper() for c in part):
+                if not all(c.isupper() or c.isdigit() for c in part):
                     return False
 
             return True
@@ -138,7 +135,10 @@ class TestLicenseValidation(unittest.TestCase):
             self.assertTrue(validate_license_format(valid_key), f"Should be valid: {valid_key}")
 
         for invalid_key in invalid_formats:
-            self.assertFalse(validate_license_format(invalid_key), f"Should be invalid: {invalid_key}")
+            self.assertFalse(
+                validate_license_format(invalid_key),
+                f"Should be invalid: {invalid_key}",
+            )
 
 
 class TestClusterManagement(unittest.TestCase):
@@ -146,6 +146,7 @@ class TestClusterManagement(unittest.TestCase):
 
     def test_api_key_generation(self):
         """Test cluster API key generation."""
+
         def generate_cluster_api_key():
             """Generate a secure API key for cluster."""
             return secrets.token_urlsafe(48)
@@ -161,6 +162,7 @@ class TestClusterManagement(unittest.TestCase):
 
     def test_cluster_validation(self):
         """Test cluster configuration validation."""
+
         def validate_cluster_config(config):
             """Validate cluster configuration."""
             required_fields = ["name", "description", "syslog_endpoint"]
@@ -184,7 +186,7 @@ class TestClusterManagement(unittest.TestCase):
         valid_config = {
             "name": "test-cluster",
             "description": "Test cluster",
-            "syslog_endpoint": "syslog.example.com:514"
+            "syslog_endpoint": "syslog.example.com:514",
         }
         valid, msg = validate_cluster_config(valid_config)
         self.assertTrue(valid, msg)
@@ -193,8 +195,16 @@ class TestClusterManagement(unittest.TestCase):
         invalid_configs = [
             {},  # Empty
             {"name": "test"},  # Missing fields
-            {"name": "ab", "description": "Test", "syslog_endpoint": "host:514"},  # Name too short
-            {"name": "test", "description": "Test", "syslog_endpoint": "invalid"},  # Bad endpoint
+            {
+                "name": "ab",
+                "description": "Test",
+                "syslog_endpoint": "host:514",
+            },  # Name too short
+            {
+                "name": "test",
+                "description": "Test",
+                "syslog_endpoint": "invalid",
+            },  # Bad endpoint
         ]
 
         for config in invalid_configs:
@@ -207,6 +217,7 @@ class TestServiceManagement(unittest.TestCase):
 
     def test_service_config_validation(self):
         """Test service configuration validation."""
+
         def validate_service_config(config):
             """Validate service configuration."""
             if not isinstance(config, dict):
@@ -241,7 +252,11 @@ class TestServiceManagement(unittest.TestCase):
         invalid_configs = [
             {},  # Empty
             {"name": "test"},  # Missing fields
-            {"name": "test", "ip_fqdn": "host", "auth_type": "invalid"},  # Bad auth_type
+            {
+                "name": "test",
+                "ip_fqdn": "host",
+                "auth_type": "invalid",
+            },  # Bad auth_type
             {"name": "test", "ip_fqdn": "", "auth_type": "token"},  # Empty ip_fqdn
         ]
 
@@ -255,22 +270,22 @@ class TestHealthChecks(unittest.TestCase):
 
     def test_health_check_response_format(self):
         """Test health check response format."""
+
         def generate_health_response(status, checks=None):
             """Generate health check response."""
             response = {
                 "status": status,
                 "timestamp": int(time.time()),
                 "version": "v0.1.0.test",
-                "checks": checks or {}
+                "checks": checks or {},
             }
             return response
 
         # Test healthy response
-        healthy_response = generate_health_response("healthy", {
-            "database": "connected",
-            "redis": "connected",
-            "license": "valid"
-        })
+        healthy_response = generate_health_response(
+            "healthy",
+            {"database": "connected", "redis": "connected", "license": "valid"},
+        )
 
         self.assertEqual(healthy_response["status"], "healthy")
         self.assertIn("timestamp", healthy_response)
@@ -278,16 +293,16 @@ class TestHealthChecks(unittest.TestCase):
         self.assertEqual(len(healthy_response["checks"]), 3)
 
         # Test unhealthy response
-        unhealthy_response = generate_health_response("unhealthy", {
-            "database": "disconnected",
-            "license": "expired"
-        })
+        unhealthy_response = generate_health_response(
+            "unhealthy", {"database": "disconnected", "license": "expired"}
+        )
 
         self.assertEqual(unhealthy_response["status"], "unhealthy")
         self.assertIn("checks", unhealthy_response)
 
     def test_metric_formatting(self):
         """Test Prometheus metric formatting."""
+
         def format_prometheus_metric(name, value, labels=None, help_text=""):
             """Format a Prometheus metric."""
             lines = []
@@ -313,7 +328,7 @@ class TestHealthChecks(unittest.TestCase):
             "http_requests_total",
             100,
             {"method": "GET", "status": "200"},
-            "Total HTTP requests"
+            "Total HTTP requests",
         )
 
         self.assertIn("# HELP http_requests_total Total HTTP requests", labeled_metric)

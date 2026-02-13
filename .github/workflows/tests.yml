@@ -1,10 +1,14 @@
-name: Integration & E2E Tests
+name: Integration & E2E Tests (DISABLED - Use Smoke Tests Locally)
 
+# DISABLED: Integration and E2E tests should be run locally via smoke tests
+# CI/CD should only contain static tests (linters, unit tests, security scans)
+# These tests require docker-compose and external services
 on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main, develop ]
+  workflow_dispatch:  # Only run manually, not on push/PR
+  # push:
+  #   branches: [ main, develop ]
+  # pull_request:
+  #   branches: [ main, develop ]
 
 jobs:
   api-integration-tests:
@@ -13,7 +17,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:14-alpine
+        image: postgres:14-bookworm
         env:
           POSTGRES_DB: marchproxy_test
           POSTGRES_USER: marchproxy
@@ -38,8 +42,11 @@ jobs:
       - name: Install dependencies
         run: |
           cd api-server
+          pip install --upgrade pip
           pip install -r requirements.txt
           pip install -r requirements-test.txt
+          # Ensure pydantic v2 is installed (override any v1 pulled by dependencies)
+          pip install --upgrade 'pydantic>=2.5.0' 'pydantic-settings>=2.1.0'
 
       - name: Run integration tests
         env:
@@ -72,7 +79,7 @@ jobs:
       - name: Install dependencies
         run: |
           cd webui
-          npm ci
+          npm ci --legacy-peer-deps
 
       - name: Install Playwright browsers
         run: |
@@ -86,7 +93,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: playwright-report
           path: webui/playwright-report/
@@ -110,7 +117,7 @@ jobs:
 
       - name: Start services
         run: |
-          docker-compose -f docker-compose.test.yml up -d
+          docker compose -f docker-compose.test.yml up -d
           sleep 30
 
       - name: Run E2E tests
@@ -119,7 +126,7 @@ jobs:
 
       - name: Upload E2E test results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: e2e-report
           path: reports/e2e-report.html
@@ -128,8 +135,8 @@ jobs:
       - name: Stop services
         if: always()
         run: |
-          docker-compose -f docker-compose.test.yml logs
-          docker-compose -f docker-compose.test.yml down -v
+          docker compose -f docker-compose.test.yml logs
+          docker compose -f docker-compose.test.yml down -v
 
   security-tests:
     name: Security Tests
@@ -157,11 +164,12 @@ jobs:
 
       - name: Run Safety check
         run: |
-          safety check --json --output reports/safety-report.json || true
+          mkdir -p reports
+          safety check || true
 
       - name: Upload security reports
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: security-reports
           path: reports/

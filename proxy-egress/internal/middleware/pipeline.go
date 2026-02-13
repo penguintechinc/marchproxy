@@ -1,15 +1,16 @@
 package middleware
 
 import (
-	"context"
+	// "context"  // Unused
 	"fmt"
 	"net/http"
-	"reflect"
+	// "reflect"  // Unused
 	"sort"
+	"strings"  // Added - was missing
 	"sync"
 	"time"
 
-	"github.com/penguintech/marchproxy/internal/manager"
+	"marchproxy-egress/internal/manager"
 )
 
 // Pipeline manages middleware execution order and context
@@ -54,6 +55,36 @@ type MiddlewareContext struct {
 	RetryCount    int
 	AbortPipeline bool
 	SkipCount     int
+}
+
+// SetData sets a value in the context variables
+func (ctx *MiddlewareContext) SetData(key string, value interface{}) {
+	if ctx.Variables == nil {
+		ctx.Variables = make(map[string]interface{})
+	}
+	ctx.Variables[key] = value
+}
+
+// GetData retrieves a value from the context variables
+func (ctx *MiddlewareContext) GetData(key string) interface{} {
+	if ctx.Variables == nil {
+		return nil
+	}
+	return ctx.Variables[key]
+}
+
+// HasData checks if a key exists in the context variables
+func (ctx *MiddlewareContext) HasData(key string) bool {
+	if ctx.Variables == nil {
+		return false
+	}
+	_, exists := ctx.Variables[key]
+	return exists
+}
+
+// StopProcessing stops further middleware processing
+func (ctx *MiddlewareContext) StopProcessing() {
+	ctx.AbortPipeline = true
 }
 
 // PipelineConfig holds pipeline configuration
@@ -641,7 +672,7 @@ func (p *Pipeline) collectStatistics() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	totalRequests := p.stats.TotalRequests
+	_ = p.stats.TotalRequests  // totalRequests declared but not used
 	processedRequests := p.stats.ProcessedRequests
 
 	// Calculate average latency

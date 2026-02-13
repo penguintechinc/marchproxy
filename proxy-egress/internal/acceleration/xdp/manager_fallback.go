@@ -11,6 +11,7 @@ import (
 type XDPManager struct {
 	config  *XDPConfig
 	running bool
+	enabled bool
 }
 
 // XDPConfig holds XDP configuration
@@ -23,11 +24,24 @@ type XDPConfig struct {
 
 // XDPStats holds XDP statistics
 type XDPStats struct {
-	TotalPackets  uint64
-	PassedPackets uint64
+	TotalPackets   uint64
+	PassedPackets  uint64
 	DroppedPackets uint64
-	TotalBytes    uint64
-	LastUpdate    time.Time
+	TotalBytes     uint64
+	LastUpdate     time.Time
+}
+
+// ServiceRule represents a service filtering rule for XDP
+type ServiceRule struct {
+	ServiceID    uint32
+	IPAddr       uint32
+	Port         uint16
+	Protocol     uint8
+	Action       uint8 // 0=drop, 1=pass, 2=redirect
+	RedirectIP   uint32
+	RedirectPort uint16
+	AuthRequired uint8
+	Reserved     uint8
 }
 
 // NewXDPManager creates a new XDP manager (fallback)
@@ -60,6 +74,23 @@ func (xm *XDPManager) Stop() error {
 // IsRunning returns whether XDP is running
 func (xm *XDPManager) IsRunning() bool {
 	return xm.running
+}
+
+// IsEnabled returns whether XDP is enabled
+func (xm *XDPManager) IsEnabled() bool {
+	return xm.enabled && xm.running
+}
+
+// ClearServiceRules clears all service rules (fallback - no-op)
+func (xm *XDPManager) ClearServiceRules() error {
+	log.Printf("XDP: ClearServiceRules called on fallback implementation")
+	return nil
+}
+
+// AddServiceRule adds a service rule (fallback - no-op)
+func (xm *XDPManager) AddServiceRule(ruleID uint32, rule *ServiceRule) error {
+	log.Printf("XDP: AddServiceRule called on fallback implementation (rule %d)", ruleID)
+	return nil
 }
 
 // GetStats returns XDP statistics (fallback - empty stats)

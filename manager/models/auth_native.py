@@ -5,27 +5,31 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-from py4web import Field
-from py4web.utils.auth import Auth
-from py4web.utils.mailer import Mailer
-from pydal import DAL
+try:
+    from py4web import Field
+    from py4web.utils.auth import Auth
+    from py4web.utils.mailer import Mailer
+except ImportError:
+    Field = None
+    Auth = None
+    Mailer = None
+
+import base64
+import io
 import secrets
+from datetime import datetime, timedelta
+from typing import Any, Dict, Optional
+
 import pyotp
 import qrcode
-import io
-import base64
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
+from pydal import DAL
 
 
 def setup_auth(db: DAL, base_url: str = "http://localhost:8000") -> Auth:
     """Setup py4web native authentication"""
 
     # Configure mailer (optional - can be disabled for development)
-    mailer = Mailer(
-        server="smtp://localhost:587",
-        sender="noreply@marchproxy.local"
-    )
+    mailer = Mailer(server="smtp://localhost:587", sender="noreply@marchproxy.local")
 
     # Initialize Auth with py4web native features
     auth = Auth(
@@ -33,27 +37,29 @@ def setup_auth(db: DAL, base_url: str = "http://localhost:8000") -> Auth:
         db=db,
         sender=mailer,
         registration_requires_confirmation=False,  # Disable for admin-only registration
-        registration_requires_approval=True,      # Admin approval required
-        two_factor_required=lambda user: user.get('totp_enabled', False),
+        registration_requires_approval=True,  # Admin approval required
+        two_factor_required=lambda user: user.get("totp_enabled", False),
         login_expiration_time=3600,  # 1 hour
         password_complexity={
             "min": 8,
             "upper": 1,
             "lower": 1,
             "special": 1,
-            "number": 1
-        }
+            "number": 1,
+        },
     )
 
     # Add custom fields to auth_user table
-    auth.db.auth_user._before_insert.append(lambda f: f.update(
-        is_admin=False,
-        totp_enabled=False,
-        totp_secret=None,
-        auth_provider='local',
-        external_id=None,
-        last_login=None
-    ))
+    auth.db.auth_user._before_insert.append(
+        lambda f: f.update(
+            is_admin=False,
+            totp_enabled=False,
+            totp_secret=None,
+            auth_provider="local",
+            external_id=None,
+            last_login=None,
+        )
+    )
 
     return auth
 
@@ -62,18 +68,20 @@ def extend_auth_user_table(auth: Auth):
     """Extend the native auth_user table with MarchProxy specific fields"""
 
     # Add custom fields to the auth_user table
-    if 'is_admin' not in auth.db.auth_user.fields:
-        auth.db.auth_user._before_define.append(lambda table: table._after_define.append(
-            lambda: [
-                table.is_admin.set_attributes(type='boolean', default=False),
-                table.totp_enabled.set_attributes(type='boolean', default=False),
-                table.totp_secret.set_attributes(type='string', length=32),
-                table.auth_provider.set_attributes(type='string', default='local', length=50),
-                table.external_id.set_attributes(type='string', length=255),
-                table.last_login.set_attributes(type='datetime'),
-                table.metadata.set_attributes(type='json')
-            ]
-        ))
+    if "is_admin" not in auth.db.auth_user.fields:
+        auth.db.auth_user._before_define.append(
+            lambda table: table._after_define.append(
+                lambda: [
+                    table.is_admin.set_attributes(type="boolean", default=False),
+                    table.totp_enabled.set_attributes(type="boolean", default=False),
+                    table.totp_secret.set_attributes(type="string", length=32),
+                    table.auth_provider.set_attributes(type="string", default="local", length=50),
+                    table.external_id.set_attributes(type="string", length=255),
+                    table.last_login.set_attributes(type="datetime"),
+                    table.metadata.set_attributes(type="json"),
+                ]
+            )
+        )
 
 
 class TOTPManager:
@@ -101,16 +109,9 @@ class TOTPManager:
 
         # Generate QR code URI
         totp = pyotp.TOTP(secret)
-        uri = totp.provisioning_uri(
-            name=user.email,
-            issuer_name="MarchProxy"
-        )
+        uri = totp.provisioning_uri(name=user.email, issuer_name="MarchProxy")
 
-        return {
-            'secret': secret,
-            'qr_uri': uri,
-            'qr_code': self._generate_qr_code(uri)
-        }
+        return {"secret": secret, "qr_uri": uri, "qr_code": self._generate_qr_code(uri)}
 
     def verify_and_complete_2fa(self, user_id: int, secret: str, totp_code: str) -> bool:
         """Verify TOTP code and complete 2FA setup"""
@@ -127,7 +128,7 @@ class TOTPManager:
         user.update_record(totp_enabled=True)
         return True
 
-    def disable_2fa(self, user_id: int, password: str, totp_code: str = None) -> bool:
+    def disable_2fa(self, user_id: int, password: str, totp_code: str = None) -> bool:  # nosemgrep: python.lang.security.audit.hardcoded-password-default-argument
         """Disable 2FA for user"""
         user = self.db.auth_user[user_id]
         if not user:
@@ -167,7 +168,7 @@ class TOTPManager:
 
         img = qr.make_image(fill_color="black", back_color="white")
         buffer = io.BytesIO()
-        img.save(buffer, format='PNG')
+        img.save(buffer, format="PNG")
         buffer.seek(0)
 
         return base64.b64encode(buffer.getvalue()).decode()
@@ -183,31 +184,36 @@ class APITokenManager:
 
     def _setup_token_table(self):
         """Setup API tokens table"""
-        if 'api_tokens' not in self.db.tables:
+        if "api_tokens" not in self.db.tables:
             self.db.define_table(
-                'api_tokens',
-                Field('token_id', type='string', unique=True, required=True, length=64),
-                Field('name', type='string', required=True, length=100),
-                Field('token_hash', type='string', required=True, length=255),
-                Field('user_id', type='reference auth_user'),
-                Field('service_id', type='integer'),  # Will be foreign key when services table exists
-                Field('cluster_id', type='integer'),  # Will be foreign key when clusters table exists
-                Field('permissions', type='json'),
-                Field('expires_at', type='datetime'),
-                Field('last_used', type='datetime'),
-                Field('is_active', type='boolean', default=True),
-                Field('created_at', type='datetime', default=datetime.utcnow),
-                Field('metadata', type='json'),
+                "api_tokens",
+                Field("token_id", type="string", unique=True, required=True, length=64),
+                Field("name", type="string", required=True, length=100),
+                Field("token_hash", type="string", required=True, length=255),
+                Field("user_id", type="reference users"),
+                Field(
+                    "service_id", type="integer"
+                ),  # Will be foreign key when services table exists
+                Field(
+                    "cluster_id", type="integer"
+                ),  # Will be foreign key when clusters table exists
+                Field("permissions", type="json"),
+                Field("expires_at", type="datetime"),
+                Field("last_used", type="datetime"),
+                Field("is_active", type="boolean", default=True),
+                Field("created_at", type="datetime", default=datetime.utcnow),
+                Field("metadata", type="json"),
             )
 
-    def create_token(self, user_id: int, name: str, permissions: Dict = None,
-                    ttl_days: int = None) -> tuple[str, str]:
+    def create_token(
+        self, user_id: int, name: str, permissions: Dict = None, ttl_days: int = None
+    ) -> tuple[str, str]:
         """Create API token for user"""
         import bcrypt
 
         token = secrets.token_urlsafe(48)
         token_id = secrets.token_urlsafe(32)
-        token_hash = bcrypt.hashpw(token.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        token_hash = bcrypt.hashpw(token.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
         expires_at = None
         if ttl_days:
@@ -219,7 +225,7 @@ class APITokenManager:
             token_hash=token_hash,
             user_id=user_id,
             permissions=permissions or {},
-            expires_at=expires_at
+            expires_at=expires_at,
         )
 
         return token, token_id
@@ -230,27 +236,32 @@ class APITokenManager:
 
         # Try to find token by checking hash
         for token_record in self.db(
-            (self.db.api_tokens.is_active == True) &
-            ((self.db.api_tokens.expires_at == None) |
-             (self.db.api_tokens.expires_at > datetime.utcnow()))
+            (self.db.api_tokens.is_active == True)  # noqa: E712
+            & (
+                (self.db.api_tokens.expires_at == None)  # noqa: E711
+                | (self.db.api_tokens.expires_at > datetime.utcnow())
+            )
         ).select():
-            if bcrypt.checkpw(token.encode('utf-8'), token_record.token_hash.encode('utf-8')):
+            if bcrypt.checkpw(token.encode("utf-8"), token_record.token_hash.encode("utf-8")):
                 # Update last used
                 token_record.update_record(last_used=datetime.utcnow())
 
                 return {
-                    'token_id': token_record.token_id,
-                    'name': token_record.name,
-                    'user_id': token_record.user_id,
-                    'permissions': token_record.permissions
+                    "token_id": token_record.token_id,
+                    "name": token_record.name,
+                    "user_id": token_record.user_id,
+                    "permissions": token_record.permissions,
                 }
 
         return None
 
 
-def create_admin_user(auth: Auth, username: str = 'admin',
-                     email: str = 'admin@localhost',
-                     password: str = 'admin123') -> int:
+def create_admin_user(
+    auth: Auth,
+    username: str = "admin",
+    email: str = "admin@localhost",
+    password: str = "admin123",
+) -> int:
     """Create default admin user using py4web auth"""
 
     # Check if admin already exists
@@ -260,28 +271,19 @@ def create_admin_user(auth: Auth, username: str = 'admin',
 
     # Use py4web's native user creation
     user_id = auth.register(
-        email=email,
-        password=password,
-        first_name='System',
-        last_name='Administrator'
-    ).get('id')
+        email=email, password=password, first_name="System", last_name="Administrator"
+    ).get("id")
 
     if user_id:
         # Update with admin privileges
         user = auth.db.auth_user[user_id]
         user.update_record(
-            is_admin=True,
-            registration_key='',  # Approve the user
-            registration_id=''
+            is_admin=True, registration_key="", registration_id=""  # Approve the user
         )
 
         # Create default API token for admin
         token_manager = APITokenManager(auth)
-        token, token_id = token_manager.create_token(
-            user_id,
-            'admin-default',
-            {'admin': True}
-        )
+        token, token_id = token_manager.create_token(user_id, "admin-default", {"admin": True})
 
         print(f"Admin user created - Email: {email}, Password: {password}")
         print(f"Admin API token: {token}")
@@ -293,20 +295,36 @@ def setup_auth_groups(auth: Auth):
     """Setup authorization groups using py4web's auth system"""
 
     # Create admin group
-    admin_group_id = auth.add_group('admin', 'System Administrators')
+    admin_group_id = auth.add_group("admin", "System Administrators")
 
     # Create service owner group
-    service_owner_group_id = auth.add_group('service_owner', 'Service Owners')
+    service_owner_group_id = auth.add_group("service_owner", "Service Owners")
 
     # Define permissions
     permissions = [
-        'read_clusters', 'create_clusters', 'update_clusters', 'delete_clusters',
-        'read_services', 'create_services', 'update_services', 'delete_services',
-        'read_mappings', 'create_mappings', 'update_mappings', 'delete_mappings',
-        'read_proxies', 'manage_proxies',
-        'read_certificates', 'create_certificates', 'update_certificates',
-        'read_users', 'create_users', 'update_users', 'delete_users',
-        'read_metrics', 'read_logs'
+        "read_clusters",
+        "create_clusters",
+        "update_clusters",
+        "delete_clusters",
+        "read_services",
+        "create_services",
+        "update_services",
+        "delete_services",
+        "read_mappings",
+        "create_mappings",
+        "update_mappings",
+        "delete_mappings",
+        "read_proxies",
+        "manage_proxies",
+        "read_certificates",
+        "create_certificates",
+        "update_certificates",
+        "read_users",
+        "create_users",
+        "update_users",
+        "delete_users",
+        "read_metrics",
+        "read_logs",
     ]
 
     # Add permissions
@@ -315,18 +333,22 @@ def setup_auth_groups(auth: Auth):
 
     # Service owners get limited permissions
     service_perms = [
-        'read_clusters', 'read_services', 'create_services', 'update_services',
-        'read_mappings', 'create_mappings', 'update_mappings',
-        'read_proxies', 'read_certificates', 'read_metrics'
+        "read_clusters",
+        "read_services",
+        "create_services",
+        "update_services",
+        "read_mappings",
+        "create_mappings",
+        "update_mappings",
+        "read_proxies",
+        "read_certificates",
+        "read_metrics",
     ]
 
     for perm in service_perms:
         auth.add_permission(service_owner_group_id, perm)
 
-    return {
-        'admin': admin_group_id,
-        'service_owner': service_owner_group_id
-    }
+    return {"admin": admin_group_id, "service_owner": service_owner_group_id}
 
 
 def check_permission(auth: Auth, permission: str) -> bool:
@@ -335,7 +357,7 @@ def check_permission(auth: Auth, permission: str) -> bool:
         return False
 
     user = auth.get_user()
-    if user.get('is_admin'):
+    if user.get("is_admin"):
         return True
 
     return auth.has_permission(permission, auth.user_id)
@@ -343,24 +365,38 @@ def check_permission(auth: Auth, permission: str) -> bool:
 
 def require_permission(auth: Auth, permission: str):
     """Decorator to require permission for endpoint"""
+
     def decorator(func):
         def wrapper(*args, **kwargs):
             if not check_permission(auth, permission):
-                from py4web import abort
-                abort(403)
+                try:
+                    from py4web import abort
+
+                    abort(403)
+                except ImportError:
+                    raise PermissionError("Access denied: permission required")
             return func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
 def require_admin(auth: Auth):
     """Decorator to require admin access"""
+
     def decorator(func):
         def wrapper(*args, **kwargs):
             user = auth.get_user()
-            if not user or not user.get('is_admin'):
-                from py4web import abort
-                abort(403)
+            if not user or not user.get("is_admin"):
+                try:
+                    from py4web import abort
+
+                    abort(403)
+                except ImportError:
+                    raise PermissionError("Access denied: admin access required")
             return func(*args, **kwargs)
+
         return wrapper
+
     return decorator

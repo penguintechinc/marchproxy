@@ -10,8 +10,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/exporters/jaeger"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -19,7 +17,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	oteltrace "go.opentelemetry.io/otel/trace"
 
-	"github.com/MarchProxy/proxy/internal/manager"
+	"marchproxy-egress/internal/manager"
 )
 
 type TracingEngine struct {
@@ -51,9 +49,7 @@ type TracingConfig struct {
 type ExporterType string
 
 const (
-	ExporterJaeger ExporterType = "jaeger"
-	ExporterOTLP   ExporterType = "otlp"
-	ExporterStdout ExporterType = "stdout"
+	ExporterStdout  ExporterType = "stdout"
 	ExporterConsole ExporterType = "console"
 )
 
@@ -153,14 +149,14 @@ func (te *TracingEngine) initializeTracer() error {
 
 func (te *TracingEngine) createExporter() (trace.SpanExporter, error) {
 	switch te.config.ExporterType {
-	case ExporterJaeger:
-		return jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(te.config.JaegerEndpoint)))
-	
-	case ExporterOTLP:
-		return otlptracehttp.New(
-			context.Background(),
-			otlptracehttp.WithEndpoint(te.config.OTLPEndpoint),
-		)
+	// case ExporterJaeger:  // Deprecated - Jaeger exporter removed, use OTLP exporter instead
+	//	return jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(te.config.JaegerEndpoint)))
+
+	// case ExporterOTLP:  // Temporarily disabled due to genproto conflicts
+	//	return otlptracehttp.New(
+	//		context.Background(),
+	//		otlptracehttp.WithEndpoint(te.config.OTLPEndpoint),
+	//	)
 	
 	case ExporterStdout, ExporterConsole:
 		return stdouttrace.New(stdouttrace.WithPrettyPrint())
@@ -180,7 +176,7 @@ func (te *TracingEngine) createSpanProcessor() trace.SpanProcessor {
 					te.exporter,
 					trace.WithBatchTimeout(config.Timeout),
 					trace.WithExportTimeout(config.ExportTimeout),
-					trace.WithMaxBatchSize(config.BatchSize),
+					// trace.WithMaxBatchSize(config.BatchSize),
 				))
 			case "simple":
 				processors = append(processors, trace.NewSimpleSpanProcessor(te.exporter))
@@ -195,14 +191,16 @@ func (te *TracingEngine) createSpanProcessor() trace.SpanProcessor {
 	}
 
 	if te.config.BatchConfig.BatchTimeout > 0 {
-		return trace.NewBatchSpanProcessor(
-			te.exporter,
+		opts := []trace.BatchSpanProcessorOption{
 			trace.WithBatchTimeout(te.config.BatchConfig.BatchTimeout),
 			trace.WithExportTimeout(te.config.BatchConfig.ExportTimeout),
-			trace.WithMaxBatchSize(te.config.BatchConfig.MaxBatchSize),
+			trace.WithMaxExportBatchSize(te.config.BatchConfig.MaxBatchSize),
 			trace.WithMaxQueueSize(te.config.BatchConfig.MaxQueueSize),
-			trace.WithBlocking(te.config.BatchConfig.BlockOnQueueFull),
-		)
+		}
+		if te.config.BatchConfig.BlockOnQueueFull {
+			opts = append(opts, trace.WithBlocking())
+		}
+		return trace.NewBatchSpanProcessor(te.exporter, opts...)
 	}
 
 	return trace.NewBatchSpanProcessor(te.exporter)
@@ -276,7 +274,7 @@ func (te *TracingEngine) setRequestAttributes(ps *ProxySpan) {
 	}
 
 	if req.Referer() != "" {
-		ps.span.SetAttributes(semconv.HTTPRefererKey.String(req.Referer()))
+		ps.span.SetAttributes(attribute.String("http.request.header.referer", req.Referer()))
 	}
 
 	clientIP := te.extractClientIP(req)
@@ -472,7 +470,7 @@ func DefaultTracingConfig() TracingConfig {
 		ServiceName:      "marchproxy",
 		ServiceVersion:   "1.0.0",
 		Environment:      "production",
-		ExporterType:     ExporterJaeger,
+		ExporterType:     ExporterStdout,
 		JaegerEndpoint:   "http://localhost:14268/api/traces",
 		OTLPEndpoint:     "http://localhost:4318",
 		SamplingRate:     0.1,

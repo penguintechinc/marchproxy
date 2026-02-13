@@ -1,6 +1,7 @@
 package health
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -635,9 +636,15 @@ func (hc *HealthChecker) notifyStatusChange(backendHealth *BackendHealth, oldSta
 			"message":    backendHealth.ErrorMessage,
 		}
 
-		jsonData, _ := json.Marshal(notification)
-		http.Post(hc.config.NotificationURL, "application/json", nil)
-		_ = jsonData
+		jsonData, err := json.Marshal(notification)
+		if err != nil {
+			return
+		}
+		resp, err := http.Post(hc.config.NotificationURL, "application/json", bytes.NewReader(jsonData))
+		if err != nil {
+			return
+		}
+		resp.Body.Close()
 	}()
 }
 
@@ -871,7 +878,13 @@ func (hc *HTTPHealthCheck) Check(ctx context.Context, target interface{}) *Check
 }
 
 func NewMTLSHealthCheck(name string, mtlsConfig MTLSCheckConfig, expected HTTPExpected) *MTLSHealthCheck {
-	cert, _ := tls.LoadX509KeyPair(mtlsConfig.CertPath, mtlsConfig.KeyPath)
+	cert, err := tls.LoadX509KeyPair(mtlsConfig.CertPath, mtlsConfig.KeyPath)
+	if err != nil {
+		return &MTLSHealthCheck{
+			name:    name,
+			enabled: false,
+		}
+	}
 
 	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{cert},
@@ -1118,12 +1131,14 @@ func (hm *HealthMetrics) recordStatusChange() {
 	hm.StatusChanges++
 }
 
+//nolint:unused // Reserved for future mTLS health check integration
 func (hm *HealthMetrics) recordMTLSHandshake() {
 	hm.mutex.Lock()
 	defer hm.mutex.Unlock()
 	hm.MTLSHandshakes++
 }
 
+//nolint:unused // Reserved for future mTLS health check integration
 func (hm *HealthMetrics) recordSSLCertFailure() {
 	hm.mutex.Lock()
 	defer hm.mutex.Unlock()

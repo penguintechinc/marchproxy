@@ -3,7 +3,6 @@ package metrics
 import (
 	"context"
 	"net/http"
-	"strconv"
 	"sync"
 	"time"
 
@@ -699,25 +698,33 @@ func (mc *MetricsCollector) exportToKillKrill() {
 
 func (mc *MetricsCollector) StartServer(addr string) error {
 	handler := promhttp.HandlerFor(mc.prometheus.registry, promhttp.HandlerOpts{})
-	
+
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", handler)
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
+		_, _ = w.Write([]byte("OK"))
 	})
-	
-	mc.server = &http.Server{
+
+	server := &http.Server{
 		Addr:    addr,
 		Handler: mux,
 	}
-	
-	return mc.server.ListenAndServe()
+
+	mc.mutex.Lock()
+	mc.server = server
+	mc.mutex.Unlock()
+
+	return server.ListenAndServe()
 }
 
 func (mc *MetricsCollector) StopServer(ctx context.Context) error {
-	if mc.server != nil {
-		return mc.server.Shutdown(ctx)
+	mc.mutex.RLock()
+	server := mc.server
+	mc.mutex.RUnlock()
+
+	if server != nil {
+		return server.Shutdown(ctx)
 	}
 	return nil
 }

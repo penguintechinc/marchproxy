@@ -1,0 +1,38 @@
+{{- if eq .Values.deploymentMode "deployment" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "marchproxy-egress.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "marchproxy-egress.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "marchproxy-egress.selectorLabels" . | nindent 6 }}
+  strategy:
+    {{- toYaml .Values.updateStrategy | nindent 4 }}
+  template:
+    {{- include "marchproxy-egress.podTemplate" . | nindent 4 }}
+{{- end }}
+---
+{{- if eq .Values.deploymentMode "daemonset" }}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "marchproxy-egress.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "marchproxy-egress.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "marchproxy-egress.selectorLabels" . | nindent 6 }}
+  updateStrategy:
+    {{- toYaml .Values.daemonset.updateStrategy | nindent 4 }}
+  template:
+    {{- include "marchproxy-egress.podTemplate" . | nindent 4 }}
+{{- end }}

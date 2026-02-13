@@ -1,0 +1,168 @@
+# MarchProxy Egress Configuration Sample
+# This file shows all available configuration options
+
+# Manager connection settings
+manager_url: "http://manager:8000"
+cluster_api_key: "${CLUSTER_API_KEY}"
+
+# Proxy identification
+proxy_name: "egress-proxy-01"
+hostname: "egress-proxy-01.local"
+listen_port: 8080
+admin_port: 8081
+
+# Logging configuration
+log_level: "INFO"  # DEBUG, INFO, WARN, ERROR
+syslog_endpoint: ""
+
+# Performance settings
+enable_ebpf: true
+enable_metrics: true
+worker_threads: 0  # 0 = auto-detect based on CPU cores
+
+# Network acceleration (optional, requires specific hardware/software)
+enable_dpdk: false
+enable_xdp: false
+enable_af_xdp: false
+enable_sriov: false
+dpdk_devices: ""
+
+# Basic TLS settings
+tls_cert_path: "/app/certs/cert.pem"
+tls_key_path: "/app/certs/key.pem"
+
+# mTLS settings
+enable_mtls: false
+mtls_server_cert_path: ""
+mtls_server_key_path: ""
+mtls_client_ca_path: ""
+mtls_client_cert_path: ""
+mtls_client_key_path: ""
+mtls_require_client_cert: true
+mtls_verify_client_cert: true
+
+# License configuration
+license_key: "${LICENSE_KEY}"
+
+# Timeouts and intervals (seconds)
+config_update_interval: 60
+heartbeat_interval: 30
+connection_timeout: 30
+
+# Rate limiting
+rate_limit_enabled: false
+rate_limit_rps: 1000
+
+# KillKrill integration (observability)
+killkrill_enabled: false
+killkrill_log_endpoint: ""
+killkrill_metrics_endpoint: ""
+killkrill_api_key: ""
+killkrill_source_name: "marchproxy-egress"
+killkrill_application: "proxy"
+killkrill_batch_size: 100
+killkrill_flush_interval: 10
+killkrill_timeout: 30
+killkrill_use_http3: true
+killkrill_tls_insecure: false
+
+# =============================================================================
+# L7 Configuration (Envoy-based HTTP proxy)
+# =============================================================================
+l7:
+  # Enable/disable L7 HTTP proxy mode
+  enabled: false
+
+  # Envoy binary and configuration paths
+  envoy_binary: "/usr/local/bin/envoy"
+  envoy_config_path: "/app/envoy/bootstrap.yaml"
+
+  # Ports
+  envoy_admin_port: 9901
+  http_listen_port: 10000
+  https_listen_port: 10443
+
+  # HTTP/3 (QUIC) support - EXPERIMENTAL
+  # WARNING: HTTP/3 support is experimental and may have stability issues
+  http3_enabled: false
+
+  # Envoy log level: trace, debug, info, warning, error, critical, off
+  envoy_log_level: "info"
+
+# =============================================================================
+# Threat Intelligence Configuration
+# =============================================================================
+threat:
+  # Master switch for threat intelligence
+  enabled: true
+
+  # IP blocking (individual IPs and CIDR ranges)
+  ip_blocking_enabled: true
+  ip_cache_size: 100000
+
+  # Domain blocking (Host header inspection)
+  domain_blocking_enabled: true
+  wildcard_support: true  # Support *.example.com patterns
+
+  # URL pattern matching (regex-based)
+  url_matching_enabled: true
+  url_match_engine: "re2"  # "re2" or "boost"
+
+  # DNS cache for resolved domain blocking
+  dns_cache_enabled: true
+  dns_positive_ttl: "5m"
+  dns_negative_ttl: "1m"
+  dns_cache_size: 50000
+  dns_upstream:
+    - "8.8.8.8:53"
+    - "1.1.1.1:53"
+
+  # Feed synchronization with Manager API
+  sync_mode: "both"  # "grpc", "poll", or "both"
+  sync_poll_interval: "60s"
+  sync_grpc_endpoint: ""  # e.g., "manager:50052"
+
+# =============================================================================
+# TLS Interception Configuration
+# =============================================================================
+tls_intercept:
+  # Master switch for TLS interception
+  enabled: false
+
+  # Interception mode:
+  #   "mitm" - Full man-in-the-middle with dynamic certificate generation
+  #   "preconfigured" - Use pre-configured certificates for specific domains
+  mode: "mitm"
+
+  # CA certificate for MITM mode (required if mode is "mitm")
+  ca_cert_path: "/app/certs/ca.crt"
+  ca_key_path: "/app/certs/ca.key"
+
+  # Certificate cache size for dynamically generated certs
+  cert_cache_size: 10000
+
+  # Per-domain and per-IP configuration is managed via Manager API
+  # and synced through threat feeds
+
+# =============================================================================
+# External Authorization Server Configuration
+# =============================================================================
+extauth:
+  # Enable ext_authz gRPC server for Envoy integration
+  enabled: true
+  port: 9002
+  host: "127.0.0.1"
+
+# =============================================================================
+# Access Control Configuration (Authentication-based restrictions)
+# =============================================================================
+access_control:
+  # Enable authentication-based access control
+  # When enabled, destinations can be restricted to specific tokens/services
+  enabled: false
+
+  # Require authentication by default for all destinations
+  default_require_auth: false
+
+  # Allow access by default when no rule matches
+  default_allow: true

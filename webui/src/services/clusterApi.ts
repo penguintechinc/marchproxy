@@ -10,22 +10,23 @@ import { Cluster, ApiResponse, PaginatedResponse } from './types';
 
 export interface CreateClusterRequest {
   name: string;
-  description: string;
-  syslog_server?: string;
-  syslog_port?: number;
-  auth_log_enabled: boolean;
-  netflow_log_enabled: boolean;
-  debug_log_enabled: boolean;
+  description?: string;
+  syslog_endpoint?: string;
+  log_auth?: boolean;
+  log_netflow?: boolean;
+  log_debug?: boolean;
+  max_proxies?: number;
 }
 
 export interface UpdateClusterRequest {
   name?: string;
   description?: string;
-  syslog_server?: string;
-  syslog_port?: number;
-  auth_log_enabled?: boolean;
-  netflow_log_enabled?: boolean;
-  debug_log_enabled?: boolean;
+  syslog_endpoint?: string;
+  log_auth?: boolean;
+  log_netflow?: boolean;
+  log_debug?: boolean;
+  max_proxies?: number;
+  is_active?: boolean;
 }
 
 export interface ClusterListParams {
@@ -39,17 +40,24 @@ export const clusterApi = {
    * Get all clusters with optional pagination and search
    */
   list: async (params?: ClusterListParams): Promise<PaginatedResponse<Cluster>> => {
-    const response = await apiClient.get<PaginatedResponse<Cluster>>('/api/clusters', {
+    const response = await apiClient.get<{ total: number; clusters: Cluster[] }>('/api/v1/clusters', {
       params
     });
-    return response.data;
+    // Map backend response to PaginatedResponse format
+    return {
+      items: response.data.clusters,
+      total: response.data.total,
+      page: params?.page || 1,
+      page_size: params?.page_size || 100,
+      total_pages: Math.ceil(response.data.total / (params?.page_size || 100))
+    };
   },
 
   /**
    * Get a single cluster by ID
    */
   get: async (id: number): Promise<Cluster> => {
-    const response = await apiClient.get<Cluster>(`/api/clusters/${id}`);
+    const response = await apiClient.get<Cluster>(`/api/v1/clusters/${id}`);
     return response.data;
   },
 
@@ -57,33 +65,33 @@ export const clusterApi = {
    * Create a new cluster
    */
   create: async (data: CreateClusterRequest): Promise<Cluster> => {
-    const response = await apiClient.post<ApiResponse<Cluster>>('/api/clusters', data);
-    return response.data.data;
+    const response = await apiClient.post<Cluster>('/api/v1/clusters', data);
+    return response.data;
   },
 
   /**
    * Update an existing cluster
    */
   update: async (id: number, data: UpdateClusterRequest): Promise<Cluster> => {
-    const response = await apiClient.put<ApiResponse<Cluster>>(`/api/clusters/${id}`, data);
-    return response.data.data;
+    const response = await apiClient.patch<Cluster>(`/api/v1/clusters/${id}`, data);
+    return response.data;
   },
 
   /**
    * Delete a cluster
    */
   delete: async (id: number): Promise<void> => {
-    await apiClient.delete(`/api/clusters/${id}`);
+    await apiClient.delete(`/api/v1/clusters/${id}`);
   },
 
   /**
    * Rotate cluster API key
    */
   rotateApiKey: async (id: number): Promise<{ api_key: string }> => {
-    const response = await apiClient.post<{ api_key: string }>(
-      `/api/clusters/${id}/rotate-key`
+    const response = await apiClient.post<{ new_api_key: string }>(
+      `/api/v1/clusters/${id}/rotate-api-key`
     );
-    return response.data;
+    return { api_key: response.data.new_api_key };
   },
 
   /**
@@ -94,7 +102,7 @@ export const clusterApi = {
     service_count: number;
     active_connections: number;
   }> => {
-    const response = await apiClient.get(`/api/clusters/${id}/stats`);
+    const response = await apiClient.get(`/api/v1/clusters/${id}/stats`);
     return response.data;
   }
 };

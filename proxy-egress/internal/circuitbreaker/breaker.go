@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/MarchProxy/proxy/internal/manager"
+	"marchproxy-egress/internal/manager"
 )
 
 var (
@@ -128,7 +128,7 @@ type CircuitBreaker struct {
 }
 
 type Statistics struct {
-	TotalRequests        uint64
+	TotalRequests       uint64
 	TotalSuccesses      uint64
 	TotalFailures       uint64
 	TotalTimeouts       uint64
@@ -136,9 +136,14 @@ type Statistics struct {
 	TotalRejections     uint64
 	StateChanges        uint64
 	LastStateChange     time.Time
-	AverageResponseTime time.Duration
-	
+	averageResponseTime int64 // accessed atomically
+
 	responseTimes sync.Map
+}
+
+// GetAverageResponseTime returns the average response time safely.
+func (s *Statistics) GetAverageResponseTime() time.Duration {
+	return time.Duration(atomic.LoadInt64(&s.averageResponseTime))
 }
 
 func NewCircuitBreaker(config Config) *CircuitBreaker {
@@ -408,7 +413,7 @@ func (cb *CircuitBreaker) toNewGeneration(now time.Time) {
 
 func (cb *CircuitBreaker) updateResponseTime(duration time.Duration) {
 	cb.stats.responseTimes.Store(time.Now().UnixNano(), duration)
-	
+
 	var total time.Duration
 	var count int64
 	cb.stats.responseTimes.Range(func(key, value interface{}) bool {
@@ -418,11 +423,12 @@ func (cb *CircuitBreaker) updateResponseTime(duration time.Duration) {
 		}
 		return true
 	})
-	
+
 	if count > 0 {
-		cb.stats.AverageResponseTime = total / time.Duration(count)
+		avg := int64(total / time.Duration(count))
+		atomic.StoreInt64(&cb.stats.averageResponseTime, avg)
 	}
-	
+
 	cutoff := time.Now().Add(-5 * time.Minute).UnixNano()
 	cb.stats.responseTimes.Range(func(key, value interface{}) bool {
 		if timestamp, ok := key.(int64); ok && timestamp < cutoff {
@@ -435,8 +441,19 @@ func (cb *CircuitBreaker) updateResponseTime(duration time.Duration) {
 func (cb *CircuitBreaker) Statistics() Statistics {
 	cb.mutex.RLock()
 	defer cb.mutex.RUnlock()
-	
-	return cb.stats
+
+	// Return a copy without the sync.Map to avoid copying a lock value
+	return Statistics{
+		TotalRequests:       cb.stats.TotalRequests,
+		TotalSuccesses:      cb.stats.TotalSuccesses,
+		TotalFailures:       cb.stats.TotalFailures,
+		TotalTimeouts:       cb.stats.TotalTimeouts,
+		TotalFallbacks:      cb.stats.TotalFallbacks,
+		TotalRejections:     cb.stats.TotalRejections,
+		StateChanges:        cb.stats.StateChanges,
+		LastStateChange:     cb.stats.LastStateChange,
+		averageResponseTime: atomic.LoadInt64(&cb.stats.averageResponseTime),
+	}
 }
 
 func (cb *CircuitBreaker) Reset() {
@@ -461,29 +478,44 @@ func NewServiceCircuitBreaker(config Config) *ServiceCircuitBreaker {
 }
 
 func (scb *ServiceCircuitBreaker) GetBreaker(service *manager.Service) *CircuitBreaker {
-	key := fmt.Sprintf("%s:%d", service.Host, service.Port)
-	
+	key := scb.serviceKey(service)
+
 	scb.mutex.RLock()
 	breaker, exists := scb.breakers[key]
 	scb.mutex.RUnlock()
-	
+
 	if exists {
 		return breaker
 	}
-	
+
 	scb.mutex.Lock()
 	defer scb.mutex.Unlock()
-	
+
 	if breaker, exists := scb.breakers[key]; exists {
 		return breaker
 	}
-	
+
 	config := scb.config
 	config.Name = key
 	breaker = NewCircuitBreaker(config)
+	breaker.name = key
 	scb.breakers[key] = breaker
-	
+
 	return breaker
+}
+
+// serviceKey generates a unique key for a service
+func (scb *ServiceCircuitBreaker) serviceKey(service *manager.Service) string {
+	if service.IPFQDN != "" {
+		return service.IPFQDN
+	}
+	if service.Host != "" && service.Port > 0 {
+		return fmt.Sprintf("%s:%d", service.Host, service.Port)
+	}
+	if service.Host != "" {
+		return service.Host
+	}
+	return service.Name
 }
 
 func (scb *ServiceCircuitBreaker) ExecuteRequest(service *manager.Service, req func() (interface{}, error)) (interface{}, error) {
@@ -508,11 +540,11 @@ func (scb *ServiceCircuitBreaker) GetAllBreakers() map[string]*CircuitBreaker {
 }
 
 func (scb *ServiceCircuitBreaker) RemoveBreaker(service *manager.Service) {
-	key := fmt.Sprintf("%s:%d", service.Host, service.Port)
-	
+	key := scb.serviceKey(service)
+
 	scb.mutex.Lock()
 	defer scb.mutex.Unlock()
-	
+
 	delete(scb.breakers, key)
 }
 
@@ -567,7 +599,7 @@ func (cb *CircuitBreaker) GetMetrics() BreakerMetrics {
 		TotalRejections:      stats.TotalRejections,
 		StateChanges:         stats.StateChanges,
 		LastStateChange:      stats.LastStateChange,
-		AverageResponseTime:  stats.AverageResponseTime,
+		AverageResponseTime:  stats.GetAverageResponseTime(),
 		ErrorRate:           counts.ErrorRate(),
 		CurrentRequests:     atomic.LoadInt64(&cb.currentRequests),
 	}

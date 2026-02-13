@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
 from app.main import app
-from app.database import Base, get_db
+from app.core.database import Base, get_db
 from app.dependencies import get_current_user
 from app.models.user import User
 from app.models.cluster import Cluster

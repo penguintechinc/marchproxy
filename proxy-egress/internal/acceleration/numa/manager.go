@@ -15,7 +15,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/penguintech/marchproxy/internal/manager"
+	"marchproxy-egress/internal/manager"
 )
 
 // #include <sys/syscall.h>

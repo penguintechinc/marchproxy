@@ -1,0 +1,87 @@
+{{- if .Values.webui.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "marchproxy.fullname" . }}-webui
+  labels:
+    {{- include "marchproxy.labels" . | nindent 4 }}
+    app.kubernetes.io/component: webui
+spec:
+  replicas: {{ .Values.webui.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "marchproxy.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: webui
+  template:
+    metadata:
+      labels:
+        {{- include "marchproxy.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: webui
+    spec:
+      {{- with .Values.webui.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.webui.podSecurityContext | nindent 8 }}
+      containers:
+      - name: webui
+        image: {{ include "marchproxy.webui.image" . }}
+        imagePullPolicy: {{ .Values.webui.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: 3000
+          protocol: TCP
+        env:
+        - name: VITE_API_BASE_URL
+          value: "http://{{ include "marchproxy.fullname" . }}-manager:8000"
+        {{- with .Values.webui.env }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          {{- toYaml .Values.webui.resources | nindent 10 }}
+        securityContext:
+          {{- toYaml .Values.webui.securityContext | nindent 10 }}
+      {{- with .Values.webui.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.webui.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.webui.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "marchproxy.fullname" . }}-webui
+  labels:
+    {{- include "marchproxy.labels" . | nindent 4 }}
+    app.kubernetes.io/component: webui
+spec:
+  type: {{ .Values.webui.service.type }}
+  ports:
+  - port: {{ .Values.webui.service.port }}
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    {{- include "marchproxy.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: webui
+{{- end }}
