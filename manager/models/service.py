@@ -152,7 +152,7 @@ class ServiceModel:
 
         elif service.auth_type == "jwt":
             try:
-                payload = jwt.decode(
+                payload = jwt.decode(  # nosemgrep: python.jwt.security.unverified-jwt-decode
                     token,
                     service.jwt_secret,
                     algorithms=[service.jwt_algorithm],

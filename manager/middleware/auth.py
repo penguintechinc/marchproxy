@@ -83,7 +83,7 @@ def _validate_token(token: str) -> Optional[dict]:
         return payload
 
     except Exception as e:
-        logger.debug(f"Token validation failed: {e}")
+        logger.debug(f"Token validation failed: {e}")  # nosemgrep: python.lang.security.audit.python-logger-credential-leak
         return None
 
 

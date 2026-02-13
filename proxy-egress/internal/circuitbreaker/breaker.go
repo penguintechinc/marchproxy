@@ -128,7 +128,7 @@ type CircuitBreaker struct {
 }
 
 type Statistics struct {
-	TotalRequests        uint64
+	TotalRequests       uint64
 	TotalSuccesses      uint64
 	TotalFailures       uint64
 	TotalTimeouts       uint64
@@ -136,9 +136,14 @@ type Statistics struct {
 	TotalRejections     uint64
 	StateChanges        uint64
 	LastStateChange     time.Time
-	AverageResponseTime time.Duration
-	
+	averageResponseTime int64 // accessed atomically
+
 	responseTimes sync.Map
+}
+
+// GetAverageResponseTime returns the average response time safely.
+func (s *Statistics) GetAverageResponseTime() time.Duration {
+	return time.Duration(atomic.LoadInt64(&s.averageResponseTime))
 }
 
 func NewCircuitBreaker(config Config) *CircuitBreaker {
@@ -408,7 +413,7 @@ func (cb *CircuitBreaker) toNewGeneration(now time.Time) {
 
 func (cb *CircuitBreaker) updateResponseTime(duration time.Duration) {
 	cb.stats.responseTimes.Store(time.Now().UnixNano(), duration)
-	
+
 	var total time.Duration
 	var count int64
 	cb.stats.responseTimes.Range(func(key, value interface{}) bool {
@@ -418,11 +423,12 @@ func (cb *CircuitBreaker) updateResponseTime(duration time.Duration) {
 		}
 		return true
 	})
-	
+
 	if count > 0 {
-		cb.stats.AverageResponseTime = total / time.Duration(count)
+		avg := int64(total / time.Duration(count))
+		atomic.StoreInt64(&cb.stats.averageResponseTime, avg)
 	}
-	
+
 	cutoff := time.Now().Add(-5 * time.Minute).UnixNano()
 	cb.stats.responseTimes.Range(func(key, value interface{}) bool {
 		if timestamp, ok := key.(int64); ok && timestamp < cutoff {
@@ -438,15 +444,15 @@ func (cb *CircuitBreaker) Statistics() Statistics {
 
 	// Return a copy without the sync.Map to avoid copying a lock value
 	return Statistics{
-		TotalRequests:        cb.stats.TotalRequests,
-		TotalSuccesses:       cb.stats.TotalSuccesses,
-		TotalFailures:        cb.stats.TotalFailures,
-		TotalTimeouts:        cb.stats.TotalTimeouts,
-		TotalFallbacks:       cb.stats.TotalFallbacks,
-		TotalRejections:      cb.stats.TotalRejections,
-		StateChanges:         cb.stats.StateChanges,
-		LastStateChange:      cb.stats.LastStateChange,
-		AverageResponseTime:  cb.stats.AverageResponseTime,
+		TotalRequests:       cb.stats.TotalRequests,
+		TotalSuccesses:      cb.stats.TotalSuccesses,
+		TotalFailures:       cb.stats.TotalFailures,
+		TotalTimeouts:       cb.stats.TotalTimeouts,
+		TotalFallbacks:      cb.stats.TotalFallbacks,
+		TotalRejections:     cb.stats.TotalRejections,
+		StateChanges:        cb.stats.StateChanges,
+		LastStateChange:     cb.stats.LastStateChange,
+		averageResponseTime: atomic.LoadInt64(&cb.stats.averageResponseTime),
 	}
 }
 
@@ -593,7 +599,7 @@ func (cb *CircuitBreaker) GetMetrics() BreakerMetrics {
 		TotalRejections:      stats.TotalRejections,
 		StateChanges:         stats.StateChanges,
 		LastStateChange:      stats.LastStateChange,
-		AverageResponseTime:  stats.AverageResponseTime,
+		AverageResponseTime:  stats.GetAverageResponseTime(),
 		ErrorRate:           counts.ErrorRate(),
 		CurrentRequests:     atomic.LoadInt64(&cb.currentRequests),
 	}

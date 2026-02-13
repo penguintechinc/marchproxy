@@ -25,7 +25,7 @@ linters:
     - errcheck
     - errorlint
     - exhaustive
-    - exportloopref
+    - copyloopvar
     - forbidigo
     - forcetypeassert
     - gci
@@ -93,10 +93,10 @@ linters-settings:
     for-loops: false
   
   staticcheck:
-    go: "1.22"
-  
+    go: "1.24"
+
   stylecheck:
-    go: "1.22"
+    go: "1.24"
   
   gosec:
     excludes:

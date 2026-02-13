@@ -573,4 +573,4 @@ async def _initialize_default_data(app: Quart) -> None:
 # Main entry point for development
 if __name__ == "__main__":
     app = create_app()
-    app.run(host="0.0.0.0", port=5000, debug=app.config["DEBUG"])
+    app.run(host="0.0.0.0", port=5000, debug=app.config["DEBUG"])  # nosemgrep: python.flask.security.audit.app-run-security-config

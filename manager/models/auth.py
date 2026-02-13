@@ -264,7 +264,7 @@ class JWTManager:
     def decode_token(self, token: str) -> Optional[Dict[str, Any]]:
         """Decode and validate JWT token"""
         try:
-            payload = jwt.decode(
+            payload = jwt.decode(  # nosemgrep: python.jwt.security.unverified-jwt-decode
                 token,
                 self.secret_key,
                 algorithms=[self.algorithm],

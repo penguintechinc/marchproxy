@@ -402,6 +402,7 @@ func (m *MTLSMetrics) recordExpiredCert() {
 	m.FailedAuths++
 }
 
+//nolint:unused // Reserved for future CRL/OCSP validation
 func (m *MTLSMetrics) recordRevokedCert() {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -423,6 +424,7 @@ func (m *MTLSMetrics) recordClientCertMissing() {
 	m.FailedAuths++
 }
 
+//nolint:unused // Reserved for future CRL/OCSP validation
 func (m *MTLSMetrics) recordCAValidationError() {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()

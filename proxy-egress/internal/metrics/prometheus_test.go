@@ -328,7 +328,7 @@ func TestMetricsCollector(t *testing.T) {
 
 func TestMetricsCollectorServer(t *testing.T) {
 	config := MetricsConfig{
-		Namespace:            "proxy",
+		Namespace:            "proxy_server_test",
 		CollectionInterval:   time.Second,
 		ExposeGoMetrics:      false,
 		ExposeProcessMetrics: false,
@@ -339,18 +339,29 @@ func TestMetricsCollectorServer(t *testing.T) {
 		t.Fatal("Expected collector to be created, got nil")
 	}
 
-	// Start server in background
+	// Start server in background with error reporting
+	serverErr := make(chan error, 1)
 	go func() {
-		err := collector.StartServer(":0") // Use port 0 for random available port
+		err := collector.StartServer(":0")
 		if err != nil && err != http.ErrServerClosed {
-			// Ignore error as server might not start in test
+			serverErr <- err
 		}
+		close(serverErr)
 	}()
 
 	// Give server time to start
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 
-	// Stop server
+	// Check for startup errors
+	select {
+	case err := <-serverErr:
+		if err != nil {
+			t.Skipf("Server failed to start (expected in some CI environments): %v", err)
+		}
+	default:
+		// Server is running, stop it gracefully
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	collector.StopServer(ctx)

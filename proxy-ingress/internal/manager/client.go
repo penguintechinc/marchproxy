@@ -461,7 +461,7 @@ func (c *Client) makeRequest(ctx context.Context, method, path string, body inte
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(resp.Body) //nolint:errcheck // Best-effort read of error response body
 		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
 	}
 

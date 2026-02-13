@@ -60,11 +60,11 @@ type PrometheusMetrics struct {
 	wafBlocked         *prometheus.CounterVec
 	authAttempts       *prometheus.CounterVec
 
-	// System metrics
-	goroutines         prometheus.Gauge
-	memoryUsage        prometheus.Gauge
-	cpuUsage           prometheus.Gauge
-	openFiles          prometheus.Gauge
+	// System metrics (initialized for future system metrics collection)
+	goroutines         prometheus.Gauge  //nolint:unused
+	memoryUsage        prometheus.Gauge  //nolint:unused
+	cpuUsage           prometheus.Gauge  //nolint:unused
+	openFiles          prometheus.Gauge  //nolint:unused
 
 	// Custom metrics
 	customMetrics      map[string]prometheus.Collector

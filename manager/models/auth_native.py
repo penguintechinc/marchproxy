@@ -128,7 +128,7 @@ class TOTPManager:
         user.update_record(totp_enabled=True)
         return True
 
-    def disable_2fa(self, user_id: int, password: str, totp_code: str = None) -> bool:
+    def disable_2fa(self, user_id: int, password: str, totp_code: str = None) -> bool:  # nosemgrep: python.lang.security.audit.hardcoded-password-default-argument
         """Disable 2FA for user"""
         user = self.db.auth_user[user_id]
         if not user:

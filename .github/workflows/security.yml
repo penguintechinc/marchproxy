@@ -98,7 +98,7 @@ jobs:
 
     - name: Build images for scanning
       run: |
-        docker build -t marchproxy/manager:scan -f manager/Dockerfile manager/
+        docker build -t marchproxy/manager:scan -f manager/Dockerfile .
         docker build -t marchproxy/proxy-egress:scan -f proxy-egress/Dockerfile proxy-egress/
 
     - name: Run Trivy container scan - Manager
