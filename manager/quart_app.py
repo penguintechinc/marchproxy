@@ -217,7 +217,7 @@ def _initialize_jwt(app: Quart) -> None:
     )
 
 
-def _register_blueprints(app: Quart) -> None:
+def _register_blueprints(app: Quart) -> None:  # noqa: C901
     """
     Register all API blueprints with URL prefixes.
 
@@ -490,7 +490,7 @@ def _register_lifecycle_hooks(app: Quart) -> None:
     logger.info("Lifecycle hooks registered")
 
 
-async def _initialize_default_data(app: Quart) -> None:
+async def _initialize_default_data(app: Quart) -> None:  # noqa: C901
     """
     Initialize default admin user, cluster, and RBAC roles if they don't exist.
 

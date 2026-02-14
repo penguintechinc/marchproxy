@@ -521,8 +521,8 @@ class EnterpriseAuthManager:
 
             # Get default cluster
             default_cluster = (
-                self.db(self.db.clusters.is_default == True).select().first()
-            )  # noqa: E712
+                self.db(self.db.clusters.is_default == True).select().first()  # noqa: E712
+            )
             if default_cluster:
                 UserClusterAssignmentModel.assign_user_to_cluster(
                     self.db,

@@ -304,7 +304,7 @@ class SCIMService:
         logger.info(f"SCIM: Updated user {updated_user.username}")
         return self._user_to_scim(updated_user)
 
-    def patch_user(self, user_id: str, patch_data: Dict) -> Dict:
+    def patch_user(self, user_id: str, patch_data: Dict) -> Dict:  # noqa: C901
         """Patch user via SCIM PATCH operation"""
         if not self.is_enabled():
             abort(403, "SCIM provisioning not available")

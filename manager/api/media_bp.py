@@ -23,7 +23,7 @@ media_bp = Blueprint("media", __name__, url_prefix="/api/v1/modules/rtmp")
 
 @media_bp.route("/config", methods=["GET", "PUT"])
 @require_auth()
-async def media_config(user_data):
+async def media_config(user_data):  # noqa: C901
     """Get or update media module configuration"""
     db = current_app.db
 

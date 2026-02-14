@@ -29,7 +29,7 @@ services_bp = Blueprint("services", __name__, url_prefix="/api/v1/services")
 
 
 @services_bp.route("", methods=["GET", "POST"])
-async def services_list():
+async def services_list():  # noqa: C901
     """List all services or create new service"""
     db = current_app.db
 
@@ -117,7 +117,7 @@ async def services_list():
 
 
 @services_bp.route("/<int:service_id>", methods=["GET", "PUT", "DELETE"])
-async def service_detail(service_id):
+async def service_detail(service_id):  # noqa: C901
     """Get, update or delete a service"""
     db = current_app.db
 

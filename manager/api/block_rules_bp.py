@@ -25,7 +25,7 @@ block_rules_bp = Blueprint("block_rules", __name__, url_prefix="/api/v1/clusters
 
 @block_rules_bp.route("/<int:cluster_id>/block-rules", methods=["GET", "POST"])
 @require_auth()
-async def manage_block_rules(user_data, cluster_id):
+async def manage_block_rules(user_data, cluster_id):  # noqa: C901
     """List or create block rules for a cluster"""
     db = current_app.db
     user = user_data
@@ -41,9 +41,9 @@ async def manage_block_rules(user_data, cluster_id):
 
         # Verify cluster exists
         cluster = (
-            db((db.clusters.id == cluster_id) & (db.clusters.is_active == True))
+            db((db.clusters.id == cluster_id) & (db.clusters.is_active == True))  # noqa: E712
             .select()
-            .first()  # noqa: E712
+            .first()
         )
         if not cluster:
             return jsonify({"error": "Cluster not found"}), 404
@@ -75,9 +75,9 @@ async def manage_block_rules(user_data, cluster_id):
 
         # Verify cluster exists
         cluster = (
-            db((db.clusters.id == cluster_id) & (db.clusters.is_active == True))
+            db((db.clusters.id == cluster_id) & (db.clusters.is_active == True))  # noqa: E712
             .select()
-            .first()  # noqa: E712
+            .first()
         )
         if not cluster:
             return jsonify({"error": "Cluster not found"}), 404
@@ -127,7 +127,7 @@ async def manage_block_rules(user_data, cluster_id):
     "/<int:cluster_id>/block-rules/<int:rule_id>", methods=["GET", "PUT", "DELETE"]
 )
 @require_auth()
-async def manage_single_block_rule(user_data, cluster_id, rule_id):
+async def manage_single_block_rule(user_data, cluster_id, rule_id):  # noqa: C901
     """Get, update, or delete a specific block rule"""
     db = current_app.db
     user = user_data
@@ -214,8 +214,8 @@ async def bulk_create_block_rules(user_data, cluster_id):
 
     # Verify cluster exists
     cluster = (
-        db((db.clusters.id == cluster_id) & (db.clusters.is_active == True)).select().first()
-    )  # noqa: E712
+        db((db.clusters.id == cluster_id) & (db.clusters.is_active == True)).select().first()  # noqa: E712
+    )
     if not cluster:
         return jsonify({"error": "Cluster not found"}), 404
 

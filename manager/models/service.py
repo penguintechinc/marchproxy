@@ -188,8 +188,8 @@ class ServiceModel:
     def get_cluster_services(db: DAL, cluster_id: int, user_id: int = None) -> List[Dict[str, Any]]:
         """Get services for cluster (with user access control)"""
         query = (db.services.cluster_id == cluster_id) & (
-            db.services.is_active == True
-        )  # noqa: E712
+            db.services.is_active == True  # noqa: E712
+        )
 
         # If user_id provided, filter by user assignments
         if user_id:
@@ -224,9 +224,9 @@ class ServiceModel:
     def get_service_config(db: DAL, service_id: int) -> Optional[Dict[str, Any]]:
         """Get complete service configuration for proxy"""
         service = (
-            db((db.services.id == service_id) & (db.services.is_active == True))
+            db((db.services.id == service_id) & (db.services.is_active == True))  # noqa: E712
             .select()
-            .first()  # noqa: E712
+            .first()
         )
 
         if not service:

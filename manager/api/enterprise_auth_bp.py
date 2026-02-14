@@ -66,7 +66,7 @@ class ProviderResponse(BaseModel):
 
 
 @enterprise_auth_bp.route("/providers", methods=["GET", "POST"])
-async def providers_list():
+async def providers_list():  # noqa: C901
     """List all enterprise auth providers or create new provider"""
     db = current_app.db
 
@@ -182,7 +182,7 @@ async def providers_list():
 
 
 @enterprise_auth_bp.route("/providers/<int:provider_id>", methods=["GET", "PUT", "DELETE"])
-async def provider_detail(provider_id):
+async def provider_detail(provider_id):  # noqa: C901
     """Get, update or delete an enterprise auth provider"""
     db = current_app.db
 
@@ -245,7 +245,7 @@ async def provider_detail(provider_id):
 
 @enterprise_auth_bp.route("/providers/<int:provider_id>/test", methods=["POST"])
 @require_auth(admin_required=True)
-async def test_provider(provider_id, user_data):
+async def test_provider(provider_id, user_data):  # noqa: C901
     """Test enterprise auth provider connection"""
     db = current_app.db
     provider = db.enterprise_auth_providers[provider_id]

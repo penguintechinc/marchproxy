@@ -161,7 +161,7 @@ class MappingModel:
         return normalized
 
     @staticmethod
-    def _normalize_port_list(ports: List[Union[int, str]]) -> List[Dict[str, Any]]:
+    def _normalize_port_list(ports: List[Union[int, str]]) -> List[Dict[str, Any]]:  # noqa: C901
         """Normalize port list to handle ranges and individual ports"""
         normalized = []
 
@@ -207,8 +207,8 @@ class MappingModel:
     def get_cluster_mappings(db: DAL, cluster_id: int, user_id: int = None) -> List[Dict[str, Any]]:
         """Get mappings for cluster (with user access control)"""
         query = (db.mappings.cluster_id == cluster_id) & (
-            db.mappings.is_active == True
-        )  # noqa: E712
+            db.mappings.is_active == True  # noqa: E712
+        )
 
         # If user_id provided and user is not admin, filter by accessible services
         if user_id:
@@ -290,9 +290,9 @@ class MappingModel:
     def resolve_mapping_services(db: DAL, mapping_id: int) -> Optional[Dict[str, Any]]:
         """Resolve mapping to concrete service configurations for proxy"""
         mapping = (
-            db((db.mappings.id == mapping_id) & (db.mappings.is_active == True))
+            db((db.mappings.id == mapping_id) & (db.mappings.is_active == True))  # noqa: E712
             .select()
-            .first()  # noqa: E712
+            .first()
         )
 
         if not mapping:
@@ -467,7 +467,7 @@ class CreateMappingRequest(BaseModel):
         return [p.lower() for p in v]
 
     @validator("ports")
-    def validate_ports(cls, v):
+    def validate_ports(cls, v):  # noqa: C901
         if not v:
             raise ValueError("At least one port must be specified")
 

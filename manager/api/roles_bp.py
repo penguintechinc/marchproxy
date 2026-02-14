@@ -110,8 +110,8 @@ async def get_role(role_id: int):
 
     # Get users with this role
     assignments = db(
-        (db.user_roles.role_id == role_id) & (db.user_roles.is_active == True)
-    ).select(  # noqa: E712
+        (db.user_roles.role_id == role_id) & (db.user_roles.is_active == True)  # noqa: E712
+    ).select(
         db.user_roles.ALL,
         db.users.id,
         db.users.username,

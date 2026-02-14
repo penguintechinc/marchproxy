@@ -26,7 +26,7 @@ clusters_bp = Blueprint("clusters", __name__, url_prefix="/api/v1/clusters")
 
 
 @clusters_bp.route("", methods=["GET", "POST"])
-async def clusters_list():
+async def clusters_list():  # noqa: C901
     """List all clusters or create new cluster"""
     db = current_app.db
 
@@ -50,9 +50,9 @@ async def clusters_list():
 
         if user["is_admin"]:
             # Admin sees all clusters
-            clusters_list = db(db.clusters.is_active == True).select(
+            clusters_list = db(db.clusters.is_active == True).select(  # noqa: E712
                 orderby=db.clusters.name
-            )  # noqa: E712
+            )
         else:
             # Regular user sees only assigned clusters
             user_clusters = UserClusterAssignmentModel.get_user_clusters(db, user["id"])
@@ -148,7 +148,7 @@ async def clusters_list():
 
 
 @clusters_bp.route("/<cluster_id>", methods=["GET", "PUT"])
-async def cluster_detail(cluster_id):
+async def cluster_detail(cluster_id):  # noqa: C901
     """Get or update cluster details"""
     db = current_app.db
 

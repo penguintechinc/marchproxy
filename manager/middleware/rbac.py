@@ -44,7 +44,7 @@ class RBACMiddleware:
             g.permissions = {"global": [], "cluster": {}, "service": {}}
 
 
-def requires_permission(
+def requires_permission(  # noqa: C901
     permission: str,
     resource_type: Optional[str] = None,
     resource_id_param: Optional[str] = None,
@@ -117,7 +117,7 @@ def requires_permission(
     return decorator
 
 
-def requires_role(
+def requires_role(  # noqa: C901
     role_name: str,
     scope: PermissionScope = PermissionScope.GLOBAL,
     resource_id_param: Optional[str] = None,

@@ -112,8 +112,8 @@ class ClusterModel:
         api_key_hash = ClusterModel.hash_api_key(api_key)
         cluster = (
             db(
-                (db.clusters.api_key_hash == api_key_hash) & (db.clusters.is_active == True)
-            )  # noqa: E712
+                (db.clusters.api_key_hash == api_key_hash) & (db.clusters.is_active == True)  # noqa: E712
+            )
             .select()
             .first()
         )
@@ -177,9 +177,9 @@ class ClusterModel:
     def get_cluster_config(db: DAL, cluster_id: int) -> Optional[Dict[str, Any]]:
         """Get complete cluster configuration for proxy"""
         cluster = (
-            db((db.clusters.id == cluster_id) & (db.clusters.is_active == True))
+            db((db.clusters.id == cluster_id) & (db.clusters.is_active == True))  # noqa: E712
             .select()
-            .first()  # noqa: E712
+            .first()
         )
 
         if not cluster:

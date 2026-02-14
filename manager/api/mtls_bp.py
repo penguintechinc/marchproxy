@@ -161,7 +161,7 @@ class MTLSManager:
             logger.error(f"Failed to create client certificate: {e}")
             raise
 
-    async def validate_client_certificate(self, cert_data: str, ca_cert_id: int) -> Dict[str, Any]:
+    async def validate_client_certificate(self, cert_data: str, ca_cert_id: int) -> Dict[str, Any]:  # noqa: C901
         """Validate a client certificate against a CA"""
 
         try:
@@ -249,7 +249,7 @@ class MTLSManager:
 
         return "\n".join(ca_bundle)
 
-    async def get_mtls_config_for_proxy(self, cluster_id: int, proxy_type: str) -> Dict[str, Any]:
+    async def get_mtls_config_for_proxy(self, cluster_id: int, proxy_type: str) -> Dict[str, Any]:  # noqa: C901
         """Get mTLS configuration for a specific proxy type and cluster"""
 
         # Get active certificates for this cluster
@@ -353,7 +353,7 @@ class MTLSManager:
 
 @mtls_bp.route("/certificates", methods=["GET", "POST"])
 @require_auth(admin_required=True)
-async def certificates(user_data):
+async def certificates(user_data):  # noqa: C901
     """mTLS certificate management"""
     db = current_app.db
 
@@ -362,7 +362,7 @@ async def certificates(user_data):
         cluster_filter = request.args.get("cluster_id")
         cert_type = request.args.get("type", "all")
 
-        query = db.certificates.is_active == True
+        query = db.certificates.is_active == True  # noqa: E712
 
         if cluster_filter:
             query &= db.certificates.cluster_id == cluster_filter

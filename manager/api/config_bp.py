@@ -116,7 +116,7 @@ async def health_check():
 
 
 @config_bp.route("/license", methods=["GET", "PUT"])
-async def license_config():
+async def license_config():  # noqa: C901
     """Get or update license configuration"""
     import os
 

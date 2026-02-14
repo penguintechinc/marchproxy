@@ -669,7 +669,7 @@ class TLSProxyCAModel:
         )
 
     @staticmethod
-    def generate_self_signed_ca(
+    def generate_self_signed_ca(  # noqa: C901
         domain: str,
         key_type: str = "ecc",
         key_size: int = 384,

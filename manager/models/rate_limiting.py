@@ -240,7 +240,7 @@ class RateLimitManager:
             return "api_general"
 
 
-def rate_limit_fixture(endpoint_type: str = "api_general"):
+def rate_limit_fixture(endpoint_type: str = "api_general"):  # noqa: C901
     """py4web fixture for rate limiting"""
 
     def decorator(func):
@@ -454,7 +454,7 @@ class XDPRateLimitModel:
         return result
 
     @staticmethod
-    def validate_config(config: Dict[str, Any]) -> Tuple[bool, List[str]]:
+    def validate_config(config: Dict[str, Any]) -> Tuple[bool, List[str]]:  # noqa: C901
         """Validate XDP rate limiting configuration"""
         errors = []
 

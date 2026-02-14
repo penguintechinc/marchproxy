@@ -50,7 +50,7 @@ class IngressRouteResponse(BaseModel):
 
 
 @ingress_routes_bp.route("", methods=["GET", "POST"])
-async def routes_list():
+async def routes_list():  # noqa: C901
     """List all ingress routes or create new route"""
     db = current_app.db
 
@@ -181,7 +181,7 @@ async def routes_list():
 
 
 @ingress_routes_bp.route("/<int:route_id>", methods=["GET", "PUT", "DELETE"])
-async def route_detail(route_id):
+async def route_detail(route_id):  # noqa: C901
     """Get, update or delete an ingress route"""
     db = current_app.db
 

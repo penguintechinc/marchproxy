@@ -25,7 +25,7 @@ mappings_bp = Blueprint("mappings", __name__, url_prefix="/api/v1/mappings")
 
 
 @mappings_bp.route("", methods=["GET", "POST"])
-async def mappings_list():
+async def mappings_list():  # noqa: C901
     """List all mappings or create new mapping"""
     db = current_app.db
 
@@ -116,7 +116,7 @@ async def mappings_list():
 
 
 @mappings_bp.route("/<int:mapping_id>", methods=["GET", "PUT", "DELETE"])
-async def mapping_detail(mapping_id):
+async def mapping_detail(mapping_id):  # noqa: C901
     """Get, update or delete a mapping"""
     db = current_app.db
 

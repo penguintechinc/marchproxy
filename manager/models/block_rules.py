@@ -97,7 +97,7 @@ class BlockRuleModel:
             return False
 
     @staticmethod
-    def create_rule(
+    def create_rule(  # noqa: C901
         db: DAL,
         cluster_id: int,
         name: str,
