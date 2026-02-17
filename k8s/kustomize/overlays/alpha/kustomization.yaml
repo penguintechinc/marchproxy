@@ -101,6 +101,17 @@ patches:
           - name: ENVIRONMENT
             value: "alpha"
 
+  - target:
+      kind: Ingress
+      name: marchproxy-ingress
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: marchproxy.localhost.local
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: marchproxy.localhost.local
+
 configMapGenerator:
   - name: marchproxy-config
     behavior: merge
