@@ -104,14 +104,14 @@ jobs:
         docker build -t marchproxy/proxy:scan --target proxy .
 
     - name: Run Trivy container scan - Manager
-      uses: aquasecurity/trivy-action@master
+      uses: aquasecurity/trivy-action@v0.35.0
       with:
         image-ref: 'marchproxy/manager:scan'
         format: 'sarif'
         output: 'trivy-manager-results.sarif'
 
     - name: Run Trivy container scan - Proxy
-      uses: aquasecurity/trivy-action@master
+      uses: aquasecurity/trivy-action@v0.35.0
       with:
         image-ref: 'marchproxy/proxy:scan'
         format: 'sarif'
