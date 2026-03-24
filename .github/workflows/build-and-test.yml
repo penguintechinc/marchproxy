@@ -2,7 +2,7 @@ name: Build and Test MarchProxy
 
 on:
   push:
-    branches: [main, develop, 'feature/*', 'release/*']
+    branches: [main, develop, 'feature/*', 'release/*', 'v*']
     tags: ['v*']
     paths:
       - 'proxy-egress/**'
@@ -232,10 +232,16 @@ jobs:
           tags: |
             # Development builds with epoch64 timestamps
             type=raw,value=alpha-${{ steps.build_meta.outputs.epoch64 }},enable=${{ !fromJSON(steps.build_meta.outputs.is_main) && !fromJSON(steps.build_meta.outputs.is_tag) }}
-            type=raw,value=beta-${{ steps.build_meta.outputs.epoch64 }},enable=${{ fromJSON(steps.build_meta.outputs.is_main) && !fromJSON(steps.build_meta.outputs.is_tag) }}
+            # Release branch builds → beta tag
+            type=raw,value=beta-${{ steps.build_meta.outputs.epoch64 }},enable=${{ startsWith(github.ref, 'refs/heads/v') && !fromJSON(steps.build_meta.outputs.is_tag) }}
+            # Main branch builds → gamma tag
+            type=raw,value=gamma-${{ steps.build_meta.outputs.epoch64 }},enable=${{ fromJSON(steps.build_meta.outputs.is_main) && !fromJSON(steps.build_meta.outputs.is_tag) }}
             # Version-based tags on version changes (conditional alpha/beta)
             type=raw,value=v${{ steps.build_meta.outputs.version }}-alpha,enable=${{ !fromJSON(steps.build_meta.outputs.is_main) && !fromJSON(steps.build_meta.outputs.is_tag) }}
-            type=raw,value=v${{ steps.build_meta.outputs.version }}-beta,enable=${{ fromJSON(steps.build_meta.outputs.is_main) && !fromJSON(steps.build_meta.outputs.is_tag) }}
+            # Version-based tags: release branch → v1.2.3-beta
+            type=raw,value=v${{ steps.build_meta.outputs.version }}-beta,enable=${{ startsWith(github.ref, 'refs/heads/v') && !fromJSON(steps.build_meta.outputs.is_tag) }}
+            # Version-based tags: main branch → v1.2.3-gamma
+            type=raw,value=v${{ steps.build_meta.outputs.version }}-gamma,enable=${{ fromJSON(steps.build_meta.outputs.is_main) && !fromJSON(steps.build_meta.outputs.is_tag) }}
             # Release tags for tagged versions
             type=semver,pattern={{version}},enable=${{ fromJSON(steps.build_meta.outputs.is_tag) }}
             type=raw,value=latest,enable=${{ fromJSON(steps.build_meta.outputs.is_tag) }}
@@ -310,7 +316,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.35.0
         with:
           scan-type: 'fs'
           scan-ref: '.'

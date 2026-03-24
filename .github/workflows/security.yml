@@ -102,14 +102,14 @@ jobs:
         docker build -t marchproxy/proxy-egress:scan -f proxy-egress/Dockerfile proxy-egress/
 
     - name: Run Trivy container scan - Manager
-      uses: aquasecurity/trivy-action@master
+      uses: aquasecurity/trivy-action@v0.35.0
       with:
         image-ref: 'marchproxy/manager:scan'
         format: 'sarif'
         output: 'trivy-manager-results.sarif'
 
     - name: Run Trivy container scan - Proxy Egress
-      uses: aquasecurity/trivy-action@master
+      uses: aquasecurity/trivy-action@v0.35.0
       with:
         image-ref: 'marchproxy/proxy-egress:scan'
         format: 'sarif'
