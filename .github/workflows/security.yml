@@ -32,7 +32,7 @@ jobs:
         fetch-depth: 0
 
     - name: Run TruffleHog
-      uses: trufflesecurity/trufflehog@main
+      uses: trufflesecurity/trufflehog@690e5c7aff8347c3885096f3962a0633d9129607  # v3.88.23
       with:
         path: ./
         base: main
