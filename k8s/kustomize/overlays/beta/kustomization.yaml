@@ -1,12 +1,11 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: marchproxy-beta
+namespace: marchproxy
 
 bases:
   - ../../base
 
-nameSuffix: -beta
 namePrefix: ""
 
 replicas:
@@ -25,13 +24,13 @@ commonAnnotations:
 
 images:
   - name: marchproxy-manager
-    newName: registry-dal2.penguintech.io/marchproxy-manager
+    newName: ghcr.io/penguintechinc/marchproxy/marchproxy-manager
     newTag: v1.0.4
   - name: marchproxy-webui
-    newName: registry-dal2.penguintech.io/marchproxy-webui
+    newName: ghcr.io/penguintechinc/marchproxy/marchproxy-webui
     newTag: v1.0.0
   - name: marchproxy-proxy
-    newName: registry-dal2.penguintech.io/marchproxy-proxy
+    newName: ghcr.io/penguintechinc/marchproxy/marchproxy-proxy
     newTag: v1.0.0
 
 patches:
@@ -41,7 +40,7 @@ patches:
     patch: |-
       - op: replace
         path: /metadata/name
-        value: marchproxy-beta
+        value: marchproxy
 
   - target:
       kind: Deployment

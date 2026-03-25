@@ -1,3 +1,4 @@
+# TODO: migrate to pip-compile --generate-hashes
 # AILB (AI Load Balancer) Dependencies
 # Core framework
 fastapi==0.104.1

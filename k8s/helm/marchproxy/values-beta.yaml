@@ -1,8 +1,10 @@
 # Beta environment overrides (dal2 cluster)
-namespace: marchproxy-beta
+namespace: marchproxy
+imagePullSecrets:
+  - name: ghcr-pull-secret
 replicaCount: 2
 image:
-  registry: registry-dal2.penguintech.io
+  registry: ghcr.io/penguintechinc/marchproxy
   pullPolicy: Always
 env:
   LOG_LEVEL: INFO

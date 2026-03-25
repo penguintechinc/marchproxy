@@ -30,13 +30,13 @@ replicas:
 
 images:
   - name: marchproxy-manager
-    newName: registry-dal2.penguintech.io/marchproxy-manager
+    newName: ghcr.io/penguintechinc/marchproxy/marchproxy-manager
     newTag: v1.0.4
   - name: marchproxy-webui
-    newName: registry-dal2.penguintech.io/marchproxy-webui
+    newName: ghcr.io/penguintechinc/marchproxy/marchproxy-webui
     newTag: v1.0.0
   - name: marchproxy-proxy
-    newName: registry-dal2.penguintech.io/marchproxy-proxy
+    newName: ghcr.io/penguintechinc/marchproxy/marchproxy-proxy
     newTag: v1.0.0
 
 configMapGenerator:

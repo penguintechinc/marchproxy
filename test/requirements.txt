@@ -1,3 +1,4 @@
+# TODO: migrate to pip-compile --generate-hashes
 # Test requirements for MarchProxy integration tests
 requests>=2.31.0
 python-dotenv>=1.0.0

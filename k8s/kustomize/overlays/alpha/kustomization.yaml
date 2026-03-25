@@ -25,13 +25,13 @@ commonAnnotations:
 
 images:
   - name: marchproxy-manager
-    newName: registry-dal2.penguintech.io/marchproxy-manager
+    newName: localhost:32000/marchproxy-manager
     newTag: latest
   - name: marchproxy-webui
-    newName: registry-dal2.penguintech.io/marchproxy-webui
+    newName: localhost:32000/marchproxy-webui
     newTag: latest
   - name: marchproxy-proxy
-    newName: registry-dal2.penguintech.io/marchproxy-proxy
+    newName: localhost:32000/marchproxy-proxy
     newTag: latest
 
 patches:

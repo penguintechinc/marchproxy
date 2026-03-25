@@ -1,0 +1,61 @@
+namespace: marchproxy-alpha
+
+manager:
+  replicas: 1
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "250m"
+
+proxy:
+  replicas: 1
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "250m"
+
+autoscaling:
+  enabled: false
+
+monitoring:
+  prometheus:
+    enabled: false
+  grafana:
+    enabled: false
+
+postgresql:
+  enabled: true
+  primary:
+    persistence:
+      enabled: false
+
+redis:
+  enabled: true
+  master:
+    persistence:
+      enabled: false
+
+image:
+  pullPolicy: Never
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: marchproxy.localhost.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: marchproxy-alpha-tls
+      hosts:
+        - marchproxy.localhost.local
+
+config:
+  logLevel: debug
