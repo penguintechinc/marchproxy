@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import declarative_base
-from sqlalchemy.pool import NullPool, QueuePool
+from sqlalchemy.pool import AsyncAdaptedQueuePool, NullPool
 
 from app.core.config import settings
 
@@ -24,9 +24,9 @@ engine_kwargs = {
     "future": True,
 }
 
-# Production: use connection pooling
+# Production: use async-compatible connection pooling
 if not settings.DEBUG:
-    engine_kwargs["poolclass"] = QueuePool
+    engine_kwargs["poolclass"] = AsyncAdaptedQueuePool
     engine_kwargs["pool_size"] = settings.DATABASE_POOL_SIZE
     engine_kwargs["max_overflow"] = settings.DATABASE_MAX_OVERFLOW
     engine_kwargs["pool_pre_ping"] = True

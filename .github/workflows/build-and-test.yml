@@ -103,10 +103,13 @@ jobs:
           go mod tidy
           go build -v ./...
 
-      - name: Test proxy
+      - name: Test proxy with coverage
         working-directory: ./proxy-egress
         run: |
-          go test -v ./...
+          go test -tags ci -coverprofile=coverage.out ./...
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
+          echo "proxy-egress coverage: ${COVERAGE}%"
+          awk -v cov="${COVERAGE}" 'BEGIN { if (cov + 0 < 90) { print "FAIL: coverage " cov "% < 90%"; exit 1 } }'
 
   # Test Python manager application
   test-manager:
@@ -132,7 +135,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
         with:
-          python-version: '3.12'
+          python-version: '3.13'
 
       - name: Cache Python packages
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
@@ -167,12 +170,35 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/marchproxy_test
           JWT_SECRET: test-secret-key-for-ci
         run: |
-          python -m pytest tests/ -v --cov=apps/marchproxy/ || true
-          # Note: Tests may not exist yet, so we allow failure
+          pip install pytest pytest-asyncio pytest-cov
+          python3 -m pytest tests/ -v
+
+
+  # Test WebUI (Vitest unit tests)
+  test-webui:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af  # v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: webui/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./webui
+        run: npm ci
+
+      - name: Run unit tests with coverage
+        working-directory: ./webui
+        run: npm run test:coverage
 
   # Multi-architecture Docker builds
   build-multi-arch:
-    needs: [test-proxy, test-manager]
+    needs: [test-proxy, test-manager, test-webui]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -317,8 +343,6 @@ jobs:
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1  # v0.35.0
-          with:
-            trivy-version: 'v0.69.3'
         with:
           scan-type: 'fs'
           scan-ref: '.'

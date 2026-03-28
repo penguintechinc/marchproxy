@@ -1,5 +1,5 @@
 # Multi-stage build for MarchProxy DBLB
-FROM golang:1.24-bookworm@sha256:1a6d4452c65dea36aac2e2d606b01b4a029ec90cc1ae53890540ce6173ea77ac AS builder
+FROM golang:1.24-bookworm@sha256:01f42367a0a94ad4bc17111776fd66e3500c1d87c15bbd6055b7371d39c124fb AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \

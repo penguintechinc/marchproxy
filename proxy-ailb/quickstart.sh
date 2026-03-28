@@ -80,12 +80,12 @@ case $choice in
         ;;
     3)
         echo -e "${BLUE}Installing Python dependencies...${NC}"
-        pip install -r requirements.txt
+        pip3 install -r requirements.txt
         echo ""
         echo -e "${BLUE}Starting AILB locally...${NC}"
         # Load .env file
         export $(cat .env | grep -v '^#' | xargs)
-        python main.py
+        python3 main.py
         ;;
     *)
         echo -e "${RED}Invalid choice${NC}"

@@ -1,7 +1,7 @@
 # AILB Container Dockerfile
 # Multi-stage build for AI Load Balancer
 
-FROM python:3.11-slim as builder
+FROM python:3.13-slim-bookworm@sha256:01f42367a0a94ad4bc17111776fd66e3500c1d87c15bbd6055b7371d39c124fb
 
 # Set working directory
 WORKDIR /build
@@ -20,7 +20,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 # Final stage
-FROM python:3.11-slim
+FROM python:3.13-slim-bookworm@sha256:01f42367a0a94ad4bc17111776fd66e3500c1d87c15bbd6055b7371d39c124fb
 
 # Set working directory
 WORKDIR /app

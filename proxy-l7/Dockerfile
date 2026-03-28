@@ -2,7 +2,7 @@
 # Combines Envoy proxy with Go filters (TinyGo Wasm) for authentication, licensing, and metrics
 
 # Stage 1: Build Go filters using TinyGo for WebAssembly (optional)
-FROM golang:1.24-bookworm@sha256:1a6d4452c65dea36aac2e2d606b01b4a029ec90cc1ae53890540ce6173ea77ac AS filter-builder
+FROM golang:1.24-bookworm@sha256:01f42367a0a94ad4bc17111776fd66e3500c1d87c15bbd6055b7371d39c124fb AS filter-builder
 
 WORKDIR /build
 
@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN mkdir -p /build/filters && echo "# Filter placeholder" > /build/filters/placeholder.txt
 
 # Stage 2: Production Envoy image
-FROM envoyproxy/envoy:v1.28-latest
+FROM envoyproxy/envoy:v1.32.0@sha256:071ae2096452f7ce2037ae31916206d08e69bfef61fb266f800ba4b567162a60
 
 LABEL maintainer="MarchProxy Contributors"
 LABEL description="MarchProxy ALB - Application Load Balancer with Envoy L7"

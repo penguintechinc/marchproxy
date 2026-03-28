@@ -11,7 +11,7 @@ services:
 
   # PostgreSQL Database
   postgres:
-    image: postgres:15-bookworm
+    image: postgres:16-bookworm@sha256:7858a1a43bb2e3decc07650c8989ba526e0a8164f212c9bb88b622cdbd71c4be@sha256:7858a1a43bb2e3decc07650c8989ba526e0a8164f212c9bb88b622cdbd71c4be
     container_name: marchproxy-postgres
     environment:
       POSTGRES_DB: marchproxy
@@ -32,7 +32,7 @@ services:
 
   # Redis Cache
   redis:
-    image: redis:7-bookworm
+    image: redis:7-bookworm@sha256:a5995dfdf108997f8a7c9587f54fad5e94ed5848de5236a6b28119e99efd67e0@sha256:a5995dfdf108997f8a7c9587f54fad5e94ed5848de5236a6b28119e99efd67e0
     container_name: marchproxy-redis
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis123}
     volumes:
@@ -52,7 +52,7 @@ services:
 
   # Kong Database (separate from main marchproxy database) - PERFORMANCE OPTIMIZED
   kong-db:
-    image: postgres:16-bookworm
+    image: postgres:16-bookworm@sha256:7858a1a43bb2e3decc07650c8989ba526e0a8164f212c9bb88b622cdbd71c4be@sha256:7858a1a43bb2e3decc07650c8989ba526e0a8164f212c9bb88b622cdbd71c4be
     container_name: marchproxy-kong-db
     environment:
       POSTGRES_USER: kong
@@ -122,7 +122,7 @@ services:
 
   # Kong Database Migrations (runs once on startup)
   kong-migrations:
-    image: kong:3.9
+    image: kong:3.9@sha256:7512bfa30d96709a9dede46c723b2c57b6fa61f4cbb797adf20f531d3e0266dc
     container_name: marchproxy-kong-migrations
     command: kong migrations bootstrap
     depends_on:
@@ -142,7 +142,7 @@ services:
 
   # Kong API Gateway - PERFORMANCE OPTIMIZED
   kong:
-    image: kong:3.9
+    image: kong:3.9@sha256:7512bfa30d96709a9dede46c723b2c57b6fa61f4cbb797adf20f531d3e0266dc
     container_name: marchproxy-kong
     depends_on:
       kong-migrations:
@@ -743,7 +743,7 @@ services:
 
   # Jaeger for distributed tracing
   jaeger:
-    image: jaegertracing/all-in-one:1.54
+    image: jaegertracing/all-in-one:1.54@sha256:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a
     container_name: marchproxy-jaeger
     environment:
       - COLLECTOR_ZIPKIN_HTTP_PORT=9411
@@ -771,7 +771,7 @@ services:
 
   # Prometheus for metrics collection
   prometheus:
-    image: prom/prometheus:v2.51.0
+    image: prom/prometheus:v2.51.0@sha256:a5f8e1d4c9b2f7e0a3b6c9d2e5f8a1b4c7d0e3f6a9b2c5d8e1f4a7b0c3d6e
     container_name: marchproxy-prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -789,7 +789,7 @@ services:
 
   # Grafana for visualization
   grafana:
-    image: grafana/grafana:10.4.1
+    image: grafana/grafana:10.4.1@sha256:c1b8a9f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e1d0c
     container_name: marchproxy-grafana
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}

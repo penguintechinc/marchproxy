@@ -62,7 +62,7 @@ services:
       - marchproxy-test
 
   postgres:
-    image: postgres:14-alpine
+    image: postgres:16-bookworm@sha256:7858a1a43bb2e3decc07650c8989ba526e0a8164f212c9bb88b622cdbd71c4be
     environment:
       - POSTGRES_DB=marchproxy
       - POSTGRES_USER=marchproxy
@@ -76,7 +76,7 @@ services:
 
   # Test backend service
   test-backend:
-    image: nginx:alpine
+    image: nginx:stable-bookworm@sha256:552e7481ca93ffccd046aa658dbbed22caefbc09c66fa7cd247cbb90b8a5c609
     ports:
       - "9999:80"
     volumes:

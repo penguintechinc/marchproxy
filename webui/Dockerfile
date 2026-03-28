@@ -1,7 +1,7 @@
 # MarchProxy WebUI Dockerfile
 # Multi-stage build for React + TypeScript + Vite application
 
-FROM node:20-bookworm-slim AS builder
+FROM node:20-bookworm-slim@sha256:1e85773c98c31d4fe5b545e4cb17379e617b348832fb3738b22a08f68dec30f3 AS builder
 
 WORKDIR /build
 
@@ -18,7 +18,7 @@ COPY . .
 RUN npm run build
 
 # Development stage
-FROM node:20-bookworm-slim AS development
+FROM node:20-bookworm-slim@sha256:1e85773c98c31d4fe5b545e4cb17379e617b348832fb3738b22a08f68dec30f3 AS development
 
 LABEL maintainer="MarchProxy Contributors"
 LABEL description="MarchProxy WebUI - React Frontend Development"
@@ -45,7 +45,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 CMD ["npm", "run", "dev"]
 
 # Production stage
-FROM node:20-bookworm-slim AS production
+FROM node:20-bookworm-slim@sha256:1e85773c98c31d4fe5b545e4cb17379e617b348832fb3738b22a08f68dec30f3 AS production
 
 LABEL maintainer="MarchProxy Contributors"
 LABEL description="MarchProxy WebUI - React Frontend"

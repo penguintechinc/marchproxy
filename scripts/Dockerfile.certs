@@ -1,7 +1,10 @@
-FROM alpine:3.18
+FROM debian:12-slim@sha256:66f47f9e94302e1e1ab2baf19c9a0107b75e4afb915b12a757575e33ce18cfb3
 
 # Install OpenSSL for certificate generation
-RUN apk add --no-cache openssl bash
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    openssl \
+    bash \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy certificate generation script
 COPY generate-certs.sh /generate-certs.sh

@@ -9,10 +9,13 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 100",
     "preview": "vite preview",
     "serve": "node server.js",
-    "test": "playwright test",
-    "test:ui": "playwright test --ui",
-    "test:headed": "playwright test --headed",
-    "test:report": "playwright show-report"
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
     "@emotion/react": "11.11.3",
@@ -38,6 +41,9 @@
   },
   "devDependencies": {
     "@playwright/test": "1.40.1",
+    "@testing-library/jest-dom": "6.4.2",
+    "@testing-library/react": "14.2.1",
+    "@testing-library/user-event": "14.5.2",
     "@types/d3-geo": "3.1.0",
     "@types/node": "20.11.17",
     "@types/react": "18.2.55",
@@ -46,13 +52,16 @@
     "@typescript-eslint/eslint-plugin": "6.21.0",
     "@typescript-eslint/parser": "6.21.0",
     "@vitejs/plugin-react": "4.2.1",
+    "@vitest/coverage-v8": "1.4.0",
     "eslint": "8.56.0",
     "eslint-plugin-react-hooks": "4.6.0",
     "eslint-plugin-react-refresh": "0.4.5",
     "express": "4.18.2",
+    "jsdom": "24.0.0",
     "terser": "5.44.1",
     "typescript": "5.3.3",
-    "vite": "7.3.1"
+    "vite": "7.3.1",
+    "vitest": "1.4.0"
   },
   "engines": {
     "node": ">=20.0.0",

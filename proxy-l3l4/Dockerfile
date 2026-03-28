@@ -2,7 +2,7 @@
 # Supports: production, development, testing, debug targets
 
 # Build stage
-FROM golang:1.24-bookworm@sha256:1a6d4452c65dea36aac2e2d606b01b4a029ec90cc1ae53890540ce6173ea77ac AS builder
+FROM golang:1.24-bookworm@sha256:01f42367a0a94ad4bc17111776fd66e3500c1d87c15bbd6055b7371d39c124fb AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
@@ -29,7 +29,7 @@ RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo \
     -o proxy-l3l4 ./cmd/proxy/main.go
 
 # Production stage
-FROM debian:12-slim AS production
+FROM debian:12-slim@sha256:66f47f9e94302e1e1ab2baf19c9a0107b75e4afb915b12a757575e33ce18cfb3 AS production
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \

@@ -45,7 +45,7 @@ RUN cd proto/marchproxy && \
            module_service.proto
 
 # Stage 3: Production image with Envoy
-FROM envoyproxy/envoy:v1.28-latest
+FROM envoyproxy/envoy:v1.32.0@sha256:071ae2096452f7ce2037ae31916206d08e69bfef61fb266f800ba4b567162a60
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \

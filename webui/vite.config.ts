@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -49,5 +50,32 @@ export default defineConfig({
 
   optimizeDeps: {
     include: ['react', 'react-dom', 'react-router-dom', '@mui/material', 'axios'],
+  },
+
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/test-setup.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov'],
+      thresholds: {
+        lines: 90,
+        branches: 90,
+        functions: 90,
+        statements: 90,
+      },
+      exclude: [
+        'node_modules/**',
+        'tests/**',
+        'dist/**',
+        'src/main.tsx',
+        'src/vite-env.d.ts',
+        '**/*.spec.ts',
+        '**/*.test.ts',
+        '**/*.spec.tsx',
+        '**/*.test.tsx',
+      ],
+    },
   },
 });

@@ -13,7 +13,7 @@
 ARG ENVOY_VERSION=v1.28-latest
 
 # Build stage
-FROM golang:1.24-bookworm@sha256:1a6d4452c65dea36aac2e2d606b01b4a029ec90cc1ae53890540ce6173ea77ac AS builder
+FROM golang:1.24-bookworm@sha256:01f42367a0a94ad4bc17111776fd66e3500c1d87c15bbd6055b7371d39c124fb AS builder
 
 # Install build dependencies for eBPF and networking
 RUN apt-get update && apt-get install -y \
@@ -164,7 +164,7 @@ USER marchproxy
 CMD ["dumb-init", "/app/marchproxy-egress"]
 
 # Development stage
-FROM golang:1.21-bookworm AS development
+FROM golang:1.24-bookworm@sha256:01f42367a0a94ad4bc17111776fd66e3500c1d87c15bbd6055b7371d39c124fb AS development
 
 # Install development dependencies
 RUN apt-get update && apt-get install -y \
@@ -217,7 +217,7 @@ RUN go install github.com/onsi/ginkgo/v2/ginkgo@latest && \
 CMD ["go", "test", "-v", "-race", "-coverprofile=coverage.out", "./..."]
 
 # Cross-compilation stage for multi-platform builds
-FROM --platform=$BUILDPLATFORM golang:1.21-bullseye AS cross-builder
+FROM --platform=$BUILDPLATFORM golang:1.24-bookworm@sha256:1a6d4452c65dea36aac2e2d606b01b4a029ec90cc1ae53890540ce6173ea77ac AS cross-builder
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -265,7 +265,7 @@ USER nonroot
 ENTRYPOINT ["/marchproxy-proxy"]
 
 # Debug stage with shell access
-FROM debian:12-slim AS debug
+FROM debian:12-slim@sha256:66f47f9e94302e1e1ab2baf19c9a0107b75e4afb915b12a757575e33ce18cfb3 AS debug
 
 # Install debugging tools
 RUN apt-get update && apt-get install -y \

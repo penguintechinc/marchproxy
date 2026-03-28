@@ -12,7 +12,7 @@ NC='\033[0m' # No Color
 echo -e "${YELLOW}Generating Python gRPC code from proto files...${NC}"
 
 # Check if grpcio-tools is installed
-if ! python -c "import grpc_tools.protoc" 2>/dev/null; then
+if ! python3 -c "import grpc_tools.protoc" 2>/dev/null; then
     echo -e "${RED}Error: grpcio-tools not installed${NC}"
     echo "Install with: pip install grpcio-tools"
     exit 1
@@ -22,7 +22,7 @@ fi
 mkdir -p proto/marchproxy
 
 # Generate Python code
-python -m grpc_tools.protoc \
+python3 -m grpc_tools.protoc \
     -I../proto \
     --python_out=./proto \
     --grpc_python_out=./proto \

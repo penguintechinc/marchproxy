@@ -2,7 +2,7 @@
 # Multi-stage build for FastAPI + Go xDS server
 
 # Stage 1: Build Python dependencies
-FROM python:3.11-slim as python-builder
+FROM python:3.13-slim-bookworm@sha256:01f42367a0a94ad4bc17111776fd66e3500c1d87c15bbd6055b7371d39c124fb AS python-builder
 
 WORKDIR /build
 
@@ -16,7 +16,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 # Stage 2: Development stage
-FROM python:3.11-slim AS development
+FROM python:3.13-slim-bookworm@sha256:01f42367a0a94ad4bc17111776fd66e3500c1d87c15bbd6055b7371d39c124fb AS development
 
 LABEL maintainer="MarchProxy Contributors"
 LABEL description="MarchProxy API Server - Development"
@@ -53,7 +53,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
 # Stage 3: Production stage
-FROM python:3.11-slim AS production
+FROM python:3.13-slim-bookworm@sha256:01f42367a0a94ad4bc17111776fd66e3500c1d87c15bbd6055b7371d39c124fb AS production
 
 LABEL maintainer="MarchProxy Contributors"
 LABEL description="MarchProxy API Server - FastAPI Backend"

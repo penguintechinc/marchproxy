@@ -4,7 +4,7 @@
 # Stage 3: Envoy Production
 
 # ==================== Stage 1: XDP Build ====================
-FROM debian:12-slim AS xdp-builder
+FROM debian:12-slim@sha256:66f47f9e94302e1e1ab2baf19c9a0107b75e4afb915b12a757575e33ce18cfb3 AS xdp-builder
 
 LABEL stage=xdp-builder
 
@@ -35,7 +35,7 @@ RUN make
 RUN ls -lh envoy_xdp.o && file envoy_xdp.o
 
 # ==================== Stage 2: WASM Build ====================
-FROM rust:1.83-slim AS wasm-builder
+FROM rust:1.83-slim@sha256:eac1f7e21e6f8cc04c60fd6ba3c3e1e7e4cb7d5ad40c80e19bcfb4b5c5e5d5c3 AS wasm-builder
 
 LABEL stage=wasm-builder
 
@@ -74,7 +74,7 @@ RUN ls -lh \
     /build/filters/metrics_filter/target/wasm32-unknown-unknown/release/*.wasm
 
 # ==================== Stage 3: Envoy Production ====================
-FROM envoyproxy/envoy:v1.28-latest
+FROM envoyproxy/envoy:v1.32.0@sha256:071ae2096452f7ce2037ae31916206d08e69bfef61fb266f800ba4b567162a60
 
 LABEL maintainer="MarchProxy Contributors"
 LABEL description="MarchProxy L7 Proxy - Envoy with XDP and WASM filters"
@@ -126,7 +126,7 @@ EXPOSE 10000 9901
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:9901/ready || exit 1
+    CMD curl -f http://localhost:9901/ready || exit 1
 
 # Environment variables
 ENV ENVOY_UID=101

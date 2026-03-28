@@ -1,5 +1,5 @@
 # MarchProxy xDS Server Dockerfile
-FROM golang:1.21-alpine AS builder
+FROM golang:1.24-bookworm@sha256:01f42367a0a94ad4bc17111776fd66e3500c1d87c15bbd6055b7371d39c124fb AS builder
 
 WORKDIR /build
 
@@ -17,9 +17,11 @@ COPY *.go ./
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o xds-server .
 
 # Production stage
-FROM alpine:latest
+FROM debian:12-slim@sha256:66f47f9e94302e1e1ab2baf19c9a0107b75e4afb915b12a757575e33ce18cfb3
 
-RUN apk --no-cache add ca-certificates
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -31,7 +33,7 @@ EXPOSE 18000 19000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:19000/healthz || exit 1
+    CMD curl -f http://localhost:19000/healthz || exit 1
 
 # Run the server
 ENTRYPOINT ["./xds-server"]

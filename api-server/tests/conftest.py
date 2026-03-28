@@ -16,9 +16,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 from app.main import app
 from app.core.database import Base, get_db
 from app.dependencies import get_current_user
-from app.models.user import User
-from app.models.cluster import Cluster
-from app.services.auth_service import AuthService
+from app.models.sqlalchemy.user import User
+from app.models.sqlalchemy.cluster import Cluster
+from app.core.security import create_access_token, get_password_hash
 
 
 # Test database URL - use test database
@@ -100,16 +100,15 @@ async def async_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, 
 @pytest.fixture
 async def admin_user(db_session: AsyncSession) -> User:
     """Create admin user for testing."""
-    auth_service = AuthService(db_session)
-
     user = User(
         email="admin@test.com",
         username="admin",
-        full_name="Admin User",
-        hashed_password=auth_service.get_password_hash("Admin123!"),
+        first_name="Admin",
+        last_name="User",
+        password_hash=get_password_hash("Admin123!"),
         is_active=True,
-        is_superuser=True,
-        email_verified=True,
+        is_admin=True,
+        is_verified=True,
         totp_secret=None
     )
 
@@ -123,16 +122,15 @@ async def admin_user(db_session: AsyncSession) -> User:
 @pytest.fixture
 async def regular_user(db_session: AsyncSession) -> User:
     """Create regular user for testing."""
-    auth_service = AuthService(db_session)
-
     user = User(
         email="user@test.com",
         username="testuser",
-        full_name="Test User",
-        hashed_password=auth_service.get_password_hash("User123!"),
+        first_name="Test",
+        last_name="User",
+        password_hash=get_password_hash("User123!"),
         is_active=True,
-        is_superuser=False,
-        email_verified=True,
+        is_admin=False,
+        is_verified=True,
         totp_secret=None
     )
 
@@ -146,22 +144,14 @@ async def regular_user(db_session: AsyncSession) -> User:
 @pytest.fixture
 async def admin_token(admin_user: User) -> str:
     """Generate JWT token for admin user."""
-    from app.services.auth_service import AuthService
-
-    access_token = AuthService.create_access_token(
-        data={"sub": admin_user.email}
-    )
+    access_token = create_access_token(subject=str(admin_user.id))
     return access_token
 
 
 @pytest.fixture
 async def user_token(regular_user: User) -> str:
     """Generate JWT token for regular user."""
-    from app.services.auth_service import AuthService
-
-    access_token = AuthService.create_access_token(
-        data={"sub": regular_user.email}
-    )
+    access_token = create_access_token(subject=str(regular_user.id))
     return access_token
 
 
