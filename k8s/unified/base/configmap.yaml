@@ -24,7 +24,7 @@ data:
   # Module gRPC endpoints
   ALB_GRPC: "proxy-alb:50051"
   DBLB_GRPC: "proxy-dblb:50052"
-  AILB_GRPC: "proxy-ailb:50053"
+  AILB_GRPC: "proxy-ailb:50051"
   RTMP_GRPC: "proxy-rtmp:50054"
 
   # Observability
@@ -103,15 +103,15 @@ metadata:
     app.kubernetes.io/name: marchproxy
     app.kubernetes.io/component: ailb
 data:
-  # AILB specific configuration
-  GRPC_PORT: "50053"
-  MODULE_TYPE: "ailb"
-  HTTP_PORT: "7003"
-  ADMIN_PORT: "7004"
-  RAG_ENABLED: "false"
-  RAG_VECTOR_STORE: "faiss"
+  # AILB specific configuration (Go service)
+  GRPC_PORT: "50051"
+  HTTP_PORT: "8080"
+  METRICS_PORT: "9090"
   RATE_LIMIT_ENABLED: "true"
   RATE_LIMIT_RPM: "60"
+  OLLAMA_HOST: "http://ollama:11434"
+  MEMORY_ENABLED: "true"
+  MEMORY_BACKEND: "redis"
 ---
 apiVersion: v1
 kind: ConfigMap

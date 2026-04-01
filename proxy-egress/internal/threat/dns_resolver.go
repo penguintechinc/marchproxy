@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-egress/internal/logging"
 )
 
 // DNSCacheEntry represents a cached DNS resolution result
@@ -38,7 +38,7 @@ type DNSResolver struct {
 	resolver    *net.Resolver
 
 	mu     sync.RWMutex
-	logger *logrus.Logger
+	logger *logging.LogrusAdapter
 
 	// Statistics
 	stats struct {
@@ -51,9 +51,9 @@ type DNSResolver struct {
 }
 
 // NewDNSResolver creates a new DNS resolver with caching
-func NewDNSResolver(cfg DNSResolverConfig, logger *logrus.Logger) *DNSResolver {
+func NewDNSResolver(cfg DNSResolverConfig, logger *logging.LogrusAdapter) *DNSResolver {
 	if logger == nil {
-		logger = logrus.New()
+		logger, _ = logging.NewLogrusAdapter("dns-resolver")
 	}
 
 	// Default values
@@ -163,7 +163,7 @@ func (r *DNSResolver) cachePositive(domain string, ips []string) {
 		NXDOMAIN:  false,
 	}
 
-	r.logger.WithFields(logrus.Fields{
+	r.logger.WithFields(map[string]interface{}{
 		"domain": domain,
 		"ips":    ips,
 		"ttl":    r.positiveTTL,
@@ -188,7 +188,7 @@ func (r *DNSResolver) cacheNegative(domain string) {
 		NXDOMAIN:  true,
 	}
 
-	r.logger.WithFields(logrus.Fields{
+	r.logger.WithFields(map[string]interface{}{
 		"domain": domain,
 		"ttl":    r.negativeTTL,
 	}).Debug("Cached NXDOMAIN")

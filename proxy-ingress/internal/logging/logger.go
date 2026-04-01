@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"github.com/penguintechinc/penguin-libs/packages/go-common/logging"
 )
 
 type Logger struct {
-	*logrus.Logger
+	*logging.SanitizedLogger
 	config LogConfig
 }
 
@@ -87,9 +87,9 @@ type HealthLogEntry struct {
 }
 
 func NewLogger(config LogConfig) (*Logger, error) {
-	logger := logrus.New()
+	logger := logging.NewSanitizedLogger("marchproxy")
 
-	level, err := logrus.ParseLevel(config.Level)
+	level, err := parseLogLevel(config.Level)
 	if err != nil {
 		level = logrus.InfoLevel
 	}

@@ -4,26 +4,26 @@ Handles OAuth2 integration with Google, Microsoft, GitHub, etc.
 """
 
 import logging
+from penguintechinc_utils import get_logger
 import secrets
 import time
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode
 
 import requests
-from py4web import URL, abort, session
-from py4web.utils.auth import Auth
+from quart import abort, session, url_for
 
 from ...models import get_db
 from ..license_service import LicenseService
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class OAuth2Service:
     """OAuth2 Service for enterprise authentication with multiple providers"""
 
-    def __init__(self, auth: Auth, license_service: LicenseService):
+    def __init__(self, auth: Any, license_service: LicenseService):
         self.auth = auth
         self.license_service = license_service
         self.db = get_db()
@@ -130,7 +130,7 @@ class OAuth2Service:
                     {
                         "key": key,
                         "name": config["name"],
-                        "url": URL("auth/oauth2/login", vars={"provider": key}),
+                        "url": url_for("auth.oauth2_login", provider=key),
                     }
                 )
         return available
@@ -154,11 +154,10 @@ class OAuth2Service:
             "response_type": "code",
             "scope": " ".join(config["scopes"]),
             "state": state,
-            "redirect_uri": URL(
-                "auth/oauth2/callback",
-                vars={"provider": provider},
-                scheme=True,
-                host=True,
+            "redirect_uri": url_for(
+                "auth.oauth2_callback",
+                provider=provider,
+                _external=True,
             ),
         }
 
@@ -232,11 +231,10 @@ class OAuth2Service:
             "client_secret": config["client_secret"],
             "code": code,
             "grant_type": "authorization_code",
-            "redirect_uri": URL(
-                "auth/oauth2/callback",
-                vars={"provider": provider},
-                scheme=True,
-                host=True,
+            "redirect_uri": url_for(
+                "auth.oauth2_callback",
+                provider=provider,
+                _external=True,
             ),
         }
 

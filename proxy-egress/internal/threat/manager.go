@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-egress/internal/logging"
 )
 
 // BlockDecision represents the result of a threat check
@@ -41,7 +41,7 @@ type Manager struct {
 
 	enabled bool
 	mu      sync.RWMutex
-	logger  *logrus.Logger
+	logger  *logging.LogrusAdapter
 
 	// Statistics
 	stats struct {
@@ -105,9 +105,9 @@ func DefaultManagerConfig() ManagerConfig {
 }
 
 // NewManager creates a new threat intelligence manager
-func NewManager(cfg ManagerConfig, logger *logrus.Logger) (*Manager, error) {
+func NewManager(cfg ManagerConfig, logger *logging.LogrusAdapter) (*Manager, error) {
 	if logger == nil {
-		logger = logrus.New()
+		logger, _ = logging.NewLogrusAdapter("threat-manager")
 	}
 
 	m := &Manager{

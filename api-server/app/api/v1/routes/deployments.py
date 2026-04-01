@@ -5,6 +5,7 @@ Manages blue/green deployments for zero-downtime updates and rollbacks.
 """
 
 import logging
+from penguintechinc_utils import get_logger
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -24,7 +25,7 @@ from app.schemas.module import (
 from app.services.module_service_scaling import DeploymentService
 
 router = APIRouter(prefix="/modules/{module_id}/deployments", tags=["deployments"])
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @router.get("", response_model=DeploymentListResponse)

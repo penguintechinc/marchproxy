@@ -45,7 +45,7 @@ MarchProxy uses a unified Network Load Balancer (NLB) architecture with modular 
 - **proxy-nlb**: Network Load Balancer (Go + eBPF)
 - **proxy-alb**: Application Load Balancer (Envoy L7)
 - **proxy-dblb**: Database Load Balancer (Go) - *Optional*
-- **proxy-ailb**: AI/LLM Load Balancer (Python) - *Optional*
+- **proxy-ailb**: AI/LLM Load Balancer (Go) - *Optional*
 - **proxy-rtmp**: Video Transcoding (Go + FFmpeg) - *Optional*
 
 ---

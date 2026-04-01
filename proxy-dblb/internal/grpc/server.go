@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -33,14 +33,14 @@ type Server struct {
 	grpcServer   *grpc.Server
 	healthServer *health.Server
 	service      ModuleService
-	logger       *logrus.Logger
+	logger       *logging.LogrusAdapter
 	listener     net.Listener
 	mu           sync.RWMutex
 	running      bool
 }
 
 // NewServer creates a new DBLB gRPC server
-func NewServer(address string, port int, service ModuleService, logger *logrus.Logger) *Server {
+func NewServer(address string, port int, service ModuleService, logger *logging.LogrusAdapter) *Server {
 	return &Server{
 		address: address,
 		port:    port,

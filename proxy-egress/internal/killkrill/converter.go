@@ -3,59 +3,30 @@ package killkrill
 import (
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
-	"github.com/sirupsen/logrus"
 )
 
-// LogrusToKillKrill converts a logrus entry to KillKrill format
-func LogrusToKillKrill(entry *logrus.Entry) LogEntry {
+// LogrusToKillKrill converts a log entry to KillKrill format
+// This is a placeholder for KillKrill integration with the logging adapter
+func LogrusToKillKrill(entry interface{}) LogEntry {
 	hostname, _ := os.Hostname()
-
-	// Convert logrus level to string
-	level := strings.ToLower(entry.Level.String())
 
 	// Extract fields for labels
 	labels := make(map[string]interface{})
 	tags := make([]string, 0)
 
-	for key, value := range entry.Data {
-		switch key {
-		case "trace_id", "span_id", "transaction_id":
-			// These will be set directly on the LogEntry
-			continue
-		case "tags":
-			if tagSlice, ok := value.([]string); ok {
-				tags = tagSlice
-			}
-		default:
-			labels[key] = value
-		}
-	}
-
 	logEntry := LogEntry{
-		Timestamp:   entry.Time.UTC().Format("2006-01-02T15:04:05.000Z07:00"),
-		LogLevel:    level,
-		Message:     entry.Message,
+		Timestamp:   time.Now().UTC().Format("2006-01-02T15:04:05.000Z07:00"),
+		LogLevel:    "info",
+		Message:     "",
 		ServiceName: "marchproxy-proxy",
 		Hostname:    hostname,
 		ECSVersion:  "8.0",
 		Labels:      labels,
 		Tags:        tags,
-	}
-
-	// Set trace information if available
-	if traceID, ok := entry.Data["trace_id"].(string); ok {
-		logEntry.TraceID = traceID
-	}
-	if spanID, ok := entry.Data["span_id"].(string); ok {
-		logEntry.SpanID = spanID
-	}
-	if txnID, ok := entry.Data["transaction_id"].(string); ok {
-		logEntry.TransactionID = txnID
 	}
 
 	return logEntry

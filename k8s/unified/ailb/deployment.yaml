@@ -22,7 +22,7 @@ spec:
         app.kubernetes.io/version: v1.0.0
       annotations:
         prometheus.io/scrape: "true"
-        prometheus.io/port: "7004"
+        prometheus.io/port: "9090"
         prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: marchproxy-ailb
@@ -32,21 +32,17 @@ spec:
         imagePullPolicy: IfNotPresent
         ports:
         - name: http
-          containerPort: 7003
-        - name: admin
-          containerPort: 7004
+          containerPort: 8080
         - name: grpc
-          containerPort: 50053
+          containerPort: 50051
+        - name: metrics
+          containerPort: 9090
         envFrom:
         - configMapRef:
             name: marchproxy-config
         - configMapRef:
             name: marchproxy-ailb-config
         env:
-        - name: MODULE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
         - name: CLUSTER_API_KEY
           valueFrom:
             secretKeyRef:
@@ -72,21 +68,21 @@ spec:
         resources:
           requests:
             cpu: 500m
-            memory: 1Gi
+            memory: 256Mi
           limits:
             cpu: 2000m
-            memory: 4Gi
+            memory: 1Gi
         livenessProbe:
           httpGet:
             path: /healthz
-            port: 7004
-          initialDelaySeconds: 20
+            port: 8080
+          initialDelaySeconds: 10
           periodSeconds: 10
         readinessProbe:
           httpGet:
             path: /healthz
-            port: 7004
-          initialDelaySeconds: 10
+            port: 8080
+          initialDelaySeconds: 5
           periodSeconds: 5
 ---
 apiVersion: v1

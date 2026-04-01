@@ -6,6 +6,7 @@ and auto-renewal scheduling.
 """
 
 import logging
+from penguintechinc_utils import get_logger
 import json
 import httpx
 from datetime import datetime, timedelta
@@ -20,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models.sqlalchemy.certificate import Certificate, CertificateSource
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class CertificateServiceError(Exception):

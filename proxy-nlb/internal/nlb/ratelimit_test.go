@@ -5,12 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
-func testLogger() *logrus.Logger {
-	l := logrus.New()
-	l.SetLevel(logrus.ErrorLevel)
+func testLogger() *logging.LogrusAdapter {
+	l := NewLogrusAdapter("marchproxy")
 	return l
 }
 

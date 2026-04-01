@@ -6,6 +6,7 @@ cost optimization, and automatic failover.
 """
 
 import logging
+from penguintechinc_utils import get_logger
 from typing import List, Optional
 from datetime import datetime, timedelta
 
@@ -24,7 +25,7 @@ from app.schemas.multi_cloud import (
 )
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 FEATURE_NAME = "multi_cloud_routing"
 

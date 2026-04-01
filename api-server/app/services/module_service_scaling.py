@@ -6,6 +6,7 @@ Extends ModuleService functionality.
 """
 
 import logging
+from penguintechinc_utils import get_logger
 from datetime import datetime
 from typing import Optional, List
 
@@ -23,7 +24,7 @@ from app.schemas.module import (
 )
 from app.services.grpc_client import grpc_client_manager
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ScalingService:

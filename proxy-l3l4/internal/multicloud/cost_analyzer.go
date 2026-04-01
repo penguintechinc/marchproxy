@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-l3l4/internal/logging"
 )
 
 // CostAnalyzer analyzes and optimizes cloud egress costs
@@ -12,7 +12,7 @@ type CostAnalyzer struct {
 	mu sync.RWMutex
 
 	backends []*Backend
-	logger   *logrus.Logger
+	logger   *logging.LogrusAdapter
 
 	// Cost tracking
 	backendCosts map[string]*CostStats
@@ -30,7 +30,7 @@ type CostStats struct {
 }
 
 // NewCostAnalyzer creates a new cost analyzer
-func NewCostAnalyzer(backends []*Backend, logger *logrus.Logger) *CostAnalyzer {
+func NewCostAnalyzer(backends []*Backend, logger *logging.LogrusAdapter) *CostAnalyzer {
 	ca := &CostAnalyzer{
 		backends:     backends,
 		logger:       logger,
@@ -90,7 +90,7 @@ func (ca *CostAnalyzer) analyze() {
 	totalCost := 0.0
 	for name, stats := range ca.backendCosts {
 		totalCost += stats.TotalCost
-		ca.logger.WithFields(logrus.Fields{
+		ca.logger.WithFields(map[string]interface{}{
 			"backend":    name,
 			"total_gb":   float64(stats.TotalBytes) / 1e9,
 			"total_cost": stats.TotalCost,

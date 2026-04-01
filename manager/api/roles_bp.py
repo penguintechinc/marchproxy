@@ -8,6 +8,7 @@ Licensed under GNU Affero General Public License v3.0
 """
 
 import logging
+from penguintechinc_utils import get_logger
 from datetime import datetime
 from typing import List
 
@@ -16,7 +17,7 @@ from models.rbac import Permissions, PermissionScope, RBACModel
 from pydantic import BaseModel, Field, validator
 from quart import Blueprint, g, jsonify, request
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Create blueprint
 roles_bp = Blueprint("roles", __name__, url_prefix="/api/v1/roles")

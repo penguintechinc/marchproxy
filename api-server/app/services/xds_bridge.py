@@ -9,11 +9,12 @@ configurations and triggers updates to the Envoy proxies.
 import asyncio
 import json
 import logging
+from penguintechinc_utils import get_logger
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import httpx
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ServiceConfiguration:

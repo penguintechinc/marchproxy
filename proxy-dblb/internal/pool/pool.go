@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 // Pool manages database connection pooling
@@ -14,7 +14,7 @@ type Pool struct {
 	pools       map[string]*ProtocolPool
 	maxConns    int
 	idleTimeout time.Duration
-	logger      *logrus.Logger
+	logger      *logging.LogrusAdapter
 	mu          sync.RWMutex
 }
 
@@ -29,7 +29,7 @@ type ProtocolPool struct {
 }
 
 // NewPool creates a new connection pool
-func NewPool(maxConns int, logger *logrus.Logger) *Pool {
+func NewPool(maxConns int, logger *logging.LogrusAdapter) *Pool {
 	return &Pool{
 		pools:       make(map[string]*ProtocolPool),
 		maxConns:    maxConns,

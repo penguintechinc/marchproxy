@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-l3l4/internal/logging"
 )
 
 // CertRotator handles automated certificate rotation with zero-downtime
@@ -19,7 +19,7 @@ type CertRotator struct {
 	keyPath           string
 	checkInterval     time.Duration
 	rotationThreshold time.Duration
-	logger            *logrus.Logger
+	logger            *logging.LogrusAdapter
 	stopCh            chan struct{}
 	callbacks         []func(*tls.Certificate)
 }
@@ -35,7 +35,7 @@ type RotationEvent struct {
 }
 
 // NewCertRotator creates a new certificate rotator
-func NewCertRotator(certPath, keyPath string, logger *logrus.Logger) (*CertRotator, error) {
+func NewCertRotator(certPath, keyPath string, logger *logging.LogrusAdapter) (*CertRotator, error) {
 	// Load initial certificate
 	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
 	if err != nil {
@@ -120,7 +120,7 @@ func (cr *CertRotator) checkAndRotate() error {
 	timeUntilExpiry := time.Until(x509Cert.NotAfter)
 
 	if timeUntilExpiry <= cr.rotationThreshold {
-		cr.logger.WithFields(logrus.Fields{
+		cr.logger.WithFields(map[string]interface{}{
 			"expires_in": timeUntilExpiry,
 			"threshold":  cr.rotationThreshold,
 		}).Info("Certificate rotation threshold reached")
@@ -183,7 +183,7 @@ func (cr *CertRotator) rotateCertificate(reason string) error {
 	// Call registered callbacks
 	cr.notifyCallbacks(&newCert)
 
-	cr.logger.WithFields(logrus.Fields{
+	cr.logger.WithFields(map[string]interface{}{
 		"old_serial": event.OldCert.SerialNumber,
 		"new_serial": event.NewCert.SerialNumber,
 		"reason":     reason,

@@ -36,9 +36,9 @@ else
     FAILED=1
 fi
 
-# Build proxy-ailb
+# Build proxy-ailb (Go)
 echo "Building proxy-ailb..."
-if docker build -t marchproxy-ailb:smoke-test -f proxy-ailb/Dockerfile proxy-ailb > /tmp/build-ailb.log 2>&1; then
+if docker build -t marchproxy-ailb:smoke-test -f proxy-ailb/Dockerfile . > /tmp/build-ailb.log 2>&1; then
     echo "✅ Proxy-ailb build successful"
 else
     echo "❌ Proxy-ailb build failed"

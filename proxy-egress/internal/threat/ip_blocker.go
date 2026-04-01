@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-egress/internal/logging"
 )
 
 // BlockRule represents a blocking rule
@@ -32,7 +32,7 @@ type IPBlocker struct {
 
 	maxSize int
 	mu      sync.RWMutex
-	logger  *logrus.Logger
+	logger  *logging.LogrusAdapter
 }
 
 // cidrEntry represents a CIDR range with its associated rule
@@ -42,9 +42,9 @@ type cidrEntry struct {
 }
 
 // NewIPBlocker creates a new IP blocker
-func NewIPBlocker(maxSize int, logger *logrus.Logger) *IPBlocker {
+func NewIPBlocker(maxSize int, logger *logging.LogrusAdapter) *IPBlocker {
 	if logger == nil {
-		logger = logrus.New()
+		logger, _ = logging.NewLogrusAdapter("ip-blocker")
 	}
 
 	return &IPBlocker{
@@ -158,7 +158,7 @@ func (b *IPBlocker) addIP(ip net.IP, rule BlockRule) error {
 			return fmt.Errorf("blocklist capacity exceeded (%d)", b.maxSize)
 		}
 		b.exactIPv4[ipStr] = rule
-		b.logger.WithFields(logrus.Fields{
+		b.logger.WithFields(map[string]interface{}{
 			"ip":       ipStr,
 			"rule_id":  rule.ID,
 			"category": rule.Category,
@@ -169,7 +169,7 @@ func (b *IPBlocker) addIP(ip net.IP, rule BlockRule) error {
 			return fmt.Errorf("blocklist capacity exceeded (%d)", b.maxSize)
 		}
 		b.exactIPv6[ipStr] = rule
-		b.logger.WithFields(logrus.Fields{
+		b.logger.WithFields(map[string]interface{}{
 			"ip":       ipStr,
 			"rule_id":  rule.ID,
 			"category": rule.Category,
@@ -193,7 +193,7 @@ func (b *IPBlocker) addCIDR(ipNet *net.IPNet, rule BlockRule) error {
 			return fmt.Errorf("blocklist capacity exceeded (%d)", b.maxSize)
 		}
 		b.cidrIPv4 = append(b.cidrIPv4, entry)
-		b.logger.WithFields(logrus.Fields{
+		b.logger.WithFields(map[string]interface{}{
 			"cidr":     rule.Pattern,
 			"rule_id":  rule.ID,
 			"category": rule.Category,
@@ -204,7 +204,7 @@ func (b *IPBlocker) addCIDR(ipNet *net.IPNet, rule BlockRule) error {
 			return fmt.Errorf("blocklist capacity exceeded (%d)", b.maxSize)
 		}
 		b.cidrIPv6 = append(b.cidrIPv6, entry)
-		b.logger.WithFields(logrus.Fields{
+		b.logger.WithFields(map[string]interface{}{
 			"cidr":     rule.Pattern,
 			"rule_id":  rule.ID,
 			"category": rule.Category,

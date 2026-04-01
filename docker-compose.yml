@@ -621,10 +621,9 @@ services:
       - GRPC_BIND=0.0.0.0:50053
 
       # Module configuration
-      - MODULE_TYPE=ailb
-      - MODULE_NAME=${AILB_NAME:-proxy-ailb-1}
-      - HTTP_PORT=7003
-      - ADMIN_PORT=7004
+      - MODULE_ID=${AILB_NAME:-ailb-1}
+      - HTTP_PORT=8080
+      - GRPC_PORT=50051
       - LOG_LEVEL=${LOG_LEVEL:-info}
 
       # AI Provider API keys (from environment)
@@ -632,25 +631,12 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - OLLAMA_URL=${OLLAMA_URL:-http://ollama:11434}
 
-      # Conversation memory
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis123}@redis:6379/1
-
-      # RAG configuration
-      - RAG_ENABLED=${RAG_ENABLED:-false}
-      - RAG_VECTOR_STORE=${RAG_VECTOR_STORE:-faiss}
-
       # Rate limiting per AI provider route
       - RATE_LIMIT_ENABLED=${AILB_RATE_LIMIT:-true}
       - RATE_LIMIT_RPM=${AILB_RATE_LIMIT_RPM:-60}
-
-      # Observability
-      - JAEGER_ENABLED=${JAEGER_ENABLED:-true}
-      - JAEGER_HOST=jaeger
-      - JAEGER_PORT=6831
     ports:
-      - "7003:7003"   # HTTP API
-      - "7004:7004"   # Admin/Metrics
-      - "50053:50053" # gRPC ModuleService
+      - "8080:8080"   # HTTP API
+      - "50051:50051" # gRPC ModuleService
     networks:
       - marchproxy-internal
     depends_on:
@@ -658,11 +644,11 @@ services:
       - redis
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7004/healthz"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/healthz"]
       interval: 30s
-      timeout: 10s
+      timeout: 3s
       retries: 3
-      start_period: 20s
+      start_period: 10s
     labels:
       - "service=marchproxy-proxy-ailb"
       - "component=proxy"

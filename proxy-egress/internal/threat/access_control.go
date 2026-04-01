@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-egress/internal/logging"
 )
 
 // AccessControlMode defines how access control is applied
@@ -64,7 +64,7 @@ type AccessController struct {
 	defaultAllow       bool
 
 	mu     sync.RWMutex
-	logger *logrus.Logger
+	logger *logging.LogrusAdapter
 }
 
 // accessControlURLRule combines an access control rule with compiled regex
@@ -73,9 +73,9 @@ type accessControlURLRule struct {
 }
 
 // NewAccessController creates a new access controller
-func NewAccessController(defaultRequireAuth bool, logger *logrus.Logger) *AccessController {
+func NewAccessController(defaultRequireAuth bool, logger *logging.LogrusAdapter) *AccessController {
 	if logger == nil {
-		logger = logrus.New()
+		logger, _ = logging.NewLogrusAdapter("access-controller")
 	}
 
 	return &AccessController{
@@ -261,7 +261,7 @@ func (c *AccessController) AddRule(rule *AccessControlRule) error {
 		return fmt.Errorf("unknown target type: %s", rule.TargetType)
 	}
 
-	c.logger.WithFields(logrus.Fields{
+	c.logger.WithFields(map[string]interface{}{
 		"rule_id":        rule.ID,
 		"target_type":    rule.TargetType,
 		"target_pattern": rule.TargetPattern,

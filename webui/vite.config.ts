@@ -55,7 +55,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: ['./src/test-setup.ts'],
+    setupFiles: ['./src/test-setup.ts', '@penguintechinc/react-testutils/setup'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],

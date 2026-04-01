@@ -13,11 +13,11 @@ spec:
     app.kubernetes.io/component: proxy-ailb
   ports:
   - name: http
-    port: 7003
-    targetPort: 7003
-  - name: admin
-    port: 7004
-    targetPort: 7004
+    port: 8080
+    targetPort: 8080
   - name: grpc
-    port: 50053
-    targetPort: 50053
+    port: 50051
+    targetPort: 50051
+  - name: metrics
+    port: 9090
+    targetPort: 9090

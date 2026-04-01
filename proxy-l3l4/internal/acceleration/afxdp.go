@@ -3,7 +3,7 @@ package acceleration
 import (
 	"marchproxy-l3l4/internal/acceleration/afxdp"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-l3l4/internal/logging"
 )
 
 // AFXDPHandler wraps the AF_XDP handler
@@ -12,7 +12,7 @@ type AFXDPHandler struct {
 }
 
 // NewAFXDPHandler creates a new AF_XDP handler
-func NewAFXDPHandler(device string, queueCount int, logger *logrus.Logger) (*AFXDPHandler, error) {
+func NewAFXDPHandler(device string, queueCount int, logger *logging.LogrusAdapter) (*AFXDPHandler, error) {
 	handler, err := afxdp.NewHandler(device, queueCount, logger)
 	if err != nil {
 		return nil, err

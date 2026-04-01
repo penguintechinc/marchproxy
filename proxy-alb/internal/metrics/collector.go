@@ -8,14 +8,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 // Collector collects metrics from Envoy admin API
 type Collector struct {
 	adminAddr  string
 	httpClient *http.Client
-	logger     *logrus.Logger
+	logger     *logging.LogrusAdapter
 
 	// Cached metrics
 	mu             sync.RWMutex
@@ -53,9 +53,9 @@ type RouteMetrics struct {
 }
 
 // NewCollector creates a new metrics collector
-func NewCollector(adminAddr string, logger *logrus.Logger) *Collector {
+func NewCollector(adminAddr string, logger *logging.LogrusAdapter) *Collector {
 	if logger == nil {
-		logger = logrus.New()
+		logger = NewLogrusAdapter("marchproxy")
 	}
 
 	return &Collector{

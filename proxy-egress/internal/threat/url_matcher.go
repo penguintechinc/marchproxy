@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-egress/internal/logging"
 )
 
 // PatternRule represents a URL pattern blocking rule
@@ -34,13 +34,13 @@ type URLMatcher struct {
 	engine      string // "re2" (Go's default)
 	maxPatterns int
 	mu          sync.RWMutex
-	logger      *logrus.Logger
+	logger      *logging.LogrusAdapter
 }
 
 // NewURLMatcher creates a new URL pattern matcher
-func NewURLMatcher(engine string, maxPatterns int, logger *logrus.Logger) (*URLMatcher, error) {
+func NewURLMatcher(engine string, maxPatterns int, logger *logging.LogrusAdapter) (*URLMatcher, error) {
 	if logger == nil {
-		logger = logrus.New()
+		logger, _ = logging.NewLogrusAdapter("url-matcher")
 	}
 
 	// Currently only RE2 (Go's regexp) is supported
@@ -126,7 +126,7 @@ func (m *URLMatcher) AddPattern(rule PatternRule) error {
 		m.patterns = append(m.patterns, cp)
 	}
 
-	m.logger.WithFields(logrus.Fields{
+	m.logger.WithFields(map[string]interface{}{
 		"pattern":  rule.Pattern,
 		"rule_id":  rule.ID,
 		"category": rule.Category,

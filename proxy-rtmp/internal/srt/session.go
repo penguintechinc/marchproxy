@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/config"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 // SessionState represents SRT session state

@@ -10,7 +10,7 @@ import (
 
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/config"
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/transcode"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 // Server handles RTMP connections and stream routing
@@ -84,7 +84,7 @@ func (s *Server) Stop(ctx context.Context) error {
 	}
 	s.sessionsMutex.Unlock()
 
-	logrus.Info("RTMP server stopped")
+	logger.Info("RTMP server stopped")
 	return nil
 }
 

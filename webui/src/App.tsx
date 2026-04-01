@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Box, CircularProgress } from '@mui/material';
+import { AppConsoleVersion } from '@penguintechinc/react-libs';
 import { useAuthStore } from '@store/authStore';
 import MainLayout from '@components/Layout/MainLayout';
 import ProtectedRoute from '@components/Layout/ProtectedRoute';
@@ -19,7 +20,7 @@ import KongIndex from '@pages/Kong';
 import MediaDashboard from '@pages/Media/MediaDashboard';
 import AdminMediaSettings from '@pages/Admin/MediaSettings';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const { isLoading, loadUser } = useAuthStore();
 
   useEffect(() => {
@@ -69,6 +70,18 @@ const App: React.FC = () => {
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <>
+      <AppConsoleVersion
+        appName="MarchProxy"
+        appVersion={process.env.VITE_APP_VERSION || '1.0.0.0'}
+      />
+      <AppContent />
+    </>
   );
 };
 

@@ -3,7 +3,7 @@ package afxdp
 import (
 	"fmt"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-l3l4/internal/logging"
 )
 
 // Handler manages multiple AF_XDP sockets
@@ -11,11 +11,11 @@ type Handler struct {
 	device     string
 	queueCount int
 	sockets    []*Socket
-	logger     *logrus.Logger
+	logger     *logging.LogrusAdapter
 }
 
 // NewHandler creates a new AF_XDP handler
-func NewHandler(device string, queueCount int, logger *logrus.Logger) (*Handler, error) {
+func NewHandler(device string, queueCount int, logger *logging.LogrusAdapter) (*Handler, error) {
 	handler := &Handler{
 		device:     device,
 		queueCount: queueCount,
@@ -29,7 +29,7 @@ func NewHandler(device string, queueCount int, logger *logrus.Logger) (*Handler,
 		handler.sockets = append(handler.sockets, socket)
 	}
 
-	logger.WithFields(logrus.Fields{
+	logger.WithFields(map[string]interface{}{
 		"device": device,
 		"queues": queueCount,
 	}).Info("AF_XDP handler created")

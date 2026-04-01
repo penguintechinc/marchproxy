@@ -4,7 +4,7 @@ This guide covers comprehensive configuration options for the MarchProxy Manager
 
 ## Overview
 
-The MarchProxy Manager is the central control plane component built on py4web/pydal that handles:
+The MarchProxy Manager is the central control plane component built on Quart/PyDAL that handles:
 
 - User authentication and authorization
 - Service and mapping configuration

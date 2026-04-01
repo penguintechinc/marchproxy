@@ -4,25 +4,25 @@ Handles SAML SSO integration with enterprise identity providers
 """
 
 import logging
+from penguintechinc_utils import get_logger
 import time
 import uuid
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 from urllib.parse import urlencode
 
-from py4web import URL, abort, session
-from py4web.utils.auth import Auth
+from quart import abort, session, url_for
 
 from ...models import get_db
 from ..license_service import LicenseService
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class SAMLService:
     """SAML Service Provider implementation for enterprise authentication"""
 
-    def __init__(self, auth: Auth, license_service: LicenseService):
+    def __init__(self, auth: Any, license_service: LicenseService):
         self.auth = auth
         self.license_service = license_service
         self.db = get_db()
@@ -33,9 +33,9 @@ class SAMLService:
         # This would typically come from environment variables or database
         return {
             "entity_id": "marchproxy-sp",
-            "assertion_consumer_service_url": URL("auth/saml/acs", scheme=True, host=True),
-            "single_logout_service_url": URL("auth/saml/sls", scheme=True, host=True),
-            "metadata_url": URL("auth/saml/metadata", scheme=True, host=True),
+            "assertion_consumer_service_url": url_for("auth.saml_acs", _external=True),
+            "single_logout_service_url": url_for("auth.saml_sls", _external=True),
+            "metadata_url": url_for("auth.saml_metadata", _external=True),
             "certificate_file": "certs/saml.crt",
             "private_key_file": "certs/saml.key",
             "name_id_format": "urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress",

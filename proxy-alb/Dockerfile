@@ -2,7 +2,7 @@
 # Combines Envoy proxy with Go supervisor for ModuleService gRPC interface
 
 # Stage 1: Build Go supervisor
-FROM golang:1.24-trixie AS go-builder
+FROM golang:1.24-bookworm@sha256:1a6d4452c65dea36aac2e2d606b01b4a029ec90cc1ae53890540ce6173ea77ac AS go-builder
 
 WORKDIR /build
 
@@ -23,7 +23,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     main.go
 
 # Stage 2: Generate protobuf code
-FROM golang:1.24-trixie AS proto-builder
+FROM golang:1.24-bookworm@sha256:1a6d4452c65dea36aac2e2d606b01b4a029ec90cc1ae53890540ce6173ea77ac AS proto-builder
 
 WORKDIR /build
 

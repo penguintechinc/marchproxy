@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
@@ -23,11 +23,11 @@ type ModuleClient struct {
 	state      connectivity.State
 	lastUsed   time.Time
 	mu         sync.RWMutex
-	logger     *logrus.Logger
+	logger     *logging.LogrusAdapter
 }
 
 // NewModuleClient creates a new module client
-func NewModuleClient(name, address string, port int, logger *logrus.Logger) (*ModuleClient, error) {
+func NewModuleClient(name, address string, port int, logger *logging.LogrusAdapter) (*ModuleClient, error) {
 	if address == "" || port <= 0 {
 		return nil, errors.New("invalid address or port")
 	}
@@ -161,14 +161,14 @@ func (mc *ModuleClient) GetState() connectivity.State {
 type ClientPool struct {
 	clients map[string]*ModuleClient
 	mu      sync.RWMutex
-	logger  *logrus.Logger
+	logger  *logging.LogrusAdapter
 	ctx     context.Context
 	cancel  context.CancelFunc
 	wg      sync.WaitGroup
 }
 
 // NewClientPool creates a new client pool
-func NewClientPool(logger *logrus.Logger) *ClientPool {
+func NewClientPool(logger *logging.LogrusAdapter) *ClientPool {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	pool := &ClientPool{

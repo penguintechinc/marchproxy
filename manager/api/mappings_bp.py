@@ -6,6 +6,7 @@ Licensed under GNU Affero General Public License v3.0
 """
 
 import logging
+from penguintechinc_utils import get_logger
 from datetime import datetime
 
 from middleware.auth import require_auth
@@ -19,7 +20,7 @@ from models.mapping import (
 from pydantic import ValidationError
 from quart import Blueprint, current_app, jsonify, request
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 mappings_bp = Blueprint("mappings", __name__, url_prefix="/api/v1/mappings")
 

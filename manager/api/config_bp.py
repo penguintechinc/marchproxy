@@ -6,6 +6,7 @@ Licensed under GNU Affero General Public License v3.0
 """
 
 import logging
+from penguintechinc_utils import get_logger
 from datetime import datetime
 from typing import Any, Optional
 
@@ -13,7 +14,7 @@ from middleware.auth import require_auth
 from pydantic import BaseModel
 from quart import Blueprint, current_app, jsonify, request
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 config_bp = Blueprint("config", __name__, url_prefix="/api/v1/config")
 
@@ -194,6 +195,7 @@ async def license_config():  # noqa: C901
 async def logging_config():
     """Get or update logging configuration"""
     import logging
+from penguintechinc_utils import get_logger
 
     if request.method == "GET":
         try:

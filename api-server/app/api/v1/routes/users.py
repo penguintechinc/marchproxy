@@ -5,6 +5,7 @@ Handles user CRUD operations, cluster/service assignments (Admin only).
 """
 
 import logging
+from penguintechinc_utils import get_logger
 from datetime import datetime
 from typing import Annotated
 
@@ -28,7 +29,7 @@ from app.schemas.user import (
 )
 
 router = APIRouter(prefix="/users", tags=["users"])
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @router.get("", response_model=UserListResponse)

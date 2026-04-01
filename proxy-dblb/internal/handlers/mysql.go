@@ -14,7 +14,7 @@ import (
 	"marchproxy-dblb/internal/security"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
 
@@ -25,7 +25,7 @@ type MySQLHandler struct {
 	pool            *pool.Pool
 	sqlPools        map[string]*sql.DB
 	securityChecker *security.Checker
-	logger          *logrus.Logger
+	logger          *logging.LogrusAdapter
 	listener        net.Listener
 	connLimiter     *rate.Limiter
 	queryLimiter    *rate.Limiter
@@ -45,7 +45,7 @@ type MySQLHandler struct {
 }
 
 // NewMySQLHandler creates a new MySQL protocol handler
-func NewMySQLHandler(route *config.RouteConfig, p *pool.Pool, securityChecker *security.Checker, cfg *config.Config, logger *logrus.Logger) *MySQLHandler {
+func NewMySQLHandler(route *config.RouteConfig, p *pool.Pool, securityChecker *security.Checker, cfg *config.Config, logger *logging.LogrusAdapter) *MySQLHandler {
 	if route.Protocol != "mysql" {
 		logger.Warnf("Invalid protocol %s for MySQL handler, expected 'mysql'", route.Protocol)
 	}

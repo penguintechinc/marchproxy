@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-egress/internal/logging"
 )
 
 func TestNewManager(t *testing.T) {
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
+	logger, _ := logging.NewLogrusAdapter("manager")
+	_ = logger
 
 	cfg := ManagerConfig{
 		IPBlockingEnabled:     true,

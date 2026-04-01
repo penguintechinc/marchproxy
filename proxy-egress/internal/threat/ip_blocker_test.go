@@ -4,13 +4,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-egress/internal/logging"
 )
 
 // createTestIPBlocker is a helper to create an IPBlocker for testing
 func createTestIPBlocker(t testing.TB) *IPBlocker {
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
+	logger, _ := logging.NewLogrusAdapter("ip-blocker")
 	return NewIPBlocker(10000, logger)
 }
 

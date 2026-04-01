@@ -1,6 +1,6 @@
 module marchproxy-egress
 
-go 1.24.0
+go 1.24.2
 
 toolchain go1.24.7
 
@@ -13,16 +13,18 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/hashicorp/golang-lru v1.0.2
 	github.com/klauspost/compress v1.18.2
+	github.com/penguintechinc/penguin-libs/packages/go-common v0.0.0-20260311183616-aa9e846acf39
 	github.com/prometheus/client_golang v1.19.1
 	github.com/prometheus/client_model v0.6.1
 	github.com/quic-go/quic-go v0.57.0
-	github.com/sirupsen/logrus v1.9.3
+	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.16.0
 	go.opentelemetry.io/otel v1.39.0
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.39.0
 	go.opentelemetry.io/otel/sdk v1.39.0
 	go.opentelemetry.io/otel/trace v1.39.0
+	go.uber.org/zap v1.27.0
 	golang.org/x/net v0.47.0
 	golang.org/x/sys v0.39.0
 	golang.org/x/time v0.12.0
@@ -57,6 +59,7 @@ require (
 	github.com/subosito/gotenv v1.4.2 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel/metric v1.39.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect

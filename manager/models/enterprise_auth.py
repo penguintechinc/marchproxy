@@ -7,6 +7,7 @@ Licensed under GNU Affero General Public License v3.0
 """
 
 import logging
+from penguintechinc_utils import get_logger
 import secrets
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -28,7 +29,7 @@ except ImportError:
     BINDING_HTTP_POST = BINDING_HTTP_REDIRECT = None
     Saml2Client = Saml2Config = None
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class EnterpriseAuthProviderModel:

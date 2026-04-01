@@ -9,12 +9,15 @@ Licensed under GNU Affero General Public License v3.0
 """
 
 import logging
+from penguintechinc_utils import get_logger
 from functools import wraps
 from typing import Any, Callable, Optional
 
 from quart import current_app, g, request
 
-logger = logging.getLogger(__name__)
+from penguin_aaa.authn import Claims, OIDCRelyingParty, OIDCRPConfig
+
+logger = get_logger(__name__)
 
 
 def get_current_user() -> Optional[dict]:
@@ -32,11 +35,16 @@ def is_admin() -> bool:
     """
     Check if the current user is an administrator.
 
+    Checks for admin scope in the user's JWT claims (OIDC standard).
+
     Returns:
-        bool: True if current user is admin, False otherwise
+        bool: True if current user has admin scope, False otherwise
     """
     user = get_current_user()
-    return user.get("is_admin", False) if user else False
+    if not user:
+        return False
+    scopes = user.get("scope", [])
+    return "*:admin" in scopes or "admin" in user.get("roles", [])
 
 
 def _extract_token_from_header() -> Optional[str]:
@@ -62,9 +70,9 @@ def _extract_token_from_header() -> Optional[str]:
     return parts[1]
 
 
-def _validate_token(token: str) -> Optional[dict]:
+async def _validate_token(token: str) -> Optional[dict]:
     """
-    Validate JWT token using current_app's JWT manager.
+    Validate JWT token using penguin-aaa OIDC Relying Party.
 
     Args:
         token: JWT token string to validate
@@ -74,13 +82,16 @@ def _validate_token(token: str) -> Optional[dict]:
         None: If token is invalid or expired
     """
     try:
-        jwt_manager = getattr(current_app, "jwt_manager", None)
-        if not jwt_manager:
-            logger.error("JWT manager not configured in current_app")
+        oidc_rp = getattr(current_app, "oidc_rp", None)
+        if not oidc_rp:
+            logger.error("OIDC Relying Party not configured in current_app")
             return None
 
-        payload = jwt_manager.decode_token(token)
-        return payload
+        # Validate token using penguin-aaa
+        claims: Claims = await oidc_rp.validate_token(token)
+
+        # Convert Claims Pydantic model to dict for backward compatibility
+        return claims.model_dump()
 
     except Exception as e:
         logger.debug(f"Token validation failed: {e}")  # nosemgrep: python.lang.security.audit.python-logger-credential-leak
@@ -170,8 +181,8 @@ async def _authenticate_and_authorize_async(
         logger.debug("Missing authorization header in request")
         return ({"error": "Missing authorization header"}, 401)
 
-    # Decode and validate token
-    payload = _validate_token(token)
+    # Decode and validate token (now async)
+    payload = await _validate_token(token)
 
     if payload is None:
         logger.debug("Invalid or expired token")
@@ -180,10 +191,14 @@ async def _authenticate_and_authorize_async(
     # Store user in request context
     g.user = payload
 
-    # Check admin requirement
-    if admin_required and not payload.get("is_admin", False):
-        logger.warning(f"Non-admin user {payload.get('user_id')} attempted admin access")
-        return ({"error": "Admin access required"}, 403)
+    # Check admin requirement (check scopes per OIDC standard)
+    if admin_required:
+        scopes = payload.get("scope", [])
+        roles = payload.get("roles", [])
+        is_admin = "*:admin" in scopes or "admin" in roles
+        if not is_admin:
+            logger.warning(f"Non-admin user {payload.get('sub')} attempted admin access")
+            return ({"error": "Admin access required"}, 403)
 
     # Check license feature (placeholder for future implementation)
     if license_feature:
@@ -267,14 +282,16 @@ class AuthContext:
         self._validate()
 
     def _validate(self):
-        """Validate token and extract user payload"""
+        """Validate token and extract user payload (sync wrapper)"""
+        # Note: For sync context, this won't work properly with async _validate_token.
+        # This is a fallback; prefer using require_auth decorator for async routes.
         token = _extract_token_from_header()
         if token:
-            payload = _validate_token(token)
-            if payload:
-                self.user = payload
-                self.valid = True
-                g.user = self.user
+            # In sync context, we cannot await async _validate_token.
+            # Log warning and skip validation.
+            logger.warning("AuthContext used in sync context; skipping async token validation")
+            self.user = None
+            self.valid = False
 
     def __enter__(self):
         return self
@@ -291,8 +308,12 @@ class AuthContext:
         return self.user
 
     def is_admin(self) -> bool:
-        """Check if current user is admin"""
-        return self.user.get("is_admin", False) if self.user else False
+        """Check if current user is admin (checks OIDC scopes and roles)"""
+        if not self.user:
+            return False
+        scopes = self.user.get("scope", [])
+        roles = self.user.get("roles", [])
+        return "*:admin" in scopes or "admin" in roles
 
     def has_feature(self, feature: str) -> bool:
         """Check if user has access to a feature"""

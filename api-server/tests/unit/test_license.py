@@ -1,6 +1,8 @@
-"""Unit tests for app/core/license.py"""
+"""Unit tests for app/core/license.py (wraps penguin-licensing)"""
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
+from datetime import datetime, timezone
+from penguin_licensing import LicenseInfo as PenguinLicenseInfo, Feature
 
 
 @pytest.mark.asyncio
@@ -9,7 +11,6 @@ async def test_license_validator_dev_mode_enterprise():
     from app.core.license import LicenseValidator, LicenseTier
 
     validator = LicenseValidator()
-    # Default RELEASE_MODE is False in test env
     validator.release_mode = False
     license_info = await validator.validate_license()
     assert license_info.tier == LicenseTier.ENTERPRISE
@@ -31,7 +32,6 @@ async def test_license_validator_dev_mode_proxy_limit_unlimited():
 
     validator = LicenseValidator()
     validator.release_mode = False
-    # check_proxy_limit is async — current_count < max_proxies
     result = await validator.check_proxy_limit(9999)
     assert result is True
 
@@ -109,14 +109,31 @@ async def test_license_validator_release_mode_no_key_community():
     validator.release_mode = True
     validator.license_key = ""
 
-    license_info = await validator.validate_license()
-    assert license_info.tier == LicenseTier.COMMUNITY
-    assert license_info.max_proxies == 3  # COMMUNITY_MAX_PROXIES default
+    with patch.object(
+        validator._penguin_client,
+        "validate",
+        return_value=PenguinLicenseInfo(
+            valid=True,
+            customer="Community",
+            product="marchproxy",
+            license_version="2.0",
+            license_key="",
+            expires_at=datetime.max.replace(tzinfo=timezone.utc),
+            issued_at=datetime.now(timezone.utc),
+            tier="community",
+            features=[],
+            limits={},
+            metadata={}
+        )
+    ):
+        license_info = await validator.validate_license()
+        assert license_info.tier == LicenseTier.COMMUNITY
+        assert license_info.max_proxies == 3  # COMMUNITY_MAX_PROXIES default
 
 
 @pytest.mark.asyncio
 async def test_license_validator_caching():
-    """Second call returns cached result without hitting validator again."""
+    """Second call returns consistent result in dev mode."""
     from app.core.license import LicenseValidator, LicenseTier
 
     validator = LicenseValidator()
@@ -124,7 +141,6 @@ async def test_license_validator_caching():
 
     result1 = await validator.validate_license()
     result2 = await validator.validate_license()
-    # Both should be enterprise in dev mode
     assert result1.tier == LicenseTier.ENTERPRISE
     assert result2.tier == LicenseTier.ENTERPRISE
 
@@ -135,6 +151,7 @@ async def test_license_manager_dev_mode_returns_dict():
     from app.core.license import LicenseManager
 
     manager = LicenseManager()
+    manager.validator.release_mode = False
     result = await manager.validate_license("any-key")
     assert isinstance(result, dict)
     assert "valid" in result

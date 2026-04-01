@@ -8,7 +8,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 var (
@@ -66,14 +66,14 @@ type BlueGreenController struct {
 	deployments map[Protocol]*DeploymentState
 	router      *Router
 	mu          sync.RWMutex
-	logger      *logrus.Logger
+	logger      *logging.LogrusAdapter
 	ctx         context.Context
 	cancel      context.CancelFunc
 	wg          sync.WaitGroup
 }
 
 // NewBlueGreenController creates a new blue/green controller
-func NewBlueGreenController(router *Router, logger *logrus.Logger) *BlueGreenController {
+func NewBlueGreenController(router *Router, logger *logging.LogrusAdapter) *BlueGreenController {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &BlueGreenController{

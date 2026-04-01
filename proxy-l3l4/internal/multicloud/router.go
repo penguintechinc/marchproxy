@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"sync"
 
+	"marchproxy-l3l4/internal/logging"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -36,7 +36,7 @@ type Router struct {
 	monitor    *HealthMonitor
 	costAnalyzer *CostAnalyzer
 
-	logger *logrus.Logger
+	logger *logging.LogrusAdapter
 }
 
 // Backend represents a backend server
@@ -54,7 +54,7 @@ type Backend struct {
 }
 
 // NewRouter creates a new multi-cloud router
-func NewRouter(algorithm string, backends []*Backend, logger *logrus.Logger) (*Router, error) {
+func NewRouter(algorithm string, backends []*Backend, logger *logging.LogrusAdapter) (*Router, error) {
 	var algo RoutingAlgorithm
 
 	switch algorithm {
@@ -84,7 +84,7 @@ func NewRouter(algorithm string, backends []*Backend, logger *logrus.Logger) (*R
 	// Initialize cost analyzer
 	router.costAnalyzer = NewCostAnalyzer(backends, logger)
 
-	logger.WithFields(logrus.Fields{
+	logger.WithFields(map[string]interface{}{
 		"algorithm": algorithm,
 		"backends":  len(backends),
 	}).Info("Multi-cloud router initialized")
@@ -113,7 +113,7 @@ func (r *Router) Route(request *Request) (*Backend, error) {
 	routingDecisions.WithLabelValues(r.algorithm.Name(), backend.Name).Inc()
 	backendSelections.WithLabelValues(backend.Name, backend.Cloud, backend.Region).Inc()
 
-	r.logger.WithFields(logrus.Fields{
+	r.logger.WithFields(map[string]interface{}{
 		"algorithm": r.algorithm.Name(),
 		"backend":   backend.Name,
 		"cloud":     backend.Cloud,
@@ -142,7 +142,7 @@ func (r *Router) UpdateBackendHealth(name string, healthy bool) {
 	for _, backend := range r.backends {
 		if backend.Name == name {
 			backend.Healthy = healthy
-			r.logger.WithFields(logrus.Fields{
+			r.logger.WithFields(map[string]interface{}{
 				"backend": name,
 				"healthy": healthy,
 			}).Info("Backend health updated")

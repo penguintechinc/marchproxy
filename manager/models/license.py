@@ -6,6 +6,7 @@ Licensed under GNU Affero General Public License v3.0
 """
 
 import logging
+from penguintechinc_utils import get_logger
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
@@ -13,7 +14,7 @@ import httpx
 from pydal import DAL, Field
 from pydantic import BaseModel, validator
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class LicenseCacheModel:

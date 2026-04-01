@@ -14,7 +14,7 @@ import (
 	"marchproxy-dblb/internal/pool"
 	"marchproxy-dblb/internal/security"
 
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
 
@@ -25,7 +25,7 @@ type RedisHandler struct {
 	pool            *pool.Pool
 	securityChecker *security.Checker
 	config          *config.Config
-	logger          *logrus.Logger
+	logger          *logging.LogrusAdapter
 	listener        net.Listener
 	connLimiter     *rate.Limiter
 	queryLimiter    *rate.Limiter
@@ -50,7 +50,7 @@ type RedisCommand struct {
 }
 
 // NewRedisHandler creates a new Redis protocol handler
-func NewRedisHandler(port int, pool *pool.Pool, securityChecker *security.Checker, cfg *config.Config, logger *logrus.Logger) *RedisHandler {
+func NewRedisHandler(port int, pool *pool.Pool, securityChecker *security.Checker, cfg *config.Config, logger *logging.LogrusAdapter) *RedisHandler {
 	return &RedisHandler{
 		protocol:        "redis",
 		port:            port,

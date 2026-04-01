@@ -4,12 +4,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-egress/internal/logging"
 )
 
 func TestNewAccessController(t *testing.T) {
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
+	logger, _ := logging.NewLogrusAdapter("threat")
+	_ = logger
 
 	ac := NewAccessController(false, logger)
 	if ac == nil {

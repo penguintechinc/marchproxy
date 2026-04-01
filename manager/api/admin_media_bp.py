@@ -9,13 +9,14 @@ Licensed under GNU Affero General Public License v3.0
 """
 
 import logging
+from penguintechinc_utils import get_logger
 
 from middleware.auth import require_auth
 from models.media_settings import MediaSettingsModel, UpdateMediaSettingsRequest
 from pydantic import ValidationError
 from quart import Blueprint, current_app, jsonify, request
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 admin_media_bp = Blueprint("admin_media", __name__, url_prefix="/api/v1/admin/media")
 

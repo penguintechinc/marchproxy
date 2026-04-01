@@ -18,4 +18,4 @@ COPY sync.py .
 RUN mkdir -p /etc/monitoring
 
 # Run the sync service
-CMD ["python", "sync.py"]
+CMD ["python3", "sync.py"]

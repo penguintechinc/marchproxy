@@ -10,16 +10,19 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app
+from penguintechinc_utils import configure_logging, get_logger
+from penguin_limiter import RateLimitConfig, MemoryStorage
 
 from app.core.config import settings
 from app.core.database import engine, Base, close_db
+from app.core.rate_limiting import FastAPIRateLimiter
 
-# Configure logging
-logging.basicConfig(
+# Configure sanitized logging
+configure_logging(
     level=logging.DEBUG if settings.DEBUG else logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    json_output=False
 )
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
@@ -68,6 +71,19 @@ app = FastAPI(
     openapi_url="/api/openapi.json"
 )
 
+# Initialize rate limiter (100 requests per minute per IP by default)
+# Bypass enabled for private IPs (internal cluster traffic is exempt)
+rate_limiter = FastAPIRateLimiter(
+    config=RateLimitConfig.from_string(
+        "100/minute",
+        skip_private_ips=True,  # Internal cluster traffic is always exempt
+    ),
+    storage=MemoryStorage(),
+)
+
+# Add rate limiting middleware
+app.middleware("http")(rate_limiter.middleware)
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -104,11 +120,15 @@ async def root():
     }
 
 
+# Make rate_limiter available for per-route decorators
+app.state.rate_limiter = rate_limiter
+
 # Mount API v1 router (includes all Phase 2 routes)
 from app.api.v1 import api_router
 app.include_router(api_router, prefix="/api/v1")
 
 logger.info("API routes mounted successfully")
+logger.info("Rate limiting enabled: 100 req/min per IP (internal IPs bypassed)")
 
 
 if __name__ == "__main__":

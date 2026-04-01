@@ -5,6 +5,7 @@ Handles proxy server registration, heartbeat, configuration fetch, and metrics r
 """
 
 import logging
+from penguintechinc_utils import get_logger
 from datetime import datetime
 from typing import Annotated
 
@@ -30,7 +31,7 @@ from app.services.proxy_service import (
 )
 
 router = APIRouter(prefix="/proxies", tags=["proxies"])
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @router.post("/register", response_model=ProxyResponse, status_code=status.HTTP_201_CREATED)

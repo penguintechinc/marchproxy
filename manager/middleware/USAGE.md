@@ -26,7 +26,7 @@ from middleware.auth import require_auth, get_current_user, is_admin
 ### Protecting a Route with Authentication
 
 ```python
-from py4web import request, response
+from quart import request, jsonify
 from middleware.auth import require_auth, get_current_user
 
 @require_auth()
@@ -202,34 +202,36 @@ Tokens are created by the JWT manager with the following payload structure:
 }
 ```
 
-## Integration with py4web Routes
+## Integration with Quart Routes
 
-The middleware works seamlessly with py4web route registration. Update your route handlers to use the decorator:
+The middleware works seamlessly with Quart route registration. Update your route handlers to use the decorator:
 
 ```python
-from py4web import application, request, response
+from quart import Quart, request, jsonify
 from middleware.auth import require_auth, get_current_user, is_admin
 
-@application.route('/api/users/profile', methods=['GET'])
+app = Quart(__name__)
+
+@app.route('/api/users/profile', methods=['GET'])
 @require_auth()
 def get_profile():
     """Get current user's profile"""
     user = get_current_user()
-    return {"user": user}
+    return jsonify({"user": user})
 
-@application.route('/api/users', methods=['POST'])
+@app.route('/api/users', methods=['POST'])
 @require_auth(admin_required=True)
 def create_user():
     """Create new user (admin only)"""
     data = request.json
     # Create user logic
-    return {"status": "created"}
+    return jsonify({"status": "created"})
 
-@application.route('/api/advanced-features', methods=['GET'])
+@app.route('/api/advanced-features', methods=['GET'])
 @require_auth(license_feature="advanced_blocking")
 def get_advanced_features():
     """Get advanced features (licensed)"""
-    return {"features": [...]}
+    return jsonify({"features": [...]})
 ```
 
 ## Best Practices

@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 // Manager manages the Envoy proxy lifecycle
@@ -24,13 +24,13 @@ type Manager struct {
 	mu          sync.RWMutex
 	isRunning   bool
 
-	logger      *logrus.Logger
+	logger      *logging.LogrusAdapter
 }
 
 // NewManager creates a new Envoy manager
-func NewManager(binary, configPath string, adminPort int, logLevel string, logger *logrus.Logger) *Manager {
+func NewManager(binary, configPath string, adminPort int, logLevel string, logger *logging.LogrusAdapter) *Manager {
 	if logger == nil {
-		logger = logrus.New()
+		logger = NewLogrusAdapter("marchproxy")
 	}
 
 	return &Manager{

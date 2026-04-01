@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-egress/internal/logging"
 )
 
 // FeedSyncConfig holds configuration for feed synchronization
@@ -58,7 +58,7 @@ type URLPatternEntry struct {
 type FeedSync struct {
 	config  FeedSyncConfig
 	manager *Manager
-	logger  *logrus.Logger
+	logger  *logging.LogrusAdapter
 
 	client  *http.Client
 	version string // Current feed version
@@ -78,9 +78,9 @@ type FeedSync struct {
 }
 
 // NewFeedSync creates a new feed synchronization manager
-func NewFeedSync(cfg FeedSyncConfig, manager *Manager, logger *logrus.Logger) *FeedSync {
+func NewFeedSync(cfg FeedSyncConfig, manager *Manager, logger *logging.LogrusAdapter) *FeedSync {
 	if logger == nil {
-		logger = logrus.New()
+		logger, _ = logging.NewLogrusAdapter("feed-sync")
 	}
 
 	// Default values
@@ -124,7 +124,7 @@ func (f *FeedSync) Start(ctx context.Context) error {
 		go f.grpcStreamLoop()
 	}
 
-	f.logger.WithFields(logrus.Fields{
+	f.logger.WithFields(map[string]interface{}{
 		"mode":          f.config.Mode,
 		"poll_interval": f.config.PollInterval,
 	}).Info("Started threat feed synchronization")
@@ -241,7 +241,7 @@ func (f *FeedSync) sync() error {
 	f.stats.SyncCount++
 	f.mu.Unlock()
 
-	f.logger.WithFields(logrus.Fields{
+	f.logger.WithFields(map[string]interface{}{
 		"version":      feed.Version,
 		"ip_rules":     len(feed.IPBlocklist),
 		"domain_rules": len(feed.DomainBlocklist),

@@ -7,7 +7,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 var (
@@ -45,11 +45,11 @@ type TokenBucket struct {
 	mu            sync.Mutex
 	name          string        // Bucket identifier
 	protocol      Protocol
-	logger        *logrus.Logger
+	logger        *logging.LogrusAdapter
 }
 
 // NewTokenBucket creates a new token bucket rate limiter
-func NewTokenBucket(capacity float64, refillRate float64, name string, protocol Protocol, logger *logrus.Logger) *TokenBucket {
+func NewTokenBucket(capacity float64, refillRate float64, name string, protocol Protocol, logger *logging.LogrusAdapter) *TokenBucket {
 	tb := &TokenBucket{
 		capacity:   capacity,
 		tokens:     capacity,
@@ -125,11 +125,11 @@ func (tb *TokenBucket) GetRefillRate() float64 {
 type RateLimiter struct {
 	buckets map[string]*TokenBucket
 	mu      sync.RWMutex
-	logger  *logrus.Logger
+	logger  *logging.LogrusAdapter
 }
 
 // NewRateLimiter creates a new rate limiter
-func NewRateLimiter(logger *logrus.Logger) *RateLimiter {
+func NewRateLimiter(logger *logging.LogrusAdapter) *RateLimiter {
 	return &RateLimiter{
 		buckets: make(map[string]*TokenBucket),
 		logger:  logger,

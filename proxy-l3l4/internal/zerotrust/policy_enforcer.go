@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/open-policy-agent/opa/rego"
-	"github.com/sirupsen/logrus"
+	"marchproxy-l3l4/internal/logging"
 )
 
 // PolicyEnforcer handles OPA policy evaluation for zero-trust security
@@ -18,7 +18,7 @@ type PolicyEnforcer struct {
 	mu            sync.RWMutex
 	client        *OPAClient
 	localPolicies map[string]*rego.PreparedEvalQuery
-	logger        *logrus.Logger
+	logger        *logging.LogrusAdapter
 	auditLogger   *AuditLogger
 	enabled       bool
 	licenseValid  bool
@@ -63,7 +63,7 @@ type CertificateInfo struct {
 }
 
 // NewPolicyEnforcer creates a new policy enforcer instance
-func NewPolicyEnforcer(opaServerURL string, logger *logrus.Logger, auditLogger *AuditLogger) (*PolicyEnforcer, error) {
+func NewPolicyEnforcer(opaServerURL string, logger *logging.LogrusAdapter, auditLogger *AuditLogger) (*PolicyEnforcer, error) {
 	client, err := NewOPAClient(opaServerURL, 30*time.Second)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OPA client: %w", err)
@@ -233,7 +233,7 @@ func (pe *PolicyEnforcer) logPolicyEvaluation(policyName string, input *PolicyIn
 	}
 
 	// Also log to standard logger
-	pe.logger.WithFields(logrus.Fields{
+	pe.logger.WithFields(map[string]interface{}{
 		"policy":   policyName,
 		"service":  input.Service,
 		"action":   input.Action,

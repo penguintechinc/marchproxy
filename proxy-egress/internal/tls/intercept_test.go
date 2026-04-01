@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-egress/internal/logging"
 )
 
 // Helper function to generate test CA for tests

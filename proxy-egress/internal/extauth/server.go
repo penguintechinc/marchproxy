@@ -13,12 +13,12 @@ import (
 	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	authv3 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
 	typev3 "github.com/envoyproxy/go-control-plane/envoy/type/v3"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
 	"marchproxy-egress/internal/auth"
+	"marchproxy-egress/internal/logging"
 	"marchproxy-egress/internal/threat"
 )
 
@@ -34,7 +34,7 @@ type Server struct {
 	listener   net.Listener
 	port       int
 
-	logger *logrus.Logger
+	logger *logging.LogrusAdapter
 
 	// Statistics
 	stats struct {
@@ -54,9 +54,9 @@ type ServerConfig struct {
 }
 
 // NewServer creates a new external authorization server
-func NewServer(cfg ServerConfig, logger *logrus.Logger) *Server {
+func NewServer(cfg ServerConfig, logger *logging.LogrusAdapter) *Server {
 	if logger == nil {
-		logger = logrus.New()
+		logger, _ = logging.NewLogrusAdapter("extauth-server")
 	}
 
 	return &Server{
@@ -144,7 +144,7 @@ func (s *Server) Check(ctx context.Context, req *authv3.CheckRequest) (*authv3.C
 	}
 
 	// Log the request
-	s.logger.WithFields(logrus.Fields{
+	s.logger.WithFields(map[string]interface{}{
 		"host":       threatCtx.Host,
 		"path":       threatCtx.Path,
 		"method":     threatCtx.Method,
@@ -157,7 +157,7 @@ func (s *Server) Check(ctx context.Context, req *authv3.CheckRequest) (*authv3.C
 		decision := s.threatManager.Check(ctx, threatCtx)
 		if decision.Blocked {
 			s.stats.DeniedRequests++
-			s.logger.WithFields(logrus.Fields{
+			s.logger.WithFields(map[string]interface{}{
 				"host":     threatCtx.Host,
 				"path":     threatCtx.Path,
 				"reason":   decision.Reason,
@@ -180,7 +180,7 @@ func (s *Server) Check(ctx context.Context, req *authv3.CheckRequest) (*authv3.C
 
 			// If authentication is required, return 401
 			if acDecision.RequiresAuth {
-				s.logger.WithFields(logrus.Fields{
+				s.logger.WithFields(map[string]interface{}{
 					"host":   threatCtx.Host,
 					"reason": acDecision.Reason,
 				}).Warn("Request denied - authentication required")
@@ -188,7 +188,7 @@ func (s *Server) Check(ctx context.Context, req *authv3.CheckRequest) (*authv3.C
 			}
 
 			// Otherwise return 403
-			s.logger.WithFields(logrus.Fields{
+			s.logger.WithFields(map[string]interface{}{
 				"host":     threatCtx.Host,
 				"reason":   acDecision.Reason,
 				"rule_id":  acDecision.MatchedRule,

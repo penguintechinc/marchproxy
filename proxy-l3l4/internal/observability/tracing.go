@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-l3l4/internal/logging"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -16,11 +16,11 @@ import (
 type Tracer struct {
 	provider *sdktrace.TracerProvider
 	tracer   trace.Tracer
-	logger   *logrus.Logger
+	logger   *logging.LogrusAdapter
 }
 
 // NewTracer creates a new OpenTelemetry tracer
-func NewTracer(serviceName, endpoint string, sampleRate float64, logger *logrus.Logger) (*Tracer, error) {
+func NewTracer(serviceName, endpoint string, sampleRate float64, logger *logging.LogrusAdapter) (*Tracer, error) {
 	ctx := context.Background()
 
 	// For now, use a no-op exporter since OTLP requires additional configuration
@@ -49,7 +49,7 @@ func NewTracer(serviceName, endpoint string, sampleRate float64, logger *logrus.
 
 	tracer := tp.Tracer(serviceName)
 
-	logger.WithFields(logrus.Fields{
+	logger.WithFields(map[string]interface{}{
 		"service":     serviceName,
 		"endpoint":    endpoint,
 		"sample_rate": sampleRate,

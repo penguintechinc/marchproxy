@@ -6,6 +6,7 @@ bandwidth limits, and DSCP marking.
 """
 
 import logging
+from penguintechinc_utils import get_logger
 from typing import List, Optional
 from datetime import datetime
 
@@ -23,7 +24,7 @@ from app.schemas.traffic_shaping import (
 )
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 FEATURE_NAME = "traffic_shaping"
 

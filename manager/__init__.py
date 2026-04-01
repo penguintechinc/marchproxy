@@ -1,8 +1,8 @@
-# MarchProxy Manager - py4web Application Package
+# MarchProxy Manager - Quart Application Package
 """
 MarchProxy Manager
 
-A comprehensive proxy management system built on py4web framework.
+A comprehensive proxy management system built on Quart framework.
 Handles authentication, service management, cluster configuration,
 and provides API endpoints for proxy servers.
 

@@ -14,7 +14,7 @@ import (
 	"marchproxy-nlb/internal/nlb"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 var (
@@ -23,9 +23,7 @@ var (
 )
 
 func main() {
-	logger := logrus.New()
-	logger.SetFormatter(&logrus.JSONFormatter{})
-	logger.SetLevel(logrus.InfoLevel)
+	logger := NewLogrusAdapter("marchproxy")
 
 	logger.WithFields(logrus.Fields{
 		"version":    version,

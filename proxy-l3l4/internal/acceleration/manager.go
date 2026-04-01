@@ -3,7 +3,7 @@ package acceleration
 import (
 	"fmt"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-l3l4/internal/logging"
 )
 
 // AccelerationMode defines the acceleration tier
@@ -19,7 +19,7 @@ const (
 // Manager manages hardware acceleration features
 type Manager struct {
 	mode   AccelerationMode
-	logger *logrus.Logger
+	logger *logging.LogrusAdapter
 
 	// Acceleration components
 	xdpHandler   *XDPHandler
@@ -27,7 +27,7 @@ type Manager struct {
 }
 
 // NewManager creates a new acceleration manager
-func NewManager(mode string, logger *logrus.Logger) (*Manager, error) {
+func NewManager(mode string, logger *logging.LogrusAdapter) (*Manager, error) {
 	var accelMode AccelerationMode
 
 	switch mode {
@@ -69,7 +69,7 @@ func (m *Manager) Initialize(device string, queueCount int) error {
 		return nil
 
 	case ModeAFXDP:
-		m.logger.WithFields(logrus.Fields{
+		m.logger.WithFields(map[string]interface{}{
 			"device": device,
 			"queues": queueCount,
 		}).Info("Initializing AF_XDP acceleration")

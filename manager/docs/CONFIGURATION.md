@@ -148,12 +148,12 @@ HOST=127.0.0.1
 PYTHONUNBUFFERED=1
 ```
 
-**PY4WEB_APPS_FOLDER** (Optional)
-- Location of py4web apps
+**QUART_APPS_FOLDER** (Optional)
+- Location of Quart apps
 - Default: `/app/apps`
 
 ```bash
-PY4WEB_APPS_FOLDER=/app/apps
+QUART_APPS_FOLDER=/app/apps
 ```
 
 ### SAML Configuration (Enterprise)

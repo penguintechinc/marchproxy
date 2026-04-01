@@ -17,7 +17,7 @@ import (
 	"marchproxy-dblb/internal/security"
 
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
 
@@ -52,7 +52,7 @@ type SQLiteHandler struct {
 	pool            *pool.Pool
 	securityChecker *security.Checker
 	config          *config.Config
-	logger          *logrus.Logger
+	logger          *logging.LogrusAdapter
 	listener        net.Listener
 	connLimiter     *rate.Limiter
 	queryLimiter    *rate.Limiter
@@ -67,7 +67,7 @@ type SQLiteHandler struct {
 }
 
 // NewSQLiteHandler creates a new SQLite handler
-func NewSQLiteHandler(port int, pool *pool.Pool, securityChecker *security.Checker, cfg *config.Config, logger *logrus.Logger) *SQLiteHandler {
+func NewSQLiteHandler(port int, pool *pool.Pool, securityChecker *security.Checker, cfg *config.Config, logger *logging.LogrusAdapter) *SQLiteHandler {
 	return &SQLiteHandler{
 		protocol:        "sqlite",
 		port:            port,

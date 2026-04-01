@@ -8,10 +8,11 @@ Created: 2026-01-13
 """
 
 import logging
+from penguintechinc_utils import get_logger
 
 from models.rbac import RBACModel
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def upgrade(db):

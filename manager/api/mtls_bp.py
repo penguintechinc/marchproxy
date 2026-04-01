@@ -10,6 +10,7 @@ Licensed under GNU Affero General Public License v3.0
 
 import hashlib
 import logging
+from penguintechinc_utils import get_logger
 import socket
 import ssl
 from datetime import datetime, timedelta
@@ -23,7 +24,7 @@ from middleware.auth import require_auth
 from models.certificate import CertificateModel, TLSProxyCAModel
 from quart import Blueprint, Response, current_app, jsonify, request
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 mtls_bp = Blueprint("mtls", __name__, url_prefix="/api/v1/mtls")
 

@@ -6,13 +6,14 @@ Licensed under GNU Affero General Public License v3.0
 """
 
 import logging
+from penguintechinc_utils import get_logger
 import socket
 import threading
 from datetime import datetime
 from enum import IntEnum
 from typing import Any, Dict, Optional
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class SyslogSeverity(IntEnum):
@@ -373,7 +374,7 @@ def log_auth_event(cluster_id: int, event_type: str):
     def decorator(func):
         def wrapper(*args, **kwargs):
             try:
-                from py4web import request
+                from quart import request
             except ImportError:
                 request = None
 

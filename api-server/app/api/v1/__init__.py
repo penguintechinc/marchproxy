@@ -57,6 +57,7 @@ try:
 except ImportError as e:
     # Phase 7 routes not yet available
     import logging
-    logging.getLogger(__name__).info(f"Phase 7 routes not loaded: {e}")
+from penguintechinc_utils import get_logger
+    get_logger(__name__).info(f"Phase 7 routes not loaded: {e}")
 
 __all__ = ["api_router"]

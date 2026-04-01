@@ -1,10 +1,12 @@
+//go:build !linux
+
 package xdp
 
 import (
 	"fmt"
 	"sync"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-l3l4/internal/logging"
 )
 
 // XDPProgram represents an XDP eBPF program (stub implementation)
@@ -12,7 +14,7 @@ type XDPProgram struct {
 	mu sync.RWMutex
 
 	device  string
-	logger  *logrus.Logger
+	logger  *logging.LogrusAdapter
 	loaded  bool
 
 	// Statistics
@@ -22,7 +24,7 @@ type XDPProgram struct {
 }
 
 // NewXDPProgram creates a new XDP program instance
-func NewXDPProgram(device string, logger *logrus.Logger) *XDPProgram {
+func NewXDPProgram(device string, logger *logging.LogrusAdapter) *XDPProgram {
 	return &XDPProgram{
 		device: device,
 		logger: logger,

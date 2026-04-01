@@ -8,7 +8,7 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 // SQLPool manages database/sql connections for database protocols
@@ -19,12 +19,12 @@ type SQLPool struct {
 	maxConns    int
 	maxIdle     int
 	maxLifetime time.Duration
-	logger      *logrus.Logger
+	logger      *logging.LogrusAdapter
 	mu          sync.RWMutex
 }
 
 // NewSQLPool creates a new SQL connection pool
-func NewSQLPool(protocol, dsn string, maxConns int, logger *logrus.Logger) (*SQLPool, error) {
+func NewSQLPool(protocol, dsn string, maxConns int, logger *logging.LogrusAdapter) (*SQLPool, error) {
 	// Determine driver based on protocol
 	driver := protocol
 	if protocol == "galera" {

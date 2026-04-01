@@ -10,7 +10,7 @@ import (
 
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/config"
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/transcode"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 // SessionStatus represents session status

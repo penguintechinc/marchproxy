@@ -5,6 +5,7 @@ Handles CRUD operations for modules and gRPC health status checks.
 """
 
 import logging
+from penguintechinc_utils import get_logger
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -23,7 +24,7 @@ from app.schemas.module import (
 from app.services.module_service import ModuleService
 
 router = APIRouter(prefix="/modules", tags=["modules"])
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @router.get("", response_model=ModuleListResponse)

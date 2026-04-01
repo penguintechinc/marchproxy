@@ -6,13 +6,14 @@ to retrieve health status, metrics, and control operations.
 """
 
 import logging
+from penguintechinc_utils import get_logger
 from typing import Optional, Dict, Any
 from datetime import datetime
 
 import grpc
 from grpc import aio
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ModuleGRPCClient:

@@ -6,6 +6,7 @@ Integrates with xDS service for configuration updates.
 """
 
 import logging
+from penguintechinc_utils import get_logger
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -28,7 +29,7 @@ from app.services.service_service import ServiceService
 from app.services.xds_service import trigger_xds_update
 
 router = APIRouter(prefix="/services", tags=["services"])
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @router.get("", response_model=ServiceListResponse)

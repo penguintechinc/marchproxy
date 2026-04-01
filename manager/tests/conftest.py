@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
+from penguin_pytest import mock_grpc_module
 
 
 # ---------------------------------------------------------------------------

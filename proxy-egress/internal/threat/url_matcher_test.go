@@ -4,13 +4,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-egress/internal/logging"
 )
 
 // createTestMatcher is a helper to create a URLMatcher for testing
 func createTestMatcher(t testing.TB) *URLMatcher {
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
+	logger, _ := logging.NewLogrusAdapter("url-matcher")
 	matcher, err := NewURLMatcher("re2", 1000, logger)
 	if err != nil {
 		t.Fatalf("Failed to create URLMatcher: %v", err)
@@ -19,8 +18,8 @@ func createTestMatcher(t testing.TB) *URLMatcher {
 }
 
 func TestNewURLMatcher(t *testing.T) {
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
+	logger, _ := logging.NewLogrusAdapter("url-matcher")
+	_ = logger
 
 	matcher, err := NewURLMatcher("re2", 1000, logger)
 	if err != nil {

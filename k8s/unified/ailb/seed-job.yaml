@@ -1,0 +1,69 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ailb-seed-data
+  namespace: marchproxy
+  labels:
+    app.kubernetes.io/name: marchproxy
+    app.kubernetes.io/component: proxy-ailb
+    app.kubernetes.io/part-of: marchproxy
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: marchproxy
+        app.kubernetes.io/component: proxy-ailb-seed
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: seed
+        image: python:3.13-slim-bookworm
+        command:
+        - /bin/sh
+        - -c
+        - |
+          pip3 install --no-cache-dir psycopg2-binary requests &&
+          python3 scripts/seed_routing_matrix.py &&
+          python3 scripts/seed_security_rag.py
+        workingDir: /app
+        volumeMounts:
+        - name: seed-scripts
+          mountPath: /app/scripts
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: marchproxy-secrets
+              key: database-url
+        - name: OLLAMA_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: marchproxy-ailb-config
+              key: OLLAMA_HOST
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: marchproxy-config
+              key: REDIS_HOST
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: marchproxy-config
+              key: REDIS_PORT
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: marchproxy-secrets
+              key: redis-password
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+      volumes:
+      - name: seed-scripts
+        configMap:
+          name: ailb-seed-scripts

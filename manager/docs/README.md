@@ -4,7 +4,7 @@ Central management server for MarchProxy cluster operations.
 
 ## Overview
 
-The Manager is a Python/py4web-based centralized control plane for MarchProxy. It handles configuration management, cluster administration, service definitions, user authentication, and licensing enforcement.
+The Manager is a Python/Quart-based centralized control plane for MarchProxy. It handles configuration management, cluster administration, service definitions, user authentication, and licensing enforcement.
 
 ## Features
 
@@ -23,11 +23,11 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed architecture documentation
 
 ## Technology Stack
 
-- **Framework**: py4web
+- **Framework**: Quart
 - **ORM**: pydal
 - **Database**: PostgreSQL (configurable to any pydal-supported DB)
-- **Authentication**: py4web native auth system + OAuth2/SAML/SCIM
-- **API**: RESTful with native py4web decorators
+- **Authentication**: penguin-aaa + JWT + OAuth2/SAML/SCIM
+- **API**: RESTful with Quart route decorators
 
 ## Database
 
@@ -53,7 +53,7 @@ See API reference in this documentation folder for endpoint specifications.
 ## Security
 
 - Input validation on all endpoints
-- CSRF protection via py4web
+- CSRF protection via middleware
 - Role-based access control (Administrator, Service-owner)
 - Cluster-specific API key isolation
 

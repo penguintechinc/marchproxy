@@ -17,7 +17,7 @@ import (
 	"marchproxy-dblb/internal/pool"
 	"marchproxy-dblb/internal/security"
 
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 // MongoDBHandler implements the Handler interface for MongoDB protocol
@@ -29,7 +29,7 @@ type MongoDBHandler struct {
 	pool            *pool.Pool
 	securityChecker *security.Checker
 	config          *config.Config
-	logger          *logrus.Logger
+	logger          *logging.LogrusAdapter
 	listener        net.Listener
 	roundRobin      uint64
 	activeConns     int64
@@ -49,7 +49,7 @@ func NewMongoDBHandler(
 	p *pool.Pool,
 	securityChecker *security.Checker,
 	cfg *config.Config,
-	logger *logrus.Logger,
+	logger *logging.LogrusAdapter,
 ) *MongoDBHandler {
 	return &MongoDBHandler{
 		protocol:        "mongodb",

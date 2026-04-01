@@ -5,6 +5,7 @@ Handles CRUD operations for clusters, API key management, and cluster assignment
 """
 
 import logging
+from penguintechinc_utils import get_logger
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -25,7 +26,7 @@ from app.schemas.cluster import (
 from app.services.cluster_service import ClusterService
 
 router = APIRouter(prefix="/clusters", tags=["clusters"])
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @router.get("", response_model=ClusterListResponse)

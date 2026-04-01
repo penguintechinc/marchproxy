@@ -43,10 +43,12 @@ from middleware.auth import require_auth, get_current_user, is_admin, AuthContex
 ### Protect a Route
 
 ```python
-from py4web import application
+from quart import Quart
 from middleware.auth import require_auth, get_current_user
 
-@application.route('/api/profile', methods=['GET'])
+app = Quart(__name__)
+
+@app.route('/api/profile', methods=['GET'])
 @require_auth()
 def get_profile():
     user = get_current_user()
@@ -289,7 +291,7 @@ current_app.license_manager = license_manager
 ## Integration Status
 
 ✅ Middleware created and ready for integration with existing API endpoints
-✅ Supports py4web framework
+✅ Supports Quart framework
 ✅ Compatible with JWTManager from auth models
 ✅ Async/await support for modern handlers
 ✅ Comprehensive error handling

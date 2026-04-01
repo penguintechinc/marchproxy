@@ -9,7 +9,7 @@ import (
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/config"
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/rtmp"
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/transcode"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -71,7 +71,7 @@ func (s *Server) Stop() {
 	if s.grpcServer != nil {
 		s.grpcServer.GracefulStop()
 	}
-	logrus.Info("gRPC server stopped")
+	logger.Info("gRPC server stopped")
 }
 
 // ModuleService implementation (placeholders for proto-generated methods)

@@ -71,22 +71,13 @@ services:
     ports:
       - "6062:6060"  # pprof debug port
 
-  # AILB - Development overrides
+  # AILB - Development overrides (Go binary)
   proxy-ailb:
     profiles:
       - dev
       - ailb
-    build:
-      target: development
     environment:
       - LOG_LEVEL=debug
-      - DEBUG=true
-      - RELOAD=true
-    volumes:
-      - ./proxy-ailb:/app:delegated
-      - /app/.venv  # Prevent overwriting virtual environment
-    ports:
-      - "5678:5678"  # debugpy port for Python debugging
 
   # RTMP - Development overrides
   proxy-rtmp:

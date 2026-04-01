@@ -9,7 +9,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
-	"github.com/sirupsen/logrus"
+	"marchproxy-l3l4/internal/logging"
 	"github.com/vishvananda/netlink"
 )
 
@@ -18,7 +18,7 @@ type XDPProgram struct {
 	mu sync.RWMutex
 
 	device  string
-	logger  *logrus.Logger
+	logger  *logging.LogrusAdapter
 	loaded  bool
 	link    link.Link
 	objects *xdpObjects
@@ -36,7 +36,7 @@ type xdpObjects struct {
 }
 
 // NewXDPProgram creates a new XDP program instance
-func NewXDPProgram(device string, logger *logrus.Logger) *XDPProgram {
+func NewXDPProgram(device string, logger *logging.LogrusAdapter) *XDPProgram {
 	return &XDPProgram{
 		device: device,
 		logger: logger,
@@ -88,7 +88,7 @@ func (xdp *XDPProgram) Load(programPath string) error {
 	xdp.objects = objs
 	xdp.loaded = true
 
-	xdp.logger.WithFields(logrus.Fields{
+	xdp.logger.WithFields(map[string]interface{}{
 		"device":  xdp.device,
 		"program": programPath,
 	}).Info("XDP program loaded and attached")

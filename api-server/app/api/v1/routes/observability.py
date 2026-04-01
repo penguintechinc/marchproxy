@@ -6,6 +6,7 @@ custom metrics, and sampling strategies.
 """
 
 import logging
+from penguintechinc_utils import get_logger
 from typing import List, Optional
 from datetime import datetime
 
@@ -24,7 +25,7 @@ from app.schemas.observability import (
 )
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Feature name for license check
 FEATURE_NAME = "distributed_tracing"

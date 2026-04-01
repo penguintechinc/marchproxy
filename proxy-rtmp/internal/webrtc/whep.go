@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/config"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 // WHEPServer handles WebRTC-HTTP egress protocol (playback)
@@ -418,7 +418,7 @@ func (s *WHEPServer) Stop() error {
 		return s.server.Shutdown(ctx)
 	}
 
-	logrus.Info("WHEP server stopped")
+	logger.Info("WHEP server stopped")
 	return nil
 }
 

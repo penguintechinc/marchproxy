@@ -77,13 +77,13 @@ type XDPRateLimiter struct {
 	statsMapFD        int
 	licenseMapFD      int
 
-	logger   logging.Logger
+	logger   *logging.LogrusAdapter
 	metrics  metrics.Collector
 	mu       sync.RWMutex
 }
 
 // NewXDPRateLimiter creates a new XDP-based rate limiter
-func NewXDPRateLimiter(logger logging.Logger, metricsCollector metrics.Collector) *XDPRateLimiter {
+func NewXDPRateLimiter(logger *logging.LogrusAdapter, metricsCollector metrics.Collector) *XDPRateLimiter {
 	return &XDPRateLimiter{
 		enabled:            false,
 		attachedInterfaces: make(map[string]bool),

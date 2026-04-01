@@ -6,23 +6,23 @@ Handles service CRUD operations, authentication configuration, and cluster assig
 import base64
 import json
 import logging
+from penguintechinc_utils import get_logger
 import secrets
 from datetime import datetime, timedelta
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
-from py4web import abort
-from py4web.utils.auth import Auth
+from quart import abort
 
 from ..models import get_db
 from .license_service import LicenseService
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ServiceManagementService:
     """Service for managing MarchProxy services and their authentication"""
 
-    def __init__(self, license_service: LicenseService, auth: Auth):
+    def __init__(self, license_service: LicenseService, auth: Any):
         self.license_service = license_service
         self.auth = auth
         self.db = get_db()

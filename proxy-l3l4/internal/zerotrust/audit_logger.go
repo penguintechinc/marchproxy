@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-l3l4/internal/logging"
 )
 
 // AuditLogger provides immutable audit logging with SHA-256 chaining
@@ -20,7 +20,7 @@ type AuditLogger struct {
 	logFile       *os.File
 	previousHash  string
 	eventCount    int64
-	logger        *logrus.Logger
+	logger        *logging.LogrusAdapter
 	rotateSize    int64
 	rotateEnabled bool
 	chainBroken   bool
@@ -52,7 +52,7 @@ type AuditChainEntry struct {
 }
 
 // NewAuditLogger creates a new immutable audit logger
-func NewAuditLogger(logPath string, logger *logrus.Logger) (*AuditLogger, error) {
+func NewAuditLogger(logPath string, logger *logging.LogrusAdapter) (*AuditLogger, error) {
 	// Create log directory if it doesn't exist
 	logDir := filepath.Dir(logPath)
 	if err := os.MkdirAll(logDir, 0755); err != nil {
@@ -212,7 +212,7 @@ func (al *AuditLogger) loadPreviousHash() error {
 
 		al.previousHash = entry.Hash
 		al.eventCount = entry.Event.EventID
-		al.logger.WithFields(logrus.Fields{
+		al.logger.WithFields(map[string]interface{}{
 			"event_id":      al.eventCount,
 			"previous_hash": al.previousHash[:16] + "...",
 		}).Info("Loaded audit chain state")
@@ -258,7 +258,7 @@ func (al *AuditLogger) rotateLog() error {
 
 	al.logFile = newFile
 
-	al.logger.WithFields(logrus.Fields{
+	al.logger.WithFields(map[string]interface{}{
 		"rotated_file": rotatedPath,
 		"new_file":     al.logPath,
 	}).Info("Rotated audit log")

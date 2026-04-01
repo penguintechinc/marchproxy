@@ -80,7 +80,7 @@ jobs:
           sudo apt-get install -y clang llvm libbpf-dev linux-headers-$(uname -r) || true
 
       - name: Install golangci-lint
-        uses: golangci/golangci-lint-action@v4
+        uses: golangci/golangci-lint-action@d6238b002a20823d52840fda27e2d4891c5952dc  # v4
         with:
           version: latest
           working-directory: ./proxy-egress
@@ -196,9 +196,64 @@ jobs:
         working-directory: ./webui
         run: npm run test:coverage
 
+  # Test monitoring/config-sync
+  test-config-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        with:
+          python-version: '3.13'
+
+      - name: Cache Python packages
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('monitoring/config-sync/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        working-directory: ./monitoring/config-sync
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt || pip install pytest pytest-cov pytest-asyncio
+
+      - name: Run tests
+        working-directory: ./monitoring/config-sync
+        run: python3 -m pytest
+
+  # Test proxy-ailb (Go - AI Load Balancer)
+  test-proxy-ailb:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff  # v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: proxy-ailb/go.sum
+
+      - name: Vet
+        working-directory: ./proxy-ailb
+        run: go vet ./...
+
+      - name: Build
+        working-directory: ./proxy-ailb
+        run: go build -v ./cmd/ailb/
+
+      - name: Test with coverage
+        working-directory: ./proxy-ailb
+        run: go test -v -cover ./...
+
   # Multi-architecture Docker builds
   build-multi-arch:
-    needs: [test-proxy, test-manager, test-webui]
+    needs: [test-proxy, test-manager, test-webui, test-config-sync, test-proxy-ailb]
     runs-on: ubuntu-latest
     strategy:
       matrix:

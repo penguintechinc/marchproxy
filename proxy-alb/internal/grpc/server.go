@@ -6,7 +6,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 
@@ -24,7 +24,7 @@ type Server struct {
 	envoyManager    *envoy.Manager
 	xdsClient       *envoy.XDSClient
 	metricsCollector *metrics.Collector
-	logger          *logrus.Logger
+	logger          *logging.LogrusAdapter
 
 	grpcServer      *grpc.Server
 	startTime       time.Time
@@ -36,10 +36,10 @@ func NewServer(
 	envoyMgr *envoy.Manager,
 	xdsClient *envoy.XDSClient,
 	metricsCollector *metrics.Collector,
-	logger *logrus.Logger,
+	logger *logging.LogrusAdapter,
 ) *Server {
 	if logger == nil {
-		logger = logrus.New()
+		logger = NewLogrusAdapter("marchproxy")
 	}
 
 	return &Server{

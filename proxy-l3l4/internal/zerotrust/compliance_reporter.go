@@ -6,13 +6,13 @@ import (
 	"os"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-l3l4/internal/logging"
 )
 
 // ComplianceReporter generates compliance reports for SOC2, HIPAA, PCI-DSS
 type ComplianceReporter struct {
 	auditLogger *AuditLogger
-	logger      *logrus.Logger
+	logger      *logging.LogrusAdapter
 }
 
 // ComplianceReport represents a compliance report
@@ -54,7 +54,7 @@ type ComplianceFinding struct {
 }
 
 // NewComplianceReporter creates a new compliance reporter
-func NewComplianceReporter(auditLogger *AuditLogger, logger *logrus.Logger) *ComplianceReporter {
+func NewComplianceReporter(auditLogger *AuditLogger, logger *logging.LogrusAdapter) *ComplianceReporter {
 	return &ComplianceReporter{
 		auditLogger: auditLogger,
 		logger:      logger,
@@ -344,7 +344,7 @@ func (cr *ComplianceReporter) ExportReportJSON(report *ComplianceReport, outputP
 		return fmt.Errorf("failed to write report: %w", err)
 	}
 
-	cr.logger.WithFields(logrus.Fields{
+	cr.logger.WithFields(map[string]interface{}{
 		"report_id": report.ReportID,
 		"standard":  report.Standard,
 		"path":      outputPath,
@@ -361,7 +361,7 @@ func (cr *ComplianceReporter) ExportReportHTML(report *ComplianceReport, outputP
 		return fmt.Errorf("failed to write HTML report: %w", err)
 	}
 
-	cr.logger.WithFields(logrus.Fields{
+	cr.logger.WithFields(map[string]interface{}{
 		"report_id": report.ReportID,
 		"standard":  report.Standard,
 		"path":      outputPath,

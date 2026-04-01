@@ -379,7 +379,7 @@ Example:
     ...     print(f"Login successful: {token}")
 
 Requirements:
-    - py4web framework for web integration
+    - Quart framework for web integration
     - pydal for database operations
     - passlib for password hashing
     - pyotp for TOTP generation
@@ -421,7 +421,7 @@ class AuthService:
     SSO solutions.
 
     The service is designed to be thread-safe and can handle concurrent
-    authentication requests. It integrates with the py4web framework for
+    authentication requests. It integrates with the Quart framework for
     web authentication and provides REST API endpoints for programmatic access.
 
     Attributes:
@@ -1094,7 +1094,7 @@ database:
   echo_pool: false           # Log connection pool events (debug only)
 
 # Web Server Configuration
-# Configure the py4web server for optimal performance and security
+# Configure the Quart server for optimal performance and security
 server:
   host: "0.0.0.0"            # Bind to all interfaces (use specific IP for security)
   port: 8000                 # HTTP port (use HTTPS termination at load balancer)
@@ -1287,7 +1287,7 @@ logging:
     "marchproxy.license": "INFO"        # License validation
     "marchproxy.database": "WARNING"    # Database operations (reduce noise)
     "sqlalchemy": "WARNING"             # SQLAlchemy ORM (reduce noise)
-    "py4web": "WARNING"                 # Framework logs (reduce noise)
+    "quart": "WARNING"                  # Framework logs (reduce noise)
 
   # Audit logging for compliance and security
   audit:
@@ -1484,7 +1484,7 @@ USER marchproxy
 EXPOSE 8000 8001 8080
 
 # Development command with auto-reload
-CMD ["python", "-m", "py4web", "run", "apps", "--host", "0.0.0.0", "--port", "8000", "--watch", "on"]
+CMD ["python", "-m", "quart", "run", "--host", "0.0.0.0", "--port", "8000"]
 
 # Stage 3: Testing environment
 # Optimized for running tests in CI/CD pipelines
@@ -1552,7 +1552,7 @@ ENV PYTHONPATH=/app \
 
 # Default production command
 # Use exec form for proper signal handling
-CMD ["python", "-m", "py4web", "run", "apps", "--host", "0.0.0.0", "--port", "8000", "--number_workers", "4"]
+CMD ["python", "-m", "quart", "run", "--host", "0.0.0.0", "--port", "8000"]
 
 # Build arguments for customization
 ARG BUILD_DATE

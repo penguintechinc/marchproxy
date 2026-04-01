@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 // Checker implements SQL injection detection
@@ -13,12 +13,12 @@ type Checker struct {
 	patterns       []*regexp.Regexp
 	blockedCount   int64
 	inspectedCount int64
-	logger         *logrus.Logger
+	logger         *logging.LogrusAdapter
 	mu             sync.RWMutex
 }
 
 // NewChecker creates a new security checker
-func NewChecker(logger *logrus.Logger) *Checker {
+func NewChecker(logger *logging.LogrusAdapter) *Checker {
 	checker := &Checker{
 		logger: logger,
 	}

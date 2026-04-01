@@ -4,23 +4,23 @@ Handles automated user provisioning from enterprise identity providers
 """
 
 import logging
+from penguintechinc_utils import get_logger
 import uuid
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Any
 
-from py4web import abort
-from py4web.utils.auth import Auth
+from quart import abort
 
 from ...models import get_db
 from ..license_service import LicenseService
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class SCIMService:
     """SCIM 2.0 Service for enterprise user provisioning"""
 
-    def __init__(self, auth: Auth, license_service: LicenseService):
+    def __init__(self, auth: Any, license_service: LicenseService):
         self.auth = auth
         self.license_service = license_service
         self.db = get_db()

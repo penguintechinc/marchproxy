@@ -16,7 +16,7 @@ import (
 // Server represents the main proxy server
 type Server struct {
 	config    *config.Config
-	logger    *logging.Logger
+	logger    *logging.LogrusAdapter
 	monitor   *monitoring.Monitor
 	listener  net.Listener
 	mu        sync.RWMutex
@@ -25,7 +25,7 @@ type Server struct {
 }
 
 // NewServer creates a new proxy server instance
-func NewServer(cfg *config.Config, logger *logging.Logger, monitor *monitoring.Monitor) (*Server, error) {
+func NewServer(cfg *config.Config, logger *logging.LogrusAdapter, monitor *monitoring.Monitor) (*Server, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("config is required")
 	}

@@ -8,6 +8,7 @@ Used by proxies to fetch their runtime configuration.
 import hashlib
 import json
 import logging
+from penguintechinc_utils import get_logger
 from datetime import datetime
 from typing import Optional
 
@@ -20,7 +21,7 @@ from app.models.sqlalchemy.service import Service
 from app.models.sqlalchemy.mapping import Mapping
 from app.models.sqlalchemy.certificate import Certificate
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ConfigBuilder:

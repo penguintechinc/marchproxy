@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/config"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 // Server handles SRT connections
@@ -129,7 +129,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 	// Extract stream ID from SRT connection
 	streamKey := s.extractStreamKey(conn)
 	if streamKey == "" {
-		logrus.Warn("SRT connection without stream key rejected")
+		logger.Warn("SRT connection without stream key rejected")
 		s.stats.mutex.Lock()
 		s.stats.ConnectionsRejected++
 		s.stats.mutex.Unlock()
@@ -218,7 +218,7 @@ func (s *Server) Stop() error {
 	}
 	s.mutex.Unlock()
 
-	logrus.Info("SRT server stopped")
+	logger.Info("SRT server stopped")
 	return nil
 }
 

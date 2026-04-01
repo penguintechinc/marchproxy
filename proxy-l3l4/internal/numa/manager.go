@@ -4,18 +4,18 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-l3l4/internal/logging"
 )
 
 // Manager handles NUMA topology detection and CPU affinity
 type Manager struct {
 	topology *Topology
-	logger   *logrus.Logger
+	logger   *logging.LogrusAdapter
 	enabled  bool
 }
 
 // NewManager creates a new NUMA manager
-func NewManager(logger *logrus.Logger) *Manager {
+func NewManager(logger *logging.LogrusAdapter) *Manager {
 	return &Manager{
 		logger:  logger,
 		enabled: false,
@@ -37,7 +37,7 @@ func (m *Manager) Initialize() error {
 	m.topology = topology
 	m.enabled = true
 
-	m.logger.WithFields(logrus.Fields{
+	m.logger.WithFields(map[string]interface{}{
 		"nodes":        topology.NodeCount,
 		"cpus_per_node": topology.CPUsPerNode,
 		"total_cpus":   topology.TotalCPUs,
@@ -78,7 +78,7 @@ func (m *Manager) BindToNode(nodeID int) error {
 		return fmt.Errorf("failed to set CPU affinity: %w", err)
 	}
 
-	m.logger.WithFields(logrus.Fields{
+	m.logger.WithFields(map[string]interface{}{
 		"node": nodeID,
 		"cpus": cpus,
 	}).Debug("Bound to NUMA node")
@@ -170,7 +170,7 @@ func (m *Manager) AllocateWorkers(workerCount int) ([]WorkerAllocation, error) {
 		}
 	}
 
-	m.logger.WithFields(logrus.Fields{
+	m.logger.WithFields(map[string]interface{}{
 		"total_workers": workerCount,
 		"nodes":         nodeCount,
 	}).Info("Allocated workers across NUMA nodes")

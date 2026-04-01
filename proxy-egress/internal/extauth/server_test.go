@@ -6,16 +6,15 @@ import (
 	"time"
 
 	authv3 "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"marchproxy-egress/internal/logging"
 	"marchproxy-egress/internal/threat"
 )
 
-func createTestLogger() *logrus.Logger {
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
+func createTestLogger() *logging.LogrusAdapter {
+	logger, _ := logging.NewLogrusAdapter("server")
 	return logger
 }
 

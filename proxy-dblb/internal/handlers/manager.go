@@ -11,7 +11,7 @@ import (
 	"marchproxy-dblb/internal/pool"
 	"marchproxy-dblb/internal/security"
 
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
 
@@ -28,12 +28,12 @@ type Manager struct {
 	pool            *pool.Pool
 	securityChecker *security.Checker
 	config          *config.Config
-	logger          *logrus.Logger
+	logger          *logging.LogrusAdapter
 	mu              sync.RWMutex
 }
 
 // NewManager creates a new handler manager
-func NewManager(pool *pool.Pool, securityChecker *security.Checker, cfg *config.Config, logger *logrus.Logger) *Manager {
+func NewManager(pool *pool.Pool, securityChecker *security.Checker, cfg *config.Config, logger *logging.LogrusAdapter) *Manager {
 	return &Manager{
 		handlers:        make(map[string]Handler),
 		pool:            pool,
@@ -123,7 +123,7 @@ type TCPHandler struct {
 	pool            *pool.Pool
 	securityChecker *security.Checker
 	config          *config.Config
-	logger          *logrus.Logger
+	logger          *logging.LogrusAdapter
 	listener        net.Listener
 	connLimiter     *rate.Limiter
 	queryLimiter    *rate.Limiter
@@ -136,7 +136,7 @@ type TCPHandler struct {
 }
 
 // NewTCPHandler creates a new TCP handler for a database protocol
-func NewTCPHandler(protocol string, port int, pool *pool.Pool, securityChecker *security.Checker, cfg *config.Config, logger *logrus.Logger) *TCPHandler {
+func NewTCPHandler(protocol string, port int, pool *pool.Pool, securityChecker *security.Checker, cfg *config.Config, logger *logging.LogrusAdapter) *TCPHandler {
 	return &TCPHandler{
 		protocol:        protocol,
 		port:            port,

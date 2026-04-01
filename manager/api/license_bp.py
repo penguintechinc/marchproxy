@@ -14,8 +14,9 @@ from middleware.auth import require_auth
 from models.license import LicenseCacheModel
 from pydantic import BaseModel, ValidationError
 from quart import Blueprint, current_app, jsonify, request
+from penguintechinc_utils import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 license_bp = Blueprint("license", __name__, url_prefix="/api/v1/license")
 

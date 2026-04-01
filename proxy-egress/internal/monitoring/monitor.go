@@ -12,14 +12,14 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 // Monitor handles health checks and metrics exposition
 type Monitor struct {
 	server     *http.Server
 	registry   *prometheus.Registry
-	logger     *logrus.Entry
+	logger     *zap.Logger
 	healthz    HealthChecker
 	
 	// Metrics
@@ -69,9 +69,11 @@ type HealthChecker interface {
 func NewMonitor(port int) *Monitor {
 	registry := prometheus.NewRegistry()
 	
+	logger, _ := zap.NewProduction()
+
 	m := &Monitor{
 		registry: registry,
-		logger:   logrus.WithField("component", "monitor"),
+		logger:   logger,
 	}
 	
 	// Initialize metrics
@@ -266,7 +268,7 @@ func (m *Monitor) registerMetrics() {
 
 // Start begins the monitoring server
 func (m *Monitor) Start() error {
-	m.logger.Info("Starting monitoring server", "addr", m.server.Addr)
+	m.logger.Info("Starting monitoring server", zap.String("addr", m.server.Addr))
 	
 	// Start system metrics collection
 	go m.collectSystemMetrics()
@@ -282,6 +284,7 @@ func (m *Monitor) Start() error {
 // Shutdown gracefully stops the monitoring server
 func (m *Monitor) Shutdown(ctx context.Context) error {
 	m.logger.Info("Shutting down monitoring server")
+	defer m.logger.Sync()
 	return m.server.Shutdown(ctx)
 }
 

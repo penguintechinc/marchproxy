@@ -8,7 +8,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 var (
@@ -100,14 +100,14 @@ type Autoscaler struct {
 	evaluationInterval time.Duration
 	maxHistorySize  int
 	mu              sync.RWMutex
-	logger          *logrus.Logger
+	logger          *logging.LogrusAdapter
 	ctx             context.Context
 	cancel          context.CancelFunc
 	wg              sync.WaitGroup
 }
 
 // NewAutoscaler creates a new autoscaler
-func NewAutoscaler(router *Router, logger *logrus.Logger) *Autoscaler {
+func NewAutoscaler(router *Router, logger *logging.LogrusAdapter) *Autoscaler {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Autoscaler{

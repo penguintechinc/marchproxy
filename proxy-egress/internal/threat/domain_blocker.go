@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-egress/internal/logging"
 )
 
 // DomainBlocker handles domain blocking including wildcard support
@@ -20,13 +20,13 @@ type DomainBlocker struct {
 
 	wildcardSupport bool
 	mu              sync.RWMutex
-	logger          *logrus.Logger
+	logger          *logging.LogrusAdapter
 }
 
 // NewDomainBlocker creates a new domain blocker
-func NewDomainBlocker(wildcardSupport bool, logger *logrus.Logger) *DomainBlocker {
+func NewDomainBlocker(wildcardSupport bool, logger *logging.LogrusAdapter) *DomainBlocker {
 	if logger == nil {
-		logger = logrus.New()
+		logger, _ = logging.NewLogrusAdapter("domain-blocker")
 	}
 
 	return &DomainBlocker{
@@ -137,14 +137,14 @@ func (b *DomainBlocker) AddRule(rule BlockRule) error {
 			return fmt.Errorf("wildcard patterns not supported")
 		}
 		b.wildcardDomains[pattern] = rule
-		b.logger.WithFields(logrus.Fields{
+		b.logger.WithFields(map[string]interface{}{
 			"pattern":  pattern,
 			"rule_id":  rule.ID,
 			"category": rule.Category,
 		}).Debug("Added wildcard domain to blocklist")
 	} else {
 		b.exactDomains[pattern] = rule
-		b.logger.WithFields(logrus.Fields{
+		b.logger.WithFields(map[string]interface{}{
 			"domain":   pattern,
 			"rule_id":  rule.ID,
 			"category": rule.Category,

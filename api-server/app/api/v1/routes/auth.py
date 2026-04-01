@@ -5,6 +5,7 @@ Handles user authentication, registration, 2FA, and token management.
 """
 
 import logging
+from penguintechinc_utils import get_logger
 from datetime import datetime
 from typing import Annotated
 
@@ -35,7 +36,7 @@ from app.schemas.auth import (
 )
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @router.post("/login", response_model=LoginResponse)

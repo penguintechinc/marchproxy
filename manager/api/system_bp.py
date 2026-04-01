@@ -8,13 +8,14 @@ Licensed under GNU Affero General Public License v3.0
 """
 
 import logging
+from penguintechinc_utils import get_logger
 import os
 from datetime import datetime
 
 from prometheus_client import REGISTRY, Gauge, generate_latest
 from quart import Blueprint, Response, current_app, jsonify
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Create blueprint
 system_bp = Blueprint("system", __name__)

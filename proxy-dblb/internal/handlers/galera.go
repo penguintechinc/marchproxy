@@ -17,7 +17,7 @@ import (
 	"marchproxy-dblb/internal/security"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
 
@@ -117,7 +117,7 @@ type GaleraHandler struct {
 	nodeInfoMu      sync.RWMutex
 	securityChecker *security.Checker
 	config          *config.Config
-	logger          *logrus.Logger
+	logger          *logging.LogrusAdapter
 	listener        net.Listener
 	connLimiter     *rate.Limiter
 	queryLimiter    *rate.Limiter
@@ -159,7 +159,7 @@ type GaleraConfig struct {
 
 // NewGaleraHandler creates a new Galera cluster handler
 func NewGaleraHandler(protocol string, port int, galeraConfig *GaleraConfig,
-	securityChecker *security.Checker, cfg *config.Config, logger *logrus.Logger) *GaleraHandler {
+	securityChecker *security.Checker, cfg *config.Config, logger *logging.LogrusAdapter) *GaleraHandler {
 
 	// Set defaults if not provided
 	if galeraConfig == nil {

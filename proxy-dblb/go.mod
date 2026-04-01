@@ -8,10 +8,11 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/mattn/go-sqlite3 v1.14.24
+	github.com/penguintechinc/penguin-libs/packages/go-common v0.0.0-20260311183616-aa9e846acf39
 	github.com/prometheus/client_golang v1.20.5
-	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.18.2
+	go.uber.org/zap v1.27.0
 	golang.org/x/time v0.9.0
 	google.golang.org/grpc v1.70.0
 )
@@ -39,8 +40,7 @@ require (
 	github.com/spf13/cast v1.6.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
-	go.uber.org/atomic v1.9.0 // indirect
-	go.uber.org/multierr v1.9.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
 	golang.org/x/net v0.44.0 // indirect
 	golang.org/x/sys v0.36.0 // indirect

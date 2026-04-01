@@ -60,7 +60,7 @@ docker-compose -f docker-compose.dev.yml up -d
 
 ### Manual Setup
 
-#### Manager (Python/py4web)
+#### Manager (Python/Quart)
 
 ```bash
 cd manager
@@ -77,7 +77,7 @@ pip install -r requirements-dev.txt
 pre-commit install
 
 # Start development server
-python3 -m py4web run apps
+quart run
 ```
 
 #### Proxy (Go)

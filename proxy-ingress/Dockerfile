@@ -54,7 +54,7 @@ RUN if [ -d "./cmd/metrics" ]; then \
     fi
 
 # Production stage - using debian:12-slim as standard
-FROM debian:12-slim AS production
+FROM debian:12-slim@sha256:f06537653ac770703bc45b4b113475bd402f451e85223f0f2837acbf89ab020a AS production
 
 # Install runtime dependencies for eBPF and networking
 RUN apt-get update && apt-get install -y \

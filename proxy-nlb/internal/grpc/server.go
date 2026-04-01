@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -87,14 +87,14 @@ type Server struct {
 	grpcServer  *grpc.Server
 	healthServer *health.Server
 	service     NLBService
-	logger      *logrus.Logger
+	logger      *logging.LogrusAdapter
 	listener    net.Listener
 	mu          sync.RWMutex
 	running     bool
 }
 
 // NewServer creates a new NLB gRPC server
-func NewServer(address string, port int, service NLBService, logger *logrus.Logger) *Server {
+func NewServer(address string, port int, service NLBService, logger *logging.LogrusAdapter) *Server {
 	return &Server{
 		address: address,
 		port:    port,
@@ -241,11 +241,11 @@ func (s *Server) GetAddress() string {
 type MockNLBService struct {
 	modules map[string]bool
 	mu      sync.RWMutex
-	logger  *logrus.Logger
+	logger  *logging.LogrusAdapter
 }
 
 // NewMockNLBService creates a mock NLB service
-func NewMockNLBService(logger *logrus.Logger) *MockNLBService {
+func NewMockNLBService(logger *logging.LogrusAdapter) *MockNLBService {
 	return &MockNLBService{
 		modules: make(map[string]bool),
 		logger:  logger,

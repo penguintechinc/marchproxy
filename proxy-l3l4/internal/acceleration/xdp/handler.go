@@ -3,17 +3,17 @@ package xdp
 import (
 	"fmt"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-l3l4/internal/logging"
 )
 
 // Handler wraps XDP functionality
 type Handler struct {
 	program *XDPProgram
-	logger  *logrus.Logger
+	logger  *logging.LogrusAdapter
 }
 
 // NewHandler creates a new XDP handler
-func NewHandler(device string, logger *logrus.Logger) (*Handler, error) {
+func NewHandler(device string, logger *logging.LogrusAdapter) (*Handler, error) {
 	program := NewXDPProgram(device, logger)
 
 	return &Handler{

@@ -24,7 +24,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o rtmp-proxy ./cmd/rtmp
 
 # CPU stage (default)
-FROM debian:bookworm-slim@sha256:01f42367a0a94ad4bc17111776fd66e3500c1d87c15bbd6055b7371d39c124fb AS cpu
+FROM debian:bookworm-slim@sha256:f06537653ac770703bc45b4b113475bd402f451e85223f0f2837acbf89ab020a AS cpu
 
 # Install FFmpeg with AV1 support, SRT library, and runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \

@@ -21,7 +21,9 @@ anyio==4.13.0 \
 authlib==1.6.9 \
     --hash=sha256:d8f2421e7e5980cc1ddb4e32d3f5fa659cfaf60d8eaf3281ebed192e4ab74f04 \
     --hash=sha256:f08b4c14e08f0861dc18a32357b33fbcfd2ea86cfe3fe149484b4d764c4a0ac3
-    # via -r requirements.in
+    # via
+    #   -r requirements.in
+    #   penguin-aaa
 bcrypt==5.0.0 \
     --hash=sha256:046ad6db88edb3c5ece4369af997938fb1c19d6a699b9c1b27b0db432faae4c4 \
     --hash=sha256:0c418ca99fd47e9c59a301744d63328f17798b5947b0f791e9af3c1c499c2d0a \
@@ -357,6 +359,8 @@ cryptography==43.0.3 \
     # via
     #   -r requirements.in
     #   authlib
+    #   penguin-aaa
+    #   pyjwt
     #   pyopenssl
     #   pysaml2
     #   python-jose
@@ -461,7 +465,10 @@ httpcore==1.0.9 \
 httpx==0.28.1 \
     --hash=sha256:75e98c5f16b0f35b567856f597f06ff2270a374470a5c2392242528e3e3e42fc \
     --hash=sha256:d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad
-    # via -r requirements.in
+    # via
+    #   -r requirements.in
+    #   penguin-aaa
+    #   penguin-utils
 hypercorn==0.18.0 \
     --hash=sha256:225e268f2c1c2f28f6d8f6db8f40cb8c992963610c5725e13ccfcddccb24b1cd \
     --hash=sha256:d63267548939c46b0247dc8e5b45a9947590e35e64ee73a23c074aa3cf88e9da
@@ -480,6 +487,10 @@ idna==3.11 \
     #   email-validator
     #   httpx
     #   requests
+iniconfig==2.3.0 \
+    --hash=sha256:c76315c77db068650d49c5b56314774a7804df16fee4402c1f19d6d15d8c4730 \
+    --hash=sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12
+    # via pytest
 isodate==0.7.2 \
     --hash=sha256:28009937d8031054830160fce6d409ed342816b543597cece116d966c6d99e15 \
     --hash=sha256:4cd1aa0f43ca76f4a6c6c0292a85f40b35ec2e43e315b59f06e6d32171a953e6
@@ -736,6 +747,10 @@ markupsafe==3.0.3 \
     #   jinja2
     #   quart
     #   werkzeug
+packaging==26.0 \
+    --hash=sha256:00243ae351a257117b6a241061796684b084ed1c516a08c48a3f7e147a9d80b4 \
+    --hash=sha256:b36f1fef9334a5588b4166f8bcd26a14e521f2b55e6b9de3aaa80d3ff7a37529
+    # via pytest
 pendulum==3.2.0 \
     --hash=sha256:04310463879a8d84534756ef9820d433e88b879203b6e10a5b416899dc05e7f1 \
     --hash=sha256:063ab61af953bb56ad5bc8e131fd0431c915ed766d90ccecd7549c8090b51004 \
@@ -805,6 +820,22 @@ pendulum==3.2.0 \
     --hash=sha256:fd55c12560816d9122ca2142d9e428f32c0c083bf77719320b1767539c7a3a3b \
     --hash=sha256:ffc169ad7595228d4dfc44d4e016846ff1bb5873b9f7ec70b0b1b51da0c77b3f
     # via -r requirements.in
+# WARNING: pip install will require the following package to be hashed.
+# Consider using a hashable URL like https://github.com/jazzband/pip-tools/archive/SOMECOMMIT.zip
+penguin-aaa @ file:///home/penguin/code/penguin-libs/packages/python-aaa
+    # via -r requirements.in
+# WARNING: pip install will require the following package to be hashed.
+# Consider using a hashable URL like https://github.com/jazzband/pip-tools/archive/SOMECOMMIT.zip
+penguin-pytest @ file:///home/penguin/code/penguin-libs/packages/python-pytest
+    # via -r requirements.in
+# WARNING: pip install will require the following package to be hashed.
+# Consider using a hashable URL like https://github.com/jazzband/pip-tools/archive/SOMECOMMIT.zip
+penguin-utils @ file:///home/penguin/code/penguin-libs/packages/python-utils
+    # via -r requirements.in
+pluggy==1.6.0 \
+    --hash=sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3 \
+    --hash=sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746
+    # via pytest
 priority==2.0.0 \
     --hash=sha256:6f8eefce5f3ad59baf2c080a664037bb4725cd0a790d53d59ab4059288faf6aa \
     --hash=sha256:c965d54f1b8d0d0b19479db3924c7c36cf672dbf2aec92d43fbdaf4492ba18c0
@@ -895,12 +926,15 @@ pycparser==3.0 \
 pydal==20260313.1 \
     --hash=sha256:2df8de415dda8821f0a291cd66459fb889b28458ee6501778f682e55530847e9 \
     --hash=sha256:501c91f02dad9e2bc1abed2e9276b9aa6d205875a1eff42fc3da2d24ee1b9c3e
-    # via -r requirements.in
+    # via
+    #   -r requirements.in
+    #   penguin-utils
 pydantic[email]==2.12.5 \
     --hash=sha256:4d351024c75c0f085a9febbb665ce8c0c6ec5d30e903bdb6394b7ede26aebb49 \
     --hash=sha256:e561593fccf61e8a20fc46dfc2dfe075b8be7d0188df33f221ad1f0139180f9d
     # via
     #   -r requirements.in
+    #   penguin-aaa
     #   pydantic-settings
 pydantic-core==2.41.5 \
     --hash=sha256:0177272f88ab8312479336e1d777f6b124537d47f2123f89cb37e0accea97f90 \
@@ -1029,10 +1063,16 @@ pydantic-settings==2.13.1 \
     --hash=sha256:b4c11847b15237fb0171e1462bf540e294affb9b86db4d9aa5c01730bdbe4025 \
     --hash=sha256:d56fd801823dbeae7f0975e1f8c8e25c258eb75d278ea7abb5d9cebb01b56237
     # via -r requirements.in
-pyjwt==2.12.1 \
+pygments==2.20.0 \
+    --hash=sha256:6757cd03768053ff99f3039c1a36d6c0aa0b263438fcab17520b30a303a82b5f \
+    --hash=sha256:81a9e26dd42fd28a23a2d169d86d7ac03b46e2f8b59ed4698fb4785f946d0176
+    # via pytest
+pyjwt[crypto]==2.12.1 \
     --hash=sha256:28ca37c070cad8ba8cd9790cd940535d40274d22f80ab87f3ac6a713e6e8454c \
     --hash=sha256:c74a7a2adf861c04d002db713dd85f84beb242228e671280bf709d765b03672b
-    # via -r requirements.in
+    # via
+    #   -r requirements.in
+    #   penguin-aaa
 pymysql==1.1.2 \
     --hash=sha256:4961d3e165614ae65014e361811a724e2044ad3ea3739de9903ae7c21f539f03 \
     --hash=sha256:e6b1d89711dd51f8f74b1631fe08f039e7d76cf67a42a323d3178f0f25762ed9
@@ -1049,6 +1089,10 @@ pysaml2==7.5.4 \
     --hash=sha256:9cf4310a7b7627440b3f9f94126f2102f8472607878aa22aeae9d6831bb2af47 \
     --hash=sha256:b827dcaab73c4f7fe001c945401eb442cfda5d22001cea50c20c138e9adeffea
     # via -r requirements.in
+pytest==9.0.2 \
+    --hash=sha256:711ffd45bf766d5264d487b917733b453d917afd2b0ad65223959f59089f875b \
+    --hash=sha256:75186651a92bd89611d1d9fc20f0b4345fd827c41ccd5c299a868a05d70edf11
+    # via penguin-pytest
 python-dateutil==2.9.0.post0 \
     --hash=sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3 \
     --hash=sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427
@@ -1254,6 +1298,10 @@ sqlalchemy==2.0.48 \
     --hash=sha256:fac0fa4e4f55f118fd87177dacb1c6522fe39c28d498d259014020fec9164c29 \
     --hash=sha256:fd08b90d211c086181caed76931ecfa2bdfc83eea3cfccdb0f82abc6c4b876cb
     # via -r requirements.in
+structlog==25.5.0 \
+    --hash=sha256:098522a3bebed9153d4570c6d0288abf80a031dfdb2048d59a49e9dc2190fc98 \
+    --hash=sha256:a8453e9b9e636ec59bd9e79bbd4a72f025981b3ba0f5837aebf48f02f37a7f9f
+    # via penguin-utils
 typing-extensions==4.15.0 \
     --hash=sha256:0cea48d173cc12fa28ecabc3b837ea3cf6f38c6d1136f85cbaaf598984861466 \
     --hash=sha256:f0fa19c6845758ab08074a0cfa8b7aecb71c999ca73d62883bc25cc018c4e548

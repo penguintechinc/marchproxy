@@ -4,7 +4,9 @@ FROM golang:1.24-bookworm@sha256:01f42367a0a94ad4bc17111776fd66e3500c1d87c15bbd6
 WORKDIR /build
 
 # Install build dependencies
-RUN apk add --no-cache git
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy go mod files
 COPY go.mod go.sum ./

@@ -21,8 +21,9 @@ from models.auth import (
 )
 from pydantic import ValidationError
 from quart import Blueprint, current_app, jsonify, request
+from penguintechinc_utils import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 auth_bp = Blueprint("auth", __name__)
 

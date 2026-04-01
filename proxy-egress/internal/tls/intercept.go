@@ -18,7 +18,7 @@ import (
 	"time"
 
 	lru "github.com/hashicorp/golang-lru"
-	"github.com/sirupsen/logrus"
+	"marchproxy-egress/internal/logging"
 )
 
 // InterceptMode defines the TLS interception mode
@@ -57,7 +57,7 @@ type InterceptManager struct {
 	preconfigCerts map[string]*tls.Certificate
 
 	mu     sync.RWMutex
-	logger *logrus.Logger
+	logger *logging.LogrusAdapter
 
 	// Statistics
 	stats struct {
@@ -70,9 +70,9 @@ type InterceptManager struct {
 }
 
 // NewInterceptManager creates a new TLS intercept manager
-func NewInterceptManager(cfg InterceptConfig, logger *logrus.Logger) (*InterceptManager, error) {
+func NewInterceptManager(cfg InterceptConfig, logger *logging.LogrusAdapter) (*InterceptManager, error) {
 	if logger == nil {
-		logger = logrus.New()
+		logger, _ = logging.NewLogrusAdapter("tls-intercept")
 	}
 
 	m := &InterceptManager{
@@ -310,7 +310,7 @@ func (m *InterceptManager) SetDomainIntercept(domain string, intercept bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.domainConfig[domain] = intercept
-	m.logger.WithFields(logrus.Fields{
+	m.logger.WithFields(map[string]interface{}{
 		"domain":    domain,
 		"intercept": intercept,
 	}).Debug("Set domain intercept config")
@@ -321,7 +321,7 @@ func (m *InterceptManager) SetIPIntercept(ip string, intercept bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.ipConfig[ip] = intercept
-	m.logger.WithFields(logrus.Fields{
+	m.logger.WithFields(map[string]interface{}{
 		"ip":        ip,
 		"intercept": intercept,
 	}).Debug("Set IP intercept config")

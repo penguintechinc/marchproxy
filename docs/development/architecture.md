@@ -16,7 +16,7 @@ MarchProxy follows a distributed microservices architecture with clear separatio
 │  │                       │    │                                         │  │
 │  │ ┌─────────────────┐   │    │ ┌─────────┐ ┌─────────┐ ┌─────────┐   │  │
 │  │ │   Web Server    │   │    │ │ Proxy 1 │ │ Proxy 2 │ │ Proxy N │   │  │
-│  │ │   (py4web)      │   │    │ │  (Go)   │ │  (Go)   │ │  (Go)   │   │  │
+│  │ │   (Quart)      │   │    │ │  (Go)   │ │  (Go)   │ │  (Go)   │   │  │
 │  │ └─────────────────┘   │    │ └─────────┘ └─────────┘ └─────────┘   │  │
 │  │ ┌─────────────────┐   │    │                                         │  │
 │  │ │   API Server    │◄──┼────┼─────────────┐                           │  │
@@ -55,7 +55,7 @@ MarchProxy follows a distributed microservices architecture with clear separatio
 
 ### Manager Component (Control Plane)
 
-The Manager is built using Python with py4web framework and follows a layered architecture:
+The Manager is built using Python with Quart framework and follows a layered architecture:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐

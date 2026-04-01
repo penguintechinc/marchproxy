@@ -6,6 +6,7 @@ Handles service creation, updates, token management, and service-to-service mapp
 
 import base64
 import logging
+from penguintechinc_utils import get_logger
 import secrets
 from datetime import datetime
 from typing import Optional
@@ -20,7 +21,7 @@ from app.models.sqlalchemy.user import User
 from app.schemas.service import ServiceCreate, ServiceUpdate
 from app.core.license import license_validator
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def generate_base64_token() -> str:

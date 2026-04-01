@@ -108,7 +108,7 @@ First release of MarchProxy Manager with core functionality.
 |-----------|---------|--------|
 | Python | 3.12+ | Supported |
 | PostgreSQL | 12+ | Supported |
-| py4web | 1.20230507.1+ | Required |
+| quart | 0.19.0+ | Required |
 | pydal | 20230521.1+ | Required |
 
 ---
@@ -268,7 +268,7 @@ Include:
 ## Dependencies
 
 ### Core Dependencies
-- py4web >= 1.20230507.1
+- quart >= 0.19.0
 - pydal >= 20230521.1
 - psycopg2-binary >= 2.9.9
 - PyJWT >= 2.8.0

@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 // HandlerManager defines the interface for the handler manager
@@ -15,12 +15,12 @@ type HandlerManager interface {
 // DBLBModuleService implements the ModuleService interface for DBLB
 type DBLBModuleService struct {
 	handlerManager HandlerManager
-	logger         *logrus.Logger
+	logger         *logging.LogrusAdapter
 	startTime      time.Time
 }
 
 // NewModuleService creates a new DBLB module service
-func NewModuleService(handlerManager HandlerManager, logger *logrus.Logger) *DBLBModuleService {
+func NewModuleService(handlerManager HandlerManager, logger *logging.LogrusAdapter) *DBLBModuleService {
 	return &DBLBModuleService{
 		handlerManager: handlerManager,
 		logger:         logger,

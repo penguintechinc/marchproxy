@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-egress/internal/logging"
 )
 
 // Manager manages the Envoy proxy lifecycle for L7 egress traffic
@@ -28,7 +28,7 @@ type Manager struct {
 	mu        sync.RWMutex
 	isRunning bool
 
-	logger *logrus.Logger
+	logger *logging.LogrusAdapter
 }
 
 // ManagerConfig holds configuration for the Envoy manager
@@ -42,9 +42,9 @@ type ManagerConfig struct {
 }
 
 // NewManager creates a new Envoy manager
-func NewManager(cfg ManagerConfig, logger *logrus.Logger) *Manager {
+func NewManager(cfg ManagerConfig, logger *logging.LogrusAdapter) *Manager {
 	if logger == nil {
-		logger = logrus.New()
+		logger, _ = logging.NewLogrusAdapter("envoy-manager")
 	}
 
 	return &Manager{
@@ -97,7 +97,7 @@ func (m *Manager) Start(ctx context.Context) error {
 		Setpgid: true,
 	}
 
-	m.logger.WithFields(logrus.Fields{
+	m.logger.WithFields(map[string]interface{}{
 		"binary": m.binary,
 		"config": m.configPath,
 		"args":   args,

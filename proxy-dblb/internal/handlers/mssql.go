@@ -15,7 +15,7 @@ import (
 	"marchproxy-dblb/internal/pool"
 	"marchproxy-dblb/internal/security"
 
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
 
@@ -26,7 +26,7 @@ type MSSQLHandler struct {
 	pool            *pool.Pool
 	securityChecker *security.Checker
 	config          *config.Config
-	logger          *logrus.Logger
+	logger          *logging.LogrusAdapter
 	listener        net.Listener
 	connLimiter     *rate.Limiter
 	queryLimiter    *rate.Limiter
@@ -42,7 +42,7 @@ type MSSQLHandler struct {
 }
 
 // NewMSSQLHandler creates a new MSSQL/TDS protocol handler
-func NewMSSQLHandler(route *config.RouteConfig, p *pool.Pool, securityChecker *security.Checker, cfg *config.Config, logger *logrus.Logger) *MSSQLHandler {
+func NewMSSQLHandler(route *config.RouteConfig, p *pool.Pool, securityChecker *security.Checker, cfg *config.Config, logger *logging.LogrusAdapter) *MSSQLHandler {
 	connRate := route.ConnectionRate
 	if connRate <= 0 {
 		connRate = cfg.DefaultConnectionRate

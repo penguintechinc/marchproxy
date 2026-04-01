@@ -7,12 +7,13 @@ Licensed under GNU Affero General Public License v3.0
 """
 
 import logging
+from penguintechinc_utils import get_logger
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
 from pydal import DAL, Field
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class RateLimitModel:
@@ -241,15 +242,15 @@ class RateLimitManager:
 
 
 def rate_limit_fixture(endpoint_type: str = "api_general"):  # noqa: C901
-    """py4web fixture for rate limiting"""
+    """Quart fixture for rate limiting"""
 
     def decorator(func):
         def wrapper(*args, **kwargs):
             try:
-                from py4web import request, response
+                from quart import request, Response
             except ImportError:
                 request = None
-                response = None
+                Response = None
 
             # Get rate limit manager from globals
             if "rate_limit_manager" not in globals():

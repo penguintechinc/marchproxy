@@ -3,7 +3,7 @@ package acceleration
 import (
 	"marchproxy-l3l4/internal/acceleration/xdp"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-l3l4/internal/logging"
 )
 
 // XDPHandler wraps the XDP handler
@@ -12,7 +12,7 @@ type XDPHandler struct {
 }
 
 // NewXDPHandler creates a new XDP handler
-func NewXDPHandler(device string, logger *logrus.Logger) (*XDPHandler, error) {
+func NewXDPHandler(device string, logger *logging.LogrusAdapter) (*XDPHandler, error) {
 	handler, err := xdp.NewHandler(device, logger)
 	if err != nil {
 		return nil, err

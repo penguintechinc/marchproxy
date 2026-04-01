@@ -1,13 +1,12 @@
 module github.com/penguintech/marchproxy/proxy-rtmp
 
-go 1.23.0
-
-toolchain go1.23.5
+go 1.24.2
 
 require (
-	github.com/sirupsen/logrus v1.9.3
+	github.com/penguintechinc/penguin-libs/packages/go-common v0.0.0-20260311183616-aa9e846acf39
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.16.0
+	go.uber.org/zap v1.27.0
 	google.golang.org/grpc v1.60.1
 )
 
@@ -24,6 +23,7 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/text v0.23.0 // indirect

@@ -6,6 +6,7 @@ Handles cluster creation, updates, API key rotation, and license validation.
 
 import hashlib
 import logging
+from penguintechinc_utils import get_logger
 import secrets
 from datetime import datetime
 from typing import Optional
@@ -20,7 +21,7 @@ from app.models.sqlalchemy.user import User
 from app.schemas.cluster import ClusterCreate, ClusterUpdate
 from app.core.license import license_validator
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def generate_api_key() -> str:

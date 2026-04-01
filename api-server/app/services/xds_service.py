@@ -7,12 +7,13 @@ translating MarchProxy database models into Envoy xDS configurations.
 
 import asyncio
 import logging
+from penguintechinc_utils import get_logger
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import httpx
 from sqlalchemy.orm import Session
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class XDSService:

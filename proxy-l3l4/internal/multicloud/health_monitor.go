@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-l3l4/internal/logging"
 )
 
 // HealthMonitor monitors backend health
@@ -18,14 +18,14 @@ type HealthMonitor struct {
 	backends []*Backend
 	interval time.Duration
 	timeout  time.Duration
-	logger   *logrus.Logger
+	logger   *logging.LogrusAdapter
 
 	stopChan chan struct{}
 	stopped  bool
 }
 
 // NewHealthMonitor creates a new health monitor
-func NewHealthMonitor(backends []*Backend, logger *logrus.Logger) *HealthMonitor {
+func NewHealthMonitor(backends []*Backend, logger *logging.LogrusAdapter) *HealthMonitor {
 	return &HealthMonitor{
 		backends: backends,
 		interval: 30 * time.Second,
@@ -111,7 +111,7 @@ func (hm *HealthMonitor) checkBackend(backend *Backend) {
 	backend.Healthy = healthy
 	backend.Latency = latency
 
-	hm.logger.WithFields(logrus.Fields{
+	hm.logger.WithFields(map[string]interface{}{
 		"backend": backend.Name,
 		"healthy": healthy,
 		"latency": latency,

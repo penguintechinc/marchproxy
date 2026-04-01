@@ -7,20 +7,20 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 // XDSClient handles communication with the xDS control plane
 type XDSClient struct {
 	serverAddr string
 	httpClient *http.Client
-	logger     *logrus.Logger
+	logger     *logging.LogrusAdapter
 }
 
 // NewXDSClient creates a new xDS client
-func NewXDSClient(serverAddr string, logger *logrus.Logger) *XDSClient {
+func NewXDSClient(serverAddr string, logger *logging.LogrusAdapter) *XDSClient {
 	if logger == nil {
-		logger = logrus.New()
+		logger = NewLogrusAdapter("marchproxy")
 	}
 
 	return &XDSClient{

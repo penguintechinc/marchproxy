@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"github.com/spf13/viper"
 )
 
@@ -103,7 +103,7 @@ func LoadConfig() (*Config, error) {
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			logrus.Warn("Config file not found, using defaults and environment variables")
+			logger.Warn("Config file not found, using defaults and environment variables")
 		} else {
 			return nil, fmt.Errorf("error reading config file: %w", err)
 		}

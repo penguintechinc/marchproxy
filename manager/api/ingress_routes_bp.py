@@ -6,6 +6,7 @@ Licensed under GNU Affero General Public License v3.0
 """
 
 import logging
+from penguintechinc_utils import get_logger
 from datetime import datetime
 from typing import Optional
 
@@ -13,7 +14,7 @@ from middleware.auth import require_auth
 from pydantic import BaseModel, ValidationError
 from quart import Blueprint, current_app, jsonify, request
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 ingress_routes_bp = Blueprint("ingress_routes", __name__, url_prefix="/api/v1/ingress-routes")
 

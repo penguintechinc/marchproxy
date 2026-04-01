@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-l3l4/internal/logging"
 )
 
 // Socket represents an AF_XDP socket (stub implementation)
@@ -13,7 +13,7 @@ type Socket struct {
 
 	device     string
 	queueID    int
-	logger     *logrus.Logger
+	logger     *logging.LogrusAdapter
 	configured bool
 
 	// Statistics
@@ -24,7 +24,7 @@ type Socket struct {
 }
 
 // NewSocket creates a new AF_XDP socket
-func NewSocket(device string, queueID int, logger *logrus.Logger) *Socket {
+func NewSocket(device string, queueID int, logger *logging.LogrusAdapter) *Socket {
 	return &Socket{
 		device:  device,
 		queueID: queueID,
@@ -42,7 +42,7 @@ func (s *Socket) Configure() error {
 	}
 
 	s.configured = true
-	s.logger.WithFields(logrus.Fields{
+	s.logger.WithFields(map[string]interface{}{
 		"device":   s.device,
 		"queue_id": s.queueID,
 	}).Info("AF_XDP socket configured (stub)")

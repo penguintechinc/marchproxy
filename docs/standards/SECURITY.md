@@ -604,5 +604,5 @@ Service-to-service communication has hard boundaries:
 - [OWASP Top 10](https://owasp.org/www-project-top-ten/) - The most critical web security risks
 - [NIST Cybersecurity Framework](https://www.nist.gov/cyberframework) - Industry standards
 - [Flask-Security-Too Docs](https://flask-security-too.readthedocs.io/) - Our auth framework
-- [PyDAL Security](https://py4web.io/chapter-13#security) - Database protection
+- [PyDAL Security](https://py-dal.readthedocs.io/) - Database protection
 - [SQLAlchemy Security](https://docs.sqlalchemy.org/en/14/faq/security.html) - ORM safety

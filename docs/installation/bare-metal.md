@@ -399,7 +399,7 @@ Group=marchproxy
 WorkingDirectory=/opt/marchproxy
 Environment=PYTHONPATH=/opt/marchproxy/manager
 Environment=DATABASE_URL=postgresql://marchproxy:marchproxy_secure_password@localhost:5432/marchproxy
-ExecStart=/opt/marchproxy/manager/venv/bin/python -m py4web run apps
+ExecStart=/opt/marchproxy/manager/venv/bin/python -m quart run
 ExecReload=/bin/kill -HUP \$MAINPID
 Restart=always
 RestartSec=10

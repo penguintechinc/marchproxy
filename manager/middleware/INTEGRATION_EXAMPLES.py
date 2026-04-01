@@ -10,15 +10,17 @@ Licensed under GNU Affero General Public License v3.0
 """
 
 import logging
+from penguintechinc_utils import get_logger
 
+from quart import request, jsonify
 from middleware.auth import AuthContext, get_current_user, is_admin, require_auth
-from py4web import application, request, response
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 # Example 1: Basic authenticated endpoint
-@application.route("/api/user/profile", methods=["GET"])
+# In Quart, use Blueprint.route() instead of application.route()
+# Example: @bp.route("/api/user/profile", methods=["GET"])
 @require_auth()
 def get_user_profile():
     """
@@ -52,7 +54,8 @@ def get_user_profile():
 
 
 # Example 2: Admin-only endpoint
-@application.route("/api/admin/users", methods=["GET"])
+# In Quart, use Blueprint.route() instead of application.route()
+# Example: @bp.route("/api/admin/users", methods=["GET"])
 @require_auth(admin_required=True)
 def list_all_users():
     """
@@ -88,7 +91,8 @@ def list_all_users():
 
 
 # Example 3: Admin-only create endpoint
-@application.route("/api/admin/users", methods=["POST"])
+# In Quart, use Blueprint.route() instead of application.route()
+# Example: @bp.route("/api/admin/users", methods=["POST"])
 @require_auth(admin_required=True)
 def create_user():
     """
@@ -118,20 +122,19 @@ def create_user():
         data = request.json
         # Validate input
         if not data.get("username") or not data.get("password"):
-            response.status = 400
-            return {"error": "Missing required fields"}
+            return {"error": "Missing required fields"}, 400  # In Quart: return (dict, status)
 
         # In real implementation, create user in database
         user_id = 3
         return {"user_id": user_id, "username": data["username"]}
     except Exception as e:
         logger.error(f"Error creating user: {e}")
-        response.status = 500
-        return {"error": "Failed to create user"}
+        return {"error": "Failed to create user"}, 500  # In Quart: return (dict, status)
 
 
 # Example 4: License-gated feature
-@application.route("/api/advanced/threat-intelligence", methods=["GET"])
+# In Quart, use Blueprint.route() instead of application.route()
+# Example: @bp.route("/api/advanced/threat-intelligence", methods=["GET"])
 @require_auth(license_feature="threat_intelligence")
 def get_threat_intelligence():
     """
@@ -163,7 +166,8 @@ def get_threat_intelligence():
 
 
 # Example 5: License-gated admin endpoint
-@application.route("/api/admin/advanced-blocking", methods=["GET"])
+# In Quart, use Blueprint.route() instead of application.route()
+# Example: @bp.route("/api/admin/advanced-blocking", methods=["GET"])
 @require_auth(admin_required=True, license_feature="advanced_blocking")
 def get_advanced_blocking_config():
     """
@@ -190,7 +194,8 @@ def get_advanced_blocking_config():
 
 
 # Example 6: Manual authentication context (for complex flows)
-@application.route("/api/cluster/config/<int:cluster_id>", methods=["GET", "PUT"])
+# In Quart, use Blueprint.route() instead of application.route()
+# Example: @bp.route("/api/cluster/config/<int:cluster_id>", methods=["GET", "PUT"])
 def manage_cluster_config(cluster_id):
     """
     Manage cluster configuration with flexible auth checking.
@@ -220,8 +225,7 @@ def manage_cluster_config(cluster_id):
     with AuthContext() as auth:
         # Check basic authentication
         if not auth.is_authenticated():
-            response.status = 401
-            return {"error": "Not authenticated"}
+            return {"error": "Not authenticated"}, 401  # In Quart: return (dict, status)
 
         # Handle GET
         if request.method == "GET":
@@ -233,19 +237,18 @@ def manage_cluster_config(cluster_id):
         # Handle PUT - admin only
         elif request.method == "PUT":
             if not auth.is_admin():
-                response.status = 403
-                return {"error": "Admin required for updates"}
+                return {"error": "Admin required for updates"}, 403  # In Quart: return (dict, status)
 
             data = request.json  # noqa: F841
             # Update cluster config in database
             return {"status": "updated"}
 
-    response.status = 405
-    return {"error": "Method not allowed"}
+    return {"error": "Method not allowed"}, 405  # In Quart: return (dict, status)
 
 
 # Example 7: Using helper functions in handlers
-@application.route("/api/user/activity", methods=["GET"])
+# In Quart, use Blueprint.route() instead of application.route()
+# Example: @bp.route("/api/user/activity", methods=["GET"])
 @require_auth()
 def get_user_activity():
     """
@@ -275,7 +278,8 @@ def get_user_activity():
 
 
 # Example 8: Async handler with authentication
-@application.route("/api/async/proxy-health", methods=["GET"])
+# In Quart, use Blueprint.route() instead of application.route()
+# Example: @bp.route("/api/async/proxy-health", methods=["GET"])
 @require_auth()
 async def get_proxy_health():
     """
@@ -297,7 +301,8 @@ async def get_proxy_health():
 
 
 # Example 9: Conditional authorization based on resource ownership
-@application.route("/api/cluster/<int:cluster_id>/rules", methods=["GET", "DELETE"])
+# In Quart, use Blueprint.route() instead of application.route()
+# Example: @bp.route("/api/cluster/<int:cluster_id>/rules", methods=["GET", "DELETE"])
 @require_auth()
 def manage_cluster_rules(cluster_id):
     """
@@ -317,8 +322,7 @@ def manage_cluster_rules(cluster_id):
         # Check if user has access to this cluster
         has_access = True  # Would check database
         if not has_access:
-            response.status = 403
-            return {"error": "No access to this cluster"}
+            return {"error": "No access to this cluster"}, 403  # In Quart: return (dict, status)
 
         return {"rules": []}
 
@@ -326,14 +330,14 @@ def manage_cluster_rules(cluster_id):
         # Delete requires admin access to cluster
         has_admin_access = False  # Would check database
         if not has_admin_access:
-            response.status = 403
-            return {"error": "Admin access required for this cluster"}
+            return {"error": "Admin access required for this cluster"}, 403  # In Quart: return (dict, status)
 
         return {"status": "rules_deleted"}
 
 
 # Example 10: Token refresh endpoint (no auth required)
-@application.route("/api/auth/refresh", methods=["POST"])
+# In Quart, use Blueprint.route() instead of application.route()
+# Example: @bp.route("/api/auth/refresh", methods=["POST"])
 def refresh_token():
     """
     Refresh access token using refresh token.
@@ -362,8 +366,7 @@ def refresh_token():
         refresh_token = data.get("refresh_token")
 
         if not refresh_token:
-            response.status = 400
-            return {"error": "Missing refresh_token"}
+            return {"error": "Missing refresh_token"}, 400  # In Quart: return (dict, status)
 
         # In real implementation, use jwt_manager to refresh token
         # new_token = jwt_manager.refresh_access_token(refresh_token)
@@ -375,8 +378,7 @@ def refresh_token():
         }
     except Exception as e:
         logger.error(f"Token refresh failed: {e}")
-        response.status = 401
-        return {"error": "Invalid refresh token"}
+        return {"error": "Invalid refresh token"}, 401  # In Quart: return (dict, status)
 
 
 # Integration notes:

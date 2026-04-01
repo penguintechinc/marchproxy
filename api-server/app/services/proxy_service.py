@@ -7,6 +7,7 @@ and proxy count enforcement.
 
 import hashlib
 import logging
+from penguintechinc_utils import get_logger
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -18,7 +19,7 @@ from app.core.license import license_validator
 from app.models.sqlalchemy.cluster import Cluster
 from app.models.sqlalchemy.proxy import ProxyServer, ProxyMetrics
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def hash_api_key(api_key: str) -> str:

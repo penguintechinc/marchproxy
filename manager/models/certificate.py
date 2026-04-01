@@ -7,6 +7,7 @@ Licensed under GNU Affero General Public License v3.0
 
 import hashlib
 import logging
+from penguintechinc_utils import get_logger
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -16,7 +17,7 @@ from cryptography.hazmat.primitives import serialization
 from pydal import DAL, Field
 from pydantic import BaseModel, validator
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class CertificateModel:

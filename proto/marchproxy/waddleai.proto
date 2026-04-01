@@ -1,0 +1,120 @@
+syntax = "proto3";
+package marchproxy;
+option go_package = "github.com/penguintech/marchproxy/proto/marchproxy;marchproxy";
+
+service WaddleAIService {
+  // Routing: Evaluate prompt complexity, return model recommendation
+  rpc EvaluateRoute(RouteRequest) returns (RouteResponse);
+
+  // Security: Evaluate raw tool command for threats
+  rpc EvaluateSecurity(SecurityRequest) returns (SecurityResponse);
+
+  // Memory: Store conversation turn
+  rpc StoreTurn(StoreTurnRequest) returns (StoreTurnResponse);
+
+  // Memory: Retrieve context for session
+  rpc GetContext(GetContextRequest) returns (GetContextResponse);
+
+  // Memory: Search memories
+  rpc SearchMemories(SearchMemoriesRequest) returns (SearchMemoriesResponse);
+
+  // Usage: Report token usage per model/user (Premium — license-gated on WaddleAI side)
+  rpc ReportUsage(UsageReport) returns (UsageAck);
+}
+
+message RouteRequest {
+  string prompt = 1;
+  string tool_type = 2;
+  string session_id = 3;
+  string user_id = 4;
+  string region = 5;
+  map<string, string> metadata = 6;
+}
+
+message RouteResponse {
+  string recommended_model = 1;
+  string complexity = 2;
+  string target_type = 3;
+  float confidence = 4;
+  string reasoning = 5;
+}
+
+message SecurityRequest {
+  string raw_command = 1;
+  string tool_type = 2;
+  string user_id = 3;
+  map<string, string> context = 4;
+}
+
+message SecurityResponse {
+  bool safe = 1;
+  float risk_score = 2;
+  string threat_type = 3;
+  string explanation = 4;
+  bool blocked = 5;
+}
+
+message StoreTurnRequest {
+  string session_id = 1;
+  string user_id = 2;
+  string user_message = 3;
+  string assistant_response = 4;
+  string model = 5;
+  string provider = 6;
+  map<string, string> metadata = 7;
+}
+
+message StoreTurnResponse {
+  bool success = 1;
+}
+
+message GetContextRequest {
+  string session_id = 1;
+  string user_id = 2;
+  int32 limit = 3;
+}
+
+message GetContextResponse {
+  repeated MemoryEntry memories = 1;
+  string summary = 2;
+}
+
+message SearchMemoriesRequest {
+  string query = 1;
+  string user_id = 2;
+  int32 limit = 3;
+  float threshold = 4;
+}
+
+message SearchMemoriesResponse {
+  repeated MemoryEntry results = 1;
+}
+
+message MemoryEntry {
+  string id = 1;
+  string content = 2;
+  string role = 3;
+  float similarity = 4;
+  string created_at = 5;
+  map<string, string> metadata = 6;
+}
+
+message UsageReport {
+  string user_id = 1;
+  string api_key_id = 2;
+  string model = 3;
+  string provider = 4;
+  int32 input_tokens = 5;
+  int32 output_tokens = 6;
+  int32 total_tokens = 7;
+  int32 latency_ms = 8;
+  string request_id = 9;
+  string timestamp = 10;
+  map<string, string> metadata = 11;
+}
+
+message UsageAck {
+  bool accepted = 1;
+  bool quota_exceeded = 2;
+  string message = 3;
+}

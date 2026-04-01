@@ -6,6 +6,7 @@ Used by proxy containers to get their service mappings, certificates, etc.
 """
 
 import logging
+from penguintechinc_utils import get_logger
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Header, status
@@ -16,7 +17,7 @@ from app.services.proxy_service import ProxyService, InvalidAPIKeyError
 from app.services.config_builder import ConfigBuilder
 
 router = APIRouter(prefix="/config", tags=["configuration"])
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @router.get("/{cluster_id}")

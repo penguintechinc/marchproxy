@@ -12,7 +12,7 @@ import (
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/grpc"
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/rtmp"
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/transcode"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -65,8 +65,6 @@ func run(cmd *cobra.Command, args []string) {
 		logrus.WithError(err).Warn("Invalid log level, using info")
 		level = logrus.InfoLevel
 	}
-	logrus.SetLevel(level)
-	logrus.SetFormatter(&logrus.JSONFormatter{})
 
 	logrus.WithFields(logrus.Fields{
 		"version":    version,
@@ -126,7 +124,7 @@ func run(cmd *cobra.Command, args []string) {
 
 	// Wait for ready
 	time.Sleep(100 * time.Millisecond)
-	logrus.Info("All servers started successfully")
+	logger.Info("All servers started successfully")
 
 	// Wait for signals
 	sigChan := make(chan os.Signal, 1)
@@ -140,7 +138,7 @@ func run(cmd *cobra.Command, args []string) {
 	}
 
 	// Graceful shutdown
-	logrus.Info("Shutting down...")
+	logger.Info("Shutting down...")
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
 
@@ -152,5 +150,5 @@ func run(cmd *cobra.Command, args []string) {
 		logrus.WithError(err).Error("Error stopping RTMP server")
 	}
 
-	logrus.Info("Shutdown complete")
+	logger.Info("Shutdown complete")
 }

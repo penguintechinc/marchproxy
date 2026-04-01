@@ -104,7 +104,7 @@ MarchProxy is a high-performance dual proxy system designed for enterprise data 
 │  ├──────────────────────────────────────────────────────────────┤      │
 │  │                                                              │      │
 │  │  ┌────────────────────────────────────────────────────────┐  │      │
-│  │  │              Manager (py4web + pydal)                  │  │      │
+│  │  │              Manager (Quart + PyDAL)                  │  │      │
 │  │  ├────────────────────────────────────────────────────────┤  │      │
 │  │  │  • REST API (port 8000)                                │  │      │
 │  │  │  • Web Dashboard UI                                    │  │      │
@@ -157,7 +157,7 @@ MarchProxy runs as a multi-container application with the following services:
 
 | Container | Purpose | Technology | Ports |
 |-----------|---------|------------|-------|
-| **manager** | Configuration & API | Python 3.12 + py4web + pydal | 8000 (HTTP) |
+| **manager** | Configuration & API | Python 3.13 + Quart + PyDAL | 8000 (HTTP) |
 | **proxy-ingress** | Reverse proxy (external → internal) | Go 1.21 + eBPF/XDP | 80, 443, 8082 |
 | **proxy-egress** | Forward proxy (internal → external) | Go 1.21 + eBPF/XDP | 8080, 8081 |
 | **postgres** | Primary database | PostgreSQL 15 | 5432 (internal) |
@@ -344,7 +344,7 @@ MarchProxy runs as a multi-container application with the following services:
 
 ## Component Details
 
-### Manager (Python/py4web)
+### Manager (Python/Quart)
 
 **Responsibilities:**
 - Centralized configuration management for all proxies
@@ -357,7 +357,7 @@ MarchProxy runs as a multi-container application with the following services:
 - Audit logging and compliance reporting
 
 **Technology Stack:**
-- **Framework**: py4web (async WSGI framework)
+- **Framework**: Quart (async ASGI framework)
 - **ORM**: pydal (database abstraction layer)
 - **Database**: PostgreSQL 15 (default, configurable)
 - **Cache**: Redis 7 for session storage and config caching

@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 
 	"github.com/PenguinTech/MarchProxy/proxy-alb/internal/config"
 	"github.com/PenguinTech/MarchProxy/proxy-alb/internal/envoy"
@@ -98,32 +98,26 @@ func main() {
 }
 
 // setupLogger configures the logger
-func setupLogger() *logrus.Logger {
-	logger := logrus.New()
+func setupLogger() *logging.LogrusAdapter {
+	logger := NewLogrusAdapter("marchproxy")
 	logger.SetOutput(os.Stdout)
-	logger.SetFormatter(&logrus.JSONFormatter{
 		TimestampFormat: time.RFC3339,
 	})
 
 	logLevel := os.Getenv("LOG_LEVEL")
 	switch logLevel {
 	case "debug":
-		logger.SetLevel(logrus.DebugLevel)
 	case "info":
-		logger.SetLevel(logrus.InfoLevel)
 	case "warn":
-		logger.SetLevel(logrus.WarnLevel)
 	case "error":
-		logger.SetLevel(logrus.ErrorLevel)
 	default:
-		logger.SetLevel(logrus.InfoLevel)
 	}
 
 	return logger
 }
 
 // startHealthCheckServer starts HTTP health check endpoint
-func startHealthCheckServer(port int, envoyMgr *envoy.Manager, logger *logrus.Logger) {
+func startHealthCheckServer(port int, envoyMgr *envoy.Manager, logger *logging.LogrusAdapter) {
 	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		if envoyMgr.IsRunning() {
 			w.WriteHeader(http.StatusOK)
@@ -153,7 +147,7 @@ func startHealthCheckServer(port int, envoyMgr *envoy.Manager, logger *logrus.Lo
 }
 
 // startMetricsServer starts Prometheus metrics endpoint
-func startMetricsServer(port int, collector *metrics.Collector, logger *logrus.Logger) {
+func startMetricsServer(port int, collector *metrics.Collector, logger *logging.LogrusAdapter) {
 	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
 		m, err := collector.GetMetrics()
 		if err != nil {
@@ -207,7 +201,7 @@ func waitForShutdown(
 	cfg *config.Config,
 	envoyMgr *envoy.Manager,
 	grpcSrv *grpc.Server,
-	logger *logrus.Logger,
+	logger *logging.LogrusAdapter,
 ) {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)

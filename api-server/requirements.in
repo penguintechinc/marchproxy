@@ -26,10 +26,13 @@ pydantic-settings==2.1.0
 email-validator==2.1.0.post1
 
 # License Integration
-httpx==0.26.0  # For license.penguintech.io API calls
+# Install locally for development: pip install -e ~/code/penguin-libs/packages/python/penguin-licensing
+penguin-licensing>=0.1.0  # PenguinTech License Server integration
 
-# Caching
+# Caching & Rate Limiting
 redis==5.0.1
+# Install locally for development: pip install -e ~/code/penguin-libs/packages/python/penguin-limiter
+penguin-limiter>=0.1.0  # Rate limiting middleware
 
 # Monitoring & Observability
 prometheus-client==0.19.0
@@ -39,7 +42,13 @@ opentelemetry-instrumentation-fastapi==0.43b0
 
 # Utilities
 python-dotenv==1.0.0
+# Install locally for development: pip install -e ~/code/penguin-libs/packages/python/penguin-utils
+penguin-utils>=0.2.0
 
 # gRPC Support (for xDS bridge)
 grpcio==1.60.0
 grpcio-tools==1.60.0
+
+# Testing
+# Install locally for development: pip install -e ~/code/penguin-libs/packages/python/penguin-pytest
+penguin-pytest>=0.1.0

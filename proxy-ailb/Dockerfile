@@ -1,74 +1,48 @@
-# AILB Container Dockerfile
-# Multi-stage build for AI Load Balancer
+FROM golang:1.24-bookworm AS builder
 
-FROM python:3.13-slim-bookworm@sha256:01f42367a0a94ad4bc17111776fd66e3500c1d87c15bbd6055b7371d39c124fb
-
-# Set working directory
-WORKDIR /build
-
-# Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    g++ \
-    make \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements
-COPY requirements.txt .
-
-# Install Python dependencies
-RUN pip install --no-cache-dir --user -r requirements.txt
-
-# Final stage
-FROM python:3.13-slim-bookworm@sha256:01f42367a0a94ad4bc17111776fd66e3500c1d87c15bbd6055b7371d39c124fb
-
-# Set working directory
 WORKDIR /app
 
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+# Copy module files first for layer caching.
+COPY go.mod go.sum* ./
+COPY ../proto/go.mod ../proto/go.mod
 
-# Copy Python dependencies from builder
-COPY --from=builder /root/.local /root/.local
+# Download dependencies.
+RUN go mod download || true
 
-# Add local bin to PATH
-ENV PATH=/root/.local/bin:$PATH
-
-# Copy application code (includes proto/ if it exists)
+# Copy source.
 COPY . .
+COPY ../proto ../proto
 
-# Generate gRPC code from proto files if available
-RUN if [ -d "/app/proto/marchproxy" ]; then \
-        python -m grpc_tools.protoc \
-        -I/app/proto \
-        --python_out=/app/proto \
-        --grpc_python_out=/app/proto \
-        /app/proto/marchproxy/module_service.proto; \
-    else \
-        echo "Proto files not found, skipping gRPC code generation"; \
-    fi
+# Build with optional XDP tags.
+ARG XDP_BUILD_TAGS=noxdp
+ARG VERSION=dev
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -tags "${XDP_BUILD_TAGS}" \
+    -ldflags="-s -w -X main.version=${VERSION}" \
+    -o /ailb ./cmd/ailb
 
-# Create directories for data persistence
-RUN mkdir -p /app/ailb_memory /app/ailb_rag
+# Build health check binary.
+RUN CGO_ENABLED=0 go build -o /healthcheck -ldflags="-s -w" \
+    -trimpath ./cmd/ailb && \
+    echo '#!/bin/sh' > /healthcheck.sh && \
+    echo 'exec wget -q --spider http://localhost:8080/healthz || exit 1' >> /healthcheck.sh
 
-# Expose ports
+# Runtime image.
+FROM debian:bookworm-slim
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates wget && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -r ailb && useradd -r -g ailb -s /sbin/nologin ailb
+
+COPY --from=builder /ailb /usr/local/bin/ailb
+
+USER ailb
+
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
+    CMD wget -q --spider http://localhost:8080/healthz || exit 1
+
 EXPOSE 8080 50051
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8080/healthz || exit 1
-
-# Set environment variables
-ENV PYTHONUNBUFFERED=1
-ENV HTTP_PORT=8080
-ENV GRPC_PORT=50051
-ENV ROUTING_STRATEGY=load_balanced
-ENV ENABLE_MEMORY=true
-ENV ENABLE_RAG=false
-ENV MEMORY_BACKEND=chromadb
-ENV RAG_BACKEND=chromadb
-
-# Run the application
-CMD ["python", "main.py"]
+CMD ["/usr/local/bin/ailb"]

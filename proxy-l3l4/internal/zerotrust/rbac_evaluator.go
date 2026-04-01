@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-l3l4/internal/logging"
 )
 
 // Role represents a user role with permissions
@@ -23,7 +23,7 @@ type RBACEvaluator struct {
 	roles           map[string]*Role
 	userRoles       map[string][]string
 	serviceRoles    map[string][]string
-	logger          *logrus.Logger
+	logger          *logging.LogrusAdapter
 	cacheEnabled    bool
 	cacheTTL        time.Duration
 	permissionCache *permissionCache
@@ -59,7 +59,7 @@ type RBACResponse struct {
 }
 
 // NewRBACEvaluator creates a new RBAC evaluator
-func NewRBACEvaluator(policyEnforcer *PolicyEnforcer, logger *logrus.Logger) *RBACEvaluator {
+func NewRBACEvaluator(policyEnforcer *PolicyEnforcer, logger *logging.LogrusAdapter) *RBACEvaluator {
 	return &RBACEvaluator{
 		policyEnforcer:  policyEnforcer,
 		roles:           make(map[string]*Role),
@@ -105,7 +105,7 @@ func (re *RBACEvaluator) AssignUserRole(user string, roleName string) error {
 	}
 
 	re.userRoles[user] = append(re.userRoles[user], roleName)
-	re.logger.WithFields(logrus.Fields{
+	re.logger.WithFields(map[string]interface{}{
 		"user": user,
 		"role": roleName,
 	}).Info("Assigned role to user")
@@ -134,7 +134,7 @@ func (re *RBACEvaluator) AssignServiceRole(service string, roleName string) erro
 	}
 
 	re.serviceRoles[service] = append(re.serviceRoles[service], roleName)
-	re.logger.WithFields(logrus.Fields{
+	re.logger.WithFields(map[string]interface{}{
 		"service": service,
 		"role":    roleName,
 	}).Info("Assigned role to service")

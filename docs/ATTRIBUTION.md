@@ -6,8 +6,7 @@ This document lists all open-source dependencies and libraries used in MarchProx
 
 | Library | License | Purpose |
 |---------|---------|---------|
-| py4web | BSD 3-Clause | Web framework for manager server |
-| pydal | BSD 3-Clause | Database abstraction layer |
+| pydal | BSD 3-Clause | Database abstraction layer (formerly used) |
 | psycopg2-binary | LGPL v3 | PostgreSQL adapter |
 | redis | BSD 3-Clause | Caching and session management |
 | bcrypt | Apache 2.0 | Password hashing |

@@ -6,6 +6,7 @@ and certificate renewal.
 """
 
 import logging
+from penguintechinc_utils import get_logger
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -31,7 +32,7 @@ from app.services.certificate_service import (
 )
 
 router = APIRouter(prefix="/certificates", tags=["certificates"])
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @router.get("", response_model=list[CertificateResponse])

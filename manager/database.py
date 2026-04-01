@@ -9,6 +9,7 @@ Licensed under GNU Affero General Public License v3.0
 """
 
 import logging
+from penguintechinc_utils import get_logger
 import os
 import threading
 from typing import Optional
@@ -30,7 +31,7 @@ from pydal import DAL
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.engine import Engine
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class DatabaseManager:

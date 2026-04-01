@@ -7,6 +7,7 @@ Licensed under GNU Affero General Public License v3.0
 """
 
 import logging
+from penguintechinc_utils import get_logger
 from datetime import datetime
 from typing import Optional
 
@@ -15,7 +16,7 @@ from models.enterprise_auth import EnterpriseAuthProviderModel
 from pydantic import BaseModel, ValidationError
 from quart import Blueprint, current_app, jsonify, request
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 enterprise_auth_bp = Blueprint("enterprise_auth", __name__, url_prefix="/api/v1/enterprise-auth")
 

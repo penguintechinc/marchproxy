@@ -12,6 +12,7 @@ import (
 
 	"marchproxy-l3l4/internal/acceleration"
 	"marchproxy-l3l4/internal/config"
+	"marchproxy-l3l4/internal/logging"
 	"marchproxy-l3l4/internal/multicloud"
 	"marchproxy-l3l4/internal/numa"
 	"marchproxy-l3l4/internal/observability"
@@ -19,7 +20,6 @@ import (
 	"marchproxy-l3l4/internal/zerotrust"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -30,9 +30,11 @@ var (
 )
 
 func main() {
-	logger := logrus.New()
-	logger.SetFormatter(&logrus.JSONFormatter{})
-	logger.SetLevel(logrus.InfoLevel)
+	logger, err := logging.NewLogrusAdapter("marchproxy-l3l4")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)
+		os.Exit(1)
+	}
 
 	var configPath string
 
@@ -59,8 +61,8 @@ func main() {
 	}
 }
 
-func runProxy(configPath string, logger *logrus.Logger) error {
-	logger.WithFields(logrus.Fields{
+func runProxy(configPath string, logger *logging.LogrusAdapter) error {
+	logger.WithFields(map[string]interface{}{
 		"version":    version,
 		"build_time": buildTime,
 		"commit":     gitCommit,

@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 // ThreatIntelConfig configures the threat intelligence engine
@@ -68,7 +68,7 @@ type ThreatIndicator struct {
 type ThreatIntelligenceEngine struct {
 	config        *ThreatIntelConfig
 	redis         *redis.Client
-	logger        *logrus.Logger
+	logger        *logging.LogrusAdapter
 	indicators    map[string]*ThreatIndicator
 	ipThreats     map[string]*ThreatIndicator
 	domainThreats map[string]*ThreatIndicator
@@ -90,7 +90,7 @@ type FeedStats struct {
 }
 
 // NewThreatIntelligenceEngine creates a new threat intelligence engine
-func NewThreatIntelligenceEngine(config *ThreatIntelConfig, redisClient *redis.Client, logger *logrus.Logger) *ThreatIntelligenceEngine {
+func NewThreatIntelligenceEngine(config *ThreatIntelConfig, redisClient *redis.Client, logger *logging.LogrusAdapter) *ThreatIntelligenceEngine {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	engine := &ThreatIntelligenceEngine{

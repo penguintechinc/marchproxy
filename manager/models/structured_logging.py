@@ -7,6 +7,7 @@ Licensed under GNU Affero General Public License v3.0
 
 import json
 import logging
+from penguintechinc_utils import get_logger
 import os
 import sys
 import threading
@@ -346,10 +347,10 @@ def log_api_request():
     def decorator(func):
         def wrapper(*args, **kwargs):
             try:
-                from py4web import request, response
+                from quart import request, Response
             except ImportError:
                 request = None
-                response = None
+                Response = None
             import time
 
             start_time = time.time()

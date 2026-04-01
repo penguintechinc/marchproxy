@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/config"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 // WHIPServer handles WebRTC-HTTP ingestion protocol
@@ -343,7 +343,7 @@ func (s *WHIPServer) Stop() error {
 		return s.server.Shutdown(ctx)
 	}
 
-	logrus.Info("WHIP server stopped")
+	logger.Info("WHIP server stopped")
 	return nil
 }
 

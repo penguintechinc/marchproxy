@@ -16,12 +16,14 @@ from database import get_db_manager
 from models.auth import JWTManager
 from quart import Quart, jsonify
 from quart_cors import cors
+from penguintechinc_utils import configure_logging, get_logger
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+# Configure sanitized logging
+configure_logging(
+    level=logging.INFO,
+    json_output=False
 )
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def create_app(config: Optional[dict] = None) -> Quart:

@@ -9,7 +9,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 var (
@@ -103,12 +103,12 @@ func (m *ModuleEndpoint) GetActiveConns() int {
 type Router struct {
 	endpoints map[Protocol][]*ModuleEndpoint
 	mu        sync.RWMutex
-	logger    *logrus.Logger
+	logger    *logging.LogrusAdapter
 	inspector *ProtocolInspector
 }
 
 // NewRouter creates a new traffic router
-func NewRouter(logger *logrus.Logger) *Router {
+func NewRouter(logger *logging.LogrusAdapter) *Router {
 	return &Router{
 		endpoints: make(map[Protocol][]*ModuleEndpoint),
 		logger:    logger,

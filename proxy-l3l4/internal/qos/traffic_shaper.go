@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
+	"marchproxy-l3l4/internal/logging"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -65,7 +65,7 @@ type TrafficShaper struct {
 	// Statistics
 	stats *Stats
 
-	logger *logrus.Logger
+	logger *logging.LogrusAdapter
 }
 
 // Stats holds QoS statistics
@@ -79,7 +79,7 @@ type Stats struct {
 }
 
 // NewTrafficShaper creates a new traffic shaper
-func NewTrafficShaper(defaultBandwidth, burstSize int64, queueDepth int, dscpMapping map[string]uint8, logger *logrus.Logger) *TrafficShaper {
+func NewTrafficShaper(defaultBandwidth, burstSize int64, queueDepth int, dscpMapping map[string]uint8, logger *logging.LogrusAdapter) *TrafficShaper {
 	ts := &TrafficShaper{
 		buckets:          make(map[int]*TokenBucket),
 		queues:           make(map[int]*PriorityQueue),
@@ -111,7 +111,7 @@ func NewTrafficShaper(defaultBandwidth, burstSize int64, queueDepth int, dscpMap
 	// Initialize DSCP marker
 	ts.dscpMarker = NewDSCPMarker(dscpMapping)
 
-	logger.WithFields(logrus.Fields{
+	logger.WithFields(map[string]interface{}{
 		"default_bandwidth": defaultBandwidth,
 		"burst_size":        burstSize,
 		"queue_depth":       queueDepth,
@@ -203,7 +203,7 @@ func (ts *TrafficShaper) UpdateBandwidth(priority int, bandwidth int64) error {
 
 	bucket.SetRate(bandwidth)
 
-	ts.logger.WithFields(logrus.Fields{
+	ts.logger.WithFields(map[string]interface{}{
 		"priority":  priority,
 		"bandwidth": bandwidth,
 	}).Info("Updated bandwidth allocation")

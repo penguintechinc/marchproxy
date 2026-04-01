@@ -4,12 +4,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-egress/internal/logging"
 )
 
 func TestNewDomainBlocker(t *testing.T) {
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
+	logger, _ := logging.NewLogrusAdapter("domain-blocker")
+	_ = logger
 
 	blocker := NewDomainBlocker(true, logger)
 	if blocker == nil {

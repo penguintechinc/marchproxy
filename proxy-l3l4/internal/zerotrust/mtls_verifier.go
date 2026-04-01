@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"marchproxy-l3l4/internal/logging"
 )
 
 // MTLSVerifier handles enhanced mTLS certificate validation
@@ -19,7 +19,7 @@ type MTLSVerifier struct {
 	crlList       []*x509.RevocationList
 	ocspEnabled   bool
 	ocspResponder string
-	logger        *logrus.Logger
+	logger        *logging.LogrusAdapter
 	strictMode    bool
 	checkExpiry   bool
 }
@@ -41,7 +41,7 @@ type CertificateValidationResult struct {
 }
 
 // NewMTLSVerifier creates a new mTLS certificate verifier
-func NewMTLSVerifier(logger *logrus.Logger) *MTLSVerifier {
+func NewMTLSVerifier(logger *logging.LogrusAdapter) *MTLSVerifier {
 	return &MTLSVerifier{
 		caCertPool:  x509.NewCertPool(),
 		crlList:     []*x509.RevocationList{},

@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 
 	"marchproxy-dblb/internal/config"
 	"marchproxy-dblb/internal/pool"
@@ -31,7 +31,7 @@ type RedisClusterHandler struct {
 	cfg             *config.Config
 	routeConfig     *config.RouteConfig
 	redis           *redis.Client
-	logger          *logrus.Logger
+	logger          *logging.LogrusAdapter
 	pool            *pool.Pool
 	securityChecker *security.Checker
 
@@ -108,7 +108,7 @@ func NewRedisClusterHandler(
 	routeConfig *config.RouteConfig,
 	pool *pool.Pool,
 	securityChecker *security.Checker,
-	logger *logrus.Logger,
+	logger *logging.LogrusAdapter,
 ) *RedisClusterHandler {
 	ctx, cancel := context.WithCancel(context.Background())
 

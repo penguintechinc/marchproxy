@@ -1,1 +1,0 @@
-"""gRPC Module Service Implementation"""

@@ -303,7 +303,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Architecture Redesign (Breaking)
 - **New 4-Container Architecture**: `api-server` (FastAPI) + `webui` (React) + `proxy-l7` (Envoy) + `proxy-l3l4` (Go)
-- **Replaced py4web**: Now using FastAPI for REST API (faster, more flexible)
+- **Completed py4web → Quart Migration**: Transitioned from py4web to FastAPI for REST API with native async support (faster, more flexible)
 - **React Web UI**: Complete redesign of management interface with modern React components
 - **Envoy L7 Proxy**: New application-layer proxy supporting HTTP/HTTPS/gRPC/WebSocket
 - **Enhanced L3/L4 Proxy**: Complete Go rewrite with advanced features (NUMA, QoS, multi-cloud)
@@ -397,7 +397,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `PROXY_TYPE=egress/ingress` → `PROXY_TYPE=l3l4` (unified type)
 - Environment-driven configuration from Docker Compose
 - Database-driven proxy configuration (xDS)
-- py4web authentication → JWT authentication
+- Legacy authentication systems → JWT authentication
 
 ##### Database Schema Changes
 - Complete schema redesign for v1.0.0
@@ -406,7 +406,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Password hashing: plain text → bcrypt
 
 ##### API Endpoint Changes
-- py4web action-based API → RESTful endpoints
+- Legacy action-based API → RESTful endpoints
 - `/api/v1/*` for all new endpoints
 - JWT authentication required
 - Different request/response formats
@@ -418,7 +418,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - API keys per-cluster instead of global
 
 ##### UI Changes
-- py4web templates → React components
+- Legacy templates → React components
 - New dashboard layout
 - Responsive design for mobile
 - WebSocket for real-time updates
@@ -506,14 +506,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Base64 Token Authentication**: Use JWT instead
 - **File-based Proxy Configuration**: Use xDS control plane
-- **py4web Framework**: Use FastAPI REST API
+- **Legacy Web Frameworks**: Use FastAPI REST API
 - **Inline Authentication**: Use dedicated auth endpoints
 - **sqlite3 Database**: Use PostgreSQL
-- **Direct py4web API Calls**: Use REST API
+- **Direct Legacy API Calls**: Use REST API
 
 ### Removed
 
-- py4web web framework (replaced by FastAPI + React)
+- Legacy web frameworks (replaced by FastAPI + React)
 - Direct socket-level service communication (now via proxies)
 - File-based configuration persistence
 - Legacy logging to local files only (now syslog/ELK required)

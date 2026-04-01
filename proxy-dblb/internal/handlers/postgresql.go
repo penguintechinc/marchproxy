@@ -16,7 +16,7 @@ import (
 	"marchproxy-dblb/internal/pool"
 	"marchproxy-dblb/internal/security"
 
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 // PostgreSQLHandler implements the Handler interface for PostgreSQL protocol
@@ -25,7 +25,7 @@ type PostgreSQLHandler struct {
 	route           *config.RouteConfig
 	pool            *pool.Pool
 	securityChecker *security.Checker
-	logger          *logrus.Logger
+	logger          *logging.LogrusAdapter
 	listener        net.Listener
 	ctx             context.Context
 	cancel          context.CancelFunc
@@ -52,7 +52,7 @@ func NewPostgreSQLHandler(
 	route *config.RouteConfig,
 	poolManager *pool.Pool,
 	secChecker *security.Checker,
-	logger *logrus.Logger,
+	logger *logging.LogrusAdapter,
 ) *PostgreSQLHandler {
 	return &PostgreSQLHandler{
 		config:          cfg,

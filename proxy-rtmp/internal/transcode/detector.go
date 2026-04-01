@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 // GPUType represents the detected GPU type
@@ -74,7 +74,7 @@ func (d *Detector) detect() {
 		return
 	}
 
-	logrus.Info("No GPU detected, using CPU encoding")
+	logger.Info("No GPU detected, using CPU encoding")
 }
 
 // detectNVIDIA checks for NVIDIA GPU
@@ -306,13 +306,13 @@ func (d *Detector) SelectEncoder(preference string) (*EncoderConfig, error) {
 	// Auto-select based on GPU type
 	switch d.gpuType {
 	case GPUTypeNVIDIA:
-		logrus.Info("Auto-selecting NVIDIA NVENC H.264 encoder")
+		logger.Info("Auto-selecting NVIDIA NVENC H.264 encoder")
 		return d.getEncoderConfig("nvenc_h264")
 	case GPUTypeAMD:
-		logrus.Info("Auto-selecting AMD AMF H.264 encoder")
+		logger.Info("Auto-selecting AMD AMF H.264 encoder")
 		return d.getEncoderConfig("amf_h264")
 	default:
-		logrus.Info("Auto-selecting CPU x264 encoder")
+		logger.Info("Auto-selecting CPU x264 encoder")
 		return d.getEncoderConfig("x264")
 	}
 }
@@ -328,10 +328,10 @@ func (d *Detector) SelectEncoderWithAV1Preference(preference string, preferAV1 b
 	if preferAV1 && d.av1Capable {
 		switch d.gpuType {
 		case GPUTypeNVIDIA:
-			logrus.Info("Auto-selecting NVIDIA NVENC AV1 encoder")
+			logger.Info("Auto-selecting NVIDIA NVENC AV1 encoder")
 			return d.getEncoderConfig("nvenc_av1")
 		case GPUTypeAMD:
-			logrus.Info("Auto-selecting AMD AMF AV1 encoder")
+			logger.Info("Auto-selecting AMD AMF AV1 encoder")
 			return d.getEncoderConfig("amf_av1")
 		}
 	}

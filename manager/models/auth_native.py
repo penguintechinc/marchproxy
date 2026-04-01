@@ -1,70 +1,52 @@
 """
-Native py4web authentication integration for MarchProxy Manager
+Native authentication utilities for MarchProxy Manager
 
 Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-try:
-    from py4web import Field
-    from py4web.utils.auth import Auth
-    from py4web.utils.mailer import Mailer
-except ImportError:
-    Field = None
-    Auth = None
-    Mailer = None
-
 import base64
 import io
 import secrets
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Protocol
 
 import pyotp
 import qrcode
 from pydal import DAL
 
 
-def setup_auth(db: DAL, base_url: str = "http://localhost:8000") -> Auth:
-    """Setup py4web native authentication"""
-
-    # Configure mailer (optional - can be disabled for development)
-    mailer = Mailer(server="smtp://localhost:587", sender="noreply@marchproxy.local")
-
-    # Initialize Auth with py4web native features
-    auth = Auth(
-        session=None,  # Will be set by py4web
-        db=db,
-        sender=mailer,
-        registration_requires_confirmation=False,  # Disable for admin-only registration
-        registration_requires_approval=True,  # Admin approval required
-        two_factor_required=lambda user: user.get("totp_enabled", False),
-        login_expiration_time=3600,  # 1 hour
-        password_complexity={
-            "min": 8,
-            "upper": 1,
-            "lower": 1,
-            "special": 1,
-            "number": 1,
-        },
-    )
-
-    # Add custom fields to auth_user table
-    auth.db.auth_user._before_insert.append(
-        lambda f: f.update(
-            is_admin=False,
-            totp_enabled=False,
-            totp_secret=None,
-            auth_provider="local",
-            external_id=None,
-            last_login=None,
-        )
-    )
-
-    return auth
+# Auth protocol for type checking — compatible with penguin-aaa or any auth backend
+class AuthLike(Protocol):
+    db: Any
+    def verify_password(self, password: str, hashed: str) -> bool: ...
+    def register(self, **kwargs: Any) -> dict: ...
+    def get_user(self) -> dict: ...
+    def has_permission(self, permission: str, user_id: int) -> bool: ...
+    def add_group(self, name: str, description: str) -> int: ...
+    def add_permission(self, group_id: int, permission: str) -> None: ...
+    @property
+    def user_id(self) -> int | None: ...
 
 
-def extend_auth_user_table(auth: Auth):
+def setup_auth(db: DAL, base_url: str = "http://localhost:8000") -> AuthLike:
+    """Setup native authentication"""
+
+    # Mailer configured separately via SMTP settings
+
+    # This function expects an AuthLike implementation (e.g., from penguin-aaa)
+    # Configure authentication backend through environment variables or config
+    # - registration_requires_confirmation: set via AUTH_CONFIRMATION_REQUIRED
+    # - registration_requires_approval: set via AUTH_APPROVAL_REQUIRED
+    # - two_factor_required: set via AUTH_2FA_ENABLED
+    # - login_expiration_time: set via AUTH_LOGIN_EXPIRATION_SECONDS (default: 3600)
+    # - password_complexity: enforced at registration time
+
+    # Return mock/placeholder - actual auth backend should be injected
+    raise NotImplementedError("Use penguin-aaa for authentication configuration")
+
+
+def extend_auth_user_table(auth: AuthLike):
     """Extend the native auth_user table with MarchProxy specific fields"""
 
     # Add custom fields to the auth_user table
@@ -85,9 +67,9 @@ def extend_auth_user_table(auth: Auth):
 
 
 class TOTPManager:
-    """TOTP/2FA management using py4web auth integration"""
+    """TOTP/2FA management for MarchProxy"""
 
-    def __init__(self, auth: Auth):
+    def __init__(self, auth: AuthLike):
         self.auth = auth
         self.db = auth.db
 
@@ -97,7 +79,7 @@ class TOTPManager:
         if not user:
             return None
 
-        # Verify current password using py4web's auth
+        # Verify current password using auth backend
         if not self.auth.verify_password(password, user.password):
             return None
 
@@ -175,9 +157,9 @@ class TOTPManager:
 
 
 class APITokenManager:
-    """API token management using py4web auth integration"""
+    """API token management for MarchProxy"""
 
-    def __init__(self, auth: Auth):
+    def __init__(self, auth: AuthLike):
         self.auth = auth
         self.db = auth.db
         self._setup_token_table()
@@ -257,19 +239,19 @@ class APITokenManager:
 
 
 def create_admin_user(
-    auth: Auth,
+    auth: AuthLike,
     username: str = "admin",
     email: str = "admin@localhost",
     password: str = "admin123",
 ) -> int:
-    """Create default admin user using py4web auth"""
+    """Create default admin user"""
 
     # Check if admin already exists
     existing = auth.db(auth.db.auth_user.email == email).select().first()
     if existing:
         return existing.id
 
-    # Use py4web's native user creation
+    # Use native user creation
     user_id = auth.register(
         email=email, password=password, first_name="System", last_name="Administrator"
     ).get("id")
@@ -291,8 +273,8 @@ def create_admin_user(
     return user_id
 
 
-def setup_auth_groups(auth: Auth):
-    """Setup authorization groups using py4web's auth system"""
+def setup_auth_groups(auth: AuthLike):
+    """Setup authorization groups"""
 
     # Create admin group
     admin_group_id = auth.add_group("admin", "System Administrators")
@@ -351,7 +333,7 @@ def setup_auth_groups(auth: Auth):
     return {"admin": admin_group_id, "service_owner": service_owner_group_id}
 
 
-def check_permission(auth: Auth, permission: str) -> bool:
+def check_permission(auth: AuthLike, permission: str) -> bool:
     """Check if current user has permission"""
     if not auth.user_id:
         return False
@@ -363,18 +345,15 @@ def check_permission(auth: Auth, permission: str) -> bool:
     return auth.has_permission(permission, auth.user_id)
 
 
-def require_permission(auth: Auth, permission: str):
+def require_permission(auth: AuthLike, permission: str):
     """Decorator to require permission for endpoint"""
 
     def decorator(func):
         def wrapper(*args, **kwargs):
             if not check_permission(auth, permission):
-                try:
-                    from py4web import abort
+                from quart import abort
 
-                    abort(403)
-                except ImportError:
-                    raise PermissionError("Access denied: permission required")
+                abort(403)
             return func(*args, **kwargs)
 
         return wrapper
@@ -382,19 +361,16 @@ def require_permission(auth: Auth, permission: str):
     return decorator
 
 
-def require_admin(auth: Auth):
+def require_admin(auth: AuthLike):
     """Decorator to require admin access"""
 
     def decorator(func):
         def wrapper(*args, **kwargs):
             user = auth.get_user()
             if not user or not user.get("is_admin"):
-                try:
-                    from py4web import abort
+                from quart import abort
 
-                    abort(403)
-                except ImportError:
-                    raise PermissionError("Access denied: admin access required")
+                abort(403)
             return func(*args, **kwargs)
 
         return wrapper

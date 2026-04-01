@@ -1,19 +1,21 @@
 """
 License validation and feature gating
 
-Integrates with license.penguintech.io for enterprise feature enforcement.
+Wraps penguin-licensing package for license.penguintech.io integration.
+Provides backward-compatible interface to existing code.
 """
 
 import logging
+from penguintechinc_utils import get_logger
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Optional
 
-import httpx
 from pydantic import BaseModel
+from penguin_licensing import LicenseClient, get_license_client
 
 from app.core.config import settings
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class LicenseTier(str, Enum):
@@ -23,7 +25,7 @@ class LicenseTier(str, Enum):
 
 
 class LicenseInfo(BaseModel):
-    """License information model"""
+    """License information model (backward compatible wrapper)"""
     tier: LicenseTier
     max_proxies: int
     features: list[str]
@@ -32,22 +34,32 @@ class LicenseInfo(BaseModel):
 
 
 class LicenseValidator:
-    """License validation service"""
+    """
+    License validation service wrapping penguin-licensing package.
+
+    Maintains backward compatibility with existing async/dict interface
+    while delegating to penguin-licensing's LicenseClient.
+    """
 
     def __init__(self):
         self.license_key = settings.LICENSE_KEY
         self.server_url = settings.LICENSE_SERVER_URL
         self.product_name = settings.PRODUCT_NAME
         self.release_mode = settings.RELEASE_MODE
-        self._cache: Optional[LicenseInfo] = None
-        self._cache_expiry: Optional[datetime] = None
+
+        # Initialize penguin-licensing client
+        self._penguin_client = LicenseClient(
+            license_key=self.license_key or None,
+            product=self.product_name,
+            base_url=self.server_url,
+        )
 
     async def validate_license(self, force: bool = False) -> LicenseInfo:
         """
         Validate license key and return license information
 
         Args:
-            force: Force validation even if cached
+            force: Force validation even if cached (passed to penguin-licensing)
 
         Returns:
             LicenseInfo object
@@ -65,72 +77,39 @@ class LicenseValidator:
                 is_valid=True
             )
 
-        # Check cache
-        if not force and self._cache and self._cache_expiry:
-            if datetime.utcnow() < self._cache_expiry:
-                logger.debug("Returning cached license info")
-                return self._cache
-
-        # No license key = Community tier
-        if not self.license_key:
-            logger.info("No license key provided, using Community tier")
-            license_info = LicenseInfo(
-                tier=LicenseTier.COMMUNITY,
-                max_proxies=settings.COMMUNITY_MAX_PROXIES,
-                features=[],
-                is_valid=True
-            )
-            self._cache = license_info
-            self._cache_expiry = datetime.utcnow() + timedelta(hours=1)
-            return license_info
-
-        # Validate with license server
+        # Delegate to penguin-licensing client (synchronous call)
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.post(
-                    f"{self.server_url}/api/v2/validate",
-                    json={
-                        "license_key": self.license_key,
-                        "product": self.product_name
-                    }
-                )
+            penguin_info = self._penguin_client.validate(force_refresh=force)
 
-                if response.status_code == 200:
-                    data = response.json()
-                    license_info = LicenseInfo(
-                        tier=LicenseTier.ENTERPRISE,
-                        max_proxies=data.get("max_proxies", 999999),
-                        features=data.get("features", []),
-                        valid_until=datetime.fromisoformat(data["valid_until"])
-                        if "valid_until" in data else None,
-                        is_valid=True
-                    )
-                    logger.info(f"License validated: {license_info.tier}")
-                else:
-                    logger.warning(
-                        f"License validation failed: {response.status_code}"
-                    )
-                    license_info = LicenseInfo(
-                        tier=LicenseTier.COMMUNITY,
-                        max_proxies=settings.COMMUNITY_MAX_PROXIES,
-                        features=[],
-                        is_valid=False
-                    )
+            # Extract features from penguin-licensing response
+            feature_names = [f.name for f in penguin_info.features if f.entitled]
+
+            license_info = LicenseInfo(
+                tier=LicenseTier(penguin_info.tier),
+                max_proxies=penguin_info.limits.get("max_proxies", 999999)
+                    if penguin_info.tier == "enterprise"
+                    else settings.COMMUNITY_MAX_PROXIES,
+                features=feature_names,
+                valid_until=penguin_info.expires_at,
+                is_valid=penguin_info.valid
+            )
+
+            if penguin_info.valid:
+                logger.info(f"License validated: {license_info.tier}")
+            else:
+                logger.warning(f"License validation failed: {penguin_info.message}")
+
+            return license_info
 
         except Exception as e:
             logger.error(f"License validation error: {e}")
             # Fallback to Community on error
-            license_info = LicenseInfo(
+            return LicenseInfo(
                 tier=LicenseTier.COMMUNITY,
                 max_proxies=settings.COMMUNITY_MAX_PROXIES,
                 features=[],
                 is_valid=False
             )
-
-        # Cache for 1 hour
-        self._cache = license_info
-        self._cache_expiry = datetime.utcnow() + timedelta(hours=1)
-        return license_info
 
     async def check_feature(self, feature_name: str) -> bool:
         """
@@ -188,21 +167,33 @@ class LicenseManager:
         Returns:
             Dictionary with validation results
         """
-        # Temporarily override the validator's license key
-        original_key = self.validator.license_key
-        self.validator.license_key = license_key
+        # Create a temporary client with the provided license key
+        temp_client = LicenseClient(
+            license_key=license_key,
+            product=self.validator.product_name,
+            base_url=self.validator.server_url,
+        )
 
         try:
-            license_info = await self.validator.validate_license(force=True)
+            penguin_info = temp_client.validate(force_refresh=True)
+            feature_names = [f.name for f in penguin_info.features if f.entitled]
 
             return {
-                "valid": license_info.is_valid,
-                "tier": license_info.tier.value,
-                "max_proxies": license_info.max_proxies,
-                "features": license_info.features,
-                "valid_until": license_info.valid_until.isoformat()
-                    if license_info.valid_until else None
+                "valid": penguin_info.valid,
+                "tier": penguin_info.tier,
+                "max_proxies": penguin_info.limits.get("max_proxies", 999999)
+                    if penguin_info.tier == "enterprise"
+                    else settings.COMMUNITY_MAX_PROXIES,
+                "features": feature_names,
+                "valid_until": penguin_info.expires_at.isoformat()
+                    if penguin_info.expires_at else None
             }
-        finally:
-            # Restore original key
-            self.validator.license_key = original_key
+        except Exception as e:
+            logger.error(f"License validation error: {e}")
+            return {
+                "valid": False,
+                "tier": "community",
+                "max_proxies": settings.COMMUNITY_MAX_PROXIES,
+                "features": [],
+                "valid_until": None
+            }

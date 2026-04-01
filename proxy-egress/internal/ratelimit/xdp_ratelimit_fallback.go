@@ -12,12 +12,12 @@ import (
 
 // XDPRateLimiter fallback implementation for systems without XDP support
 type XDPRateLimiter struct {
-	logger  logging.Logger
+	logger  *logging.LogrusAdapter
 	metrics metrics.Collector
 }
 
 // NewXDPRateLimiter creates a new fallback XDP rate limiter
-func NewXDPRateLimiter(logger logging.Logger, metricsCollector metrics.Collector) *XDPRateLimiter {
+func NewXDPRateLimiter(logger *logging.LogrusAdapter, metricsCollector metrics.Collector) *XDPRateLimiter {
 	logger.Warn("XDP support not available, rate limiting will be disabled")
 	return &XDPRateLimiter{
 		logger:  logger,

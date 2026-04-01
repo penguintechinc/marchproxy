@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 // User represents a database user
@@ -43,7 +43,7 @@ type Permission struct {
 // Manager handles authentication and authorization
 type Manager struct {
 	redis       *redis.Client
-	logger      *logrus.Logger
+	logger      *logging.LogrusAdapter
 	users       map[string]*User
 	permissions map[string]*Permission
 	mu          sync.RWMutex
@@ -51,7 +51,7 @@ type Manager struct {
 }
 
 // NewManager creates a new auth manager
-func NewManager(redisClient *redis.Client, logger *logrus.Logger) *Manager {
+func NewManager(redisClient *redis.Client, logger *logging.LogrusAdapter) *Manager {
 	return &Manager{
 		redis:       redisClient,
 		logger:      logger,
