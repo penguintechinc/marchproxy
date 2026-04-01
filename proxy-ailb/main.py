@@ -70,7 +70,7 @@ class AILBServer:
             'default_routing_strategy': os.getenv('ROUTING_STRATEGY', 'load_balanced'),
             'enable_memory': os.getenv('ENABLE_MEMORY', 'true').lower() == 'true',
             'enable_rag': os.getenv('ENABLE_RAG', 'false').lower() == 'true',
-            'memory_backend': os.getenv('MEMORY_BACKEND', 'chromadb'),
+            'memory_backend': os.getenv('MEMORY_BACKEND', 'mem0'),
             'rag_backend': os.getenv('RAG_BACKEND', 'chromadb'),
         }
 
@@ -163,6 +163,10 @@ class AILBServer:
         for connector in self.connectors.values():
             if hasattr(connector, 'close'):
                 await connector.close()
+
+        # Close memory manager
+        if self.memory_manager:
+            await self.memory_manager.close()
 
         logger.info("AILB server shutdown complete")
 
