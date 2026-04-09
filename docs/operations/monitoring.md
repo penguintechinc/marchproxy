@@ -1297,6 +1297,307 @@ actions:
       unit: days
       unit_count: 2
       exclude:
+
+## OpenTelemetry Distributed Tracing (Go Proxy Services)
+
+MarchProxy proxy services (proxy-egress and proxy-l3l4) implement comprehensive distributed tracing via OpenTelemetry (OTEL). This enables end-to-end request tracing across the entire proxy infrastructure and external backend systems.
+
+### Architecture Overview
+
+The tracing implementation consists of:
+
+- **TracingEngine** (proxy-egress): Configurable exporter backend with OTLP and Jaeger support
+- **TraceProvider** (proxy-l3l4): Automatic span creation for all incoming requests with W3C Trace Context propagation
+- **Custom Attributes**: User ID, tenant ID, API version, cache status extracted from request context
+- **Jaeger Integration**: Distributed trace visualization and performance analysis
+
+### Span Lifecycle and Usage
+
+Every request is automatically wrapped in a span. To manually create additional spans:
+
+```go
+// Starting a span
+span := tracer.StartSpan(ctx, "operation.name", trace.SpanKindServer)
+defer span.End()
+
+// Adding attributes to track request context
+span.SetAttributes(
+    attribute.String("user.id", userID),
+    attribute.String("tenant.id", tenantID),
+    attribute.String("api.version", "v1"),
+    attribute.String("cache.status", "hit"),
+    attribute.Int64("response.bytes", 2048),
+)
+
+// Recording errors
+span.RecordError(err)
+span.SetStatus(codes.Error, fmt.Sprintf("failed to process: %v", err))
+
+// Set status on success
+span.SetStatus(codes.Ok, "request completed successfully")
+```
+
+### Configuration Presets
+
+Three environment-aware presets are provided:
+
+#### Development Configuration
+```go
+config := NewDevelopmentTracingConfig()
+// • Console exporter (stdout)
+// • 100% sampling (all traces)
+// • Verbose logging
+// • Best for local testing
+```
+
+#### Production Configuration
+```go
+config := NewProductionTracingConfig()
+// • OTLP/Jaeger exporter
+// • 5% sampling (1 in 20 requests)
+// • JSON structured output
+// • Optimized for high-volume environments
+```
+
+#### Default Configuration
+```go
+config := NewDefaultTracingConfig()
+// • Stdout exporter
+// • 10% sampling
+// • Balanced for general use
+```
+
+### Jaeger Environment Variables
+
+Configure Jaeger export with these environment variables:
+
+```bash
+# OTLP endpoint (gRPC)
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+
+# Service identification
+export OTEL_SERVICE_NAME=proxy-egress
+# or
+export OTEL_SERVICE_NAME=proxy-l3l4
+
+# Sampling configuration
+export OTEL_TRACES_SAMPLER=parentbased_traceidratio
+export OTEL_TRACES_SAMPLER_ARG=0.05  # 5% sampling rate (0.0-1.0)
+
+# Optional: Protocol (default is grpc)
+export OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+
+# Optional: Trace timeout
+export OTEL_EXPORTER_OTLP_TIMEOUT=10000  # milliseconds
+```
+
+### W3C Trace Context Propagation
+
+MarchProxy automatically propagates trace context using W3C standard headers. These headers enable tracing across service boundaries:
+
+```http
+Request Headers:
+traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
+tracestate: marchproxy=internal-state,tenant-id=acme-corp
+```
+
+**Header Breakdown:**
+- `traceparent`: W3C standard header with trace ID, span ID, and trace flags
+- `tracestate`: Additional trace state, including MarchProxy-specific baggage (user ID, tenant ID)
+
+Trace context is automatically extracted from incoming requests and injected into outgoing service calls.
+
+### Custom Attribute Extractors
+
+MarchProxy includes specialized attribute extractors to enrich spans with relevant context:
+
+#### User ID Extractor
+```go
+// Automatically adds user ID from JWT claims
+span.SetAttributes(attribute.String("user.id", "user-12345"))
+```
+
+#### Tenant Isolation Extractor
+```go
+// Adds tenant context to ensure multi-tenant trace isolation
+span.SetAttributes(
+    attribute.String("tenant.id", "acme-corp"),
+    attribute.String("tenant.tier", "enterprise"),
+)
+```
+
+#### API Version Extractor
+```go
+// Groups spans by API version for version-specific analysis
+span.SetAttributes(
+    attribute.String("api.version", "v1"),
+    attribute.String("api.endpoint", "/api/v1/services"),
+)
+```
+
+#### Cache Hit/Miss Tracking
+```go
+// Tracks cache effectiveness across the proxy
+span.SetAttributes(
+    attribute.String("cache.status", "hit"),    // "hit" or "miss"
+    attribute.Int64("cache.age.seconds", 1200),
+)
+```
+
+### Implementation Details
+
+#### proxy-egress Service
+
+Location: `proxy-egress/internal/tracing/tracer.go`
+
+The TracingEngine handles all exporter configuration and lifecycle:
+
+```go
+// Initialize tracer with production config
+tracing := NewTracingEngine(
+    NewProductionTracingConfig(),
+    "proxy-egress",
+)
+
+// Create spans for egress operations
+span := tracing.StartSpan(ctx, "egress.request", trace.SpanKindClient)
+defer span.End()
+
+// Shutdown on service termination
+defer tracing.Shutdown(context.Background())
+```
+
+#### proxy-l3l4 Service
+
+Location: `proxy-l3l4/internal/observability/tracing.go`
+
+The L3/L4 proxy uses NewTracer() for transparent request tracing:
+
+```go
+// Auto-initialize tracer from environment
+tracer := NewTracer()
+
+// Middleware automatically wraps all incoming requests
+// No manual span management required
+```
+
+### Jaeger Visualisation and Debugging
+
+Access the Jaeger UI for distributed trace analysis:
+
+```bash
+# Jaeger dashboard (if deployed locally or in k8s)
+http://localhost:16686
+```
+
+**In the Jaeger UI:**
+1. **Service dropdown**: Select `proxy-egress` or `proxy-l3l4`
+2. **Operation filter**: Search for specific operations (e.g., `egress.request`, `l3l4.packet.process`)
+3. **Tags filter**: Filter by custom attributes
+   - `user.id=user-12345`
+   - `tenant.id=acme-corp`
+   - `cache.status=miss`
+4. **Trace detail view**: Inspect span timings, errors, and attributes
+5. **Service graph**: Visualize request flow across microservices
+
+### Performance Tuning
+
+#### Sampling Strategy
+
+For high-traffic environments, adjust the sampling rate to balance visibility with overhead:
+
+```bash
+# 1% sampling (high-volume production)
+export OTEL_TRACES_SAMPLER_ARG=0.01
+
+# 10% sampling (balanced)
+export OTEL_TRACES_SAMPLER_ARG=0.10
+
+# 50% sampling (detailed debugging)
+export OTEL_TRACES_SAMPLER_ARG=0.50
+
+# 100% sampling (development only)
+export OTEL_TRACES_SAMPLER_ARG=1.0
+```
+
+#### Batch Exporter Settings
+
+For optimal throughput, batch traces before sending to Jaeger:
+
+```bash
+# Maximum number of spans in a batch
+export OTEL_BSP_MAX_EXPORT_BATCH_SIZE=512
+
+# Delay before flushing batch
+export OTEL_BSP_SCHEDULE_DELAY=5000  # milliseconds
+
+# Maximum queue size
+export OTEL_BSP_MAX_QUEUE_SIZE=2048
+```
+
+### Troubleshooting
+
+#### Traces Not Appearing in Jaeger
+
+1. **Verify environment variables are set:**
+   ```bash
+   echo $OTEL_EXPORTER_OTLP_ENDPOINT
+   echo $OTEL_SERVICE_NAME
+   ```
+
+2. **Check network connectivity to Jaeger:**
+   ```bash
+   telnet localhost 4317
+   # or
+   curl -v http://localhost:14268/api/traces
+   ```
+
+3. **Enable debug logging:**
+   ```bash
+   export OTEL_LOG_LEVEL=debug
+   ```
+
+4. **Verify service is creating spans:**
+   - Ensure requests are flowing through the service
+   - Check application logs for any OTEL initialization errors
+
+#### High Trace Volume
+
+If Jaeger is receiving too many traces:
+
+1. **Reduce sampling rate:**
+   ```bash
+   export OTEL_TRACES_SAMPLER_ARG=0.01  # 1% sampling
+   ```
+
+2. **Enable parent-based sampling** (respects upstream sampling decisions):
+   ```bash
+   export OTEL_TRACES_SAMPLER=parentbased_traceidratio
+   ```
+
+3. **Increase batch size** to reduce network overhead:
+   ```bash
+   export OTEL_BSP_MAX_EXPORT_BATCH_SIZE=1024
+   ```
+
+### Integration with Other Services
+
+Traces propagate automatically across service boundaries when W3C Trace Context headers are preserved:
+
+```go
+// Outgoing request preserves trace context
+req := http.NewRequestWithContext(ctx, "GET", "http://backend-api:8080/data", nil)
+// W3C headers are automatically injected
+resp, err := httpClient.Do(req)
+```
+
+This enables end-to-end visibility from the load balancer through MarchProxy, backend APIs, and database operations.
+
+### Related Documentation
+
+- **Prometheus Metrics**: See [Prometheus Metrics](#prometheus-metrics) section for application metrics
+- **Alert Manager**: See [Alert Management](#alert-management) section for alerting on anomalies
+- **ELK Stack**: See [Centralized Logging](#centralized-logging) section for correlated logs
 ```
 
 This completes the comprehensive monitoring and observability documentation for MarchProxy.

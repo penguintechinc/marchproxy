@@ -48,15 +48,72 @@ Service (Service-specific)
 | **Cluster Admin** | Cluster | Manage specific cluster | Full cluster permissions |
 | **Service Owner** | Service | Manage specific service | Full service permissions |
 
+## Decorator Reference
+
+**All RBAC decorators are imported from `middleware.rbac`:**
+
+```python
+from middleware.rbac import (
+    requires_permission,
+    requires_role,
+    requires_any_permission,
+    requires_all_permissions
+)
+```
+
+### Decorator Signatures
+
+#### `@requires_permission(permission, resource_type=None, resource_id_param=None)`
+
+Check a single specific permission. Optionally scope to a resource (cluster or service).
+
+**Decorator Arguments:**
+- `permission` (str): Permission to require (e.g., `Permissions.GLOBAL_ADMIN`)
+- `resource_type` (str, optional): `'cluster'` or `'service'` for scoped checks
+- `resource_id_param` (str, optional): Name of route parameter containing resource ID
+
+**Returns:** 401 if unauthenticated, 403 if insufficient permissions
+
+#### `@requires_role(role_name, scope=PermissionScope.GLOBAL, resource_id_param=None)`
+
+Check if user has a specific role at a given scope.
+
+**Decorator Arguments:**
+- `role_name` (str): Role name (e.g., `'admin'`, `'cluster_admin'`)
+- `scope` (PermissionScope): `GLOBAL`, `CLUSTER`, or `SERVICE`
+- `resource_id_param` (str, optional): Name of route parameter for scoped role checks
+
+**Returns:** 401 if unauthenticated, 403 if role not assigned
+
+#### `@requires_any_permission(*permissions)`
+
+Check if user has ANY of the specified permissions (OR logic).
+
+**Decorator Arguments:**
+- `*permissions` (str...): One or more permission strings to check
+
+**Returns:** 401 if unauthenticated, 403 if no matching permission found
+
+#### `@requires_all_permissions(*permissions)`
+
+Check if user has ALL specified permissions (AND logic).
+
+**Decorator Arguments:**
+- `*permissions` (str...): All permission strings required
+
+**Returns:** 401 if unauthenticated, 403 if any permission missing
+
+---
+
 ## Usage Guide
 
 ### 1. Protecting Routes with Decorators
 
-#### Require Specific Permission
+#### Require Specific Permission (Global Scope)
 
 ```python
 from middleware.rbac import requires_permission
-from models.rbac import Permissions
+from models.rbac import Permissions  # Import permission constants
 
 @app.route('/api/v1/clusters', methods=['POST'])
 @requires_permission(Permissions.GLOBAL_CLUSTER_WRITE)
@@ -75,11 +132,11 @@ async def create_cluster():
     resource_id_param='cluster_id'
 )
 async def update_cluster(cluster_id: int):
-    """Checks cluster-specific write permission"""
+    """Checks if user has cluster:write permission for this specific cluster"""
     return jsonify({'message': f'Cluster {cluster_id} updated'})
 ```
 
-#### Require Specific Role
+#### Require Specific Role (Global Scope)
 
 ```python
 from middleware.rbac import requires_role
@@ -88,11 +145,21 @@ from models.rbac import PermissionScope
 @app.route('/api/v1/admin/dashboard')
 @requires_role('admin', scope=PermissionScope.GLOBAL)
 async def admin_dashboard():
-    """Only users with Admin role can access"""
+    """Only users with Admin role (global scope) can access"""
     return jsonify({'message': 'Admin dashboard'})
 ```
 
-#### Require ANY of Multiple Permissions
+#### Require Scoped Role (Cluster-Specific)
+
+```python
+@app.route('/api/v1/clusters/<int:cluster_id>/manage', methods=['POST'])
+@requires_role('cluster_admin', scope=PermissionScope.CLUSTER, resource_id_param='cluster_id')
+async def manage_cluster(cluster_id: int):
+    """Only users with cluster_admin role for this specific cluster can access"""
+    return jsonify({'message': f'Cluster {cluster_id} managed'})
+```
+
+#### Require ANY of Multiple Permissions (OR Logic)
 
 ```python
 from middleware.rbac import requires_any_permission
@@ -107,15 +174,15 @@ async def list_resources():
     return jsonify({'resources': []})
 ```
 
-#### Require ALL Permissions
+#### Require ALL Permissions (AND Logic)
 
 ```python
 from middleware.rbac import requires_all_permissions
 
 @app.route('/api/v1/critical-operation')
 @requires_all_permissions(
-    Permissions.GLOBAL_ADMIN,
-    Permissions.GLOBAL_SETTINGS
+    Permissions.GLOBAL_CLUSTER_WRITE,
+    Permissions.GLOBAL_SERVICE_WRITE
 )
 async def critical_operation():
     """Requires both permissions"""
@@ -374,6 +441,10 @@ Response:
 
 ## Helper Functions
 
+The `middleware.rbac` module provides convenient helper functions for common permission checks:
+
+### Imported from `middleware.rbac`
+
 ```python
 from middleware.rbac import (
     is_admin,
@@ -381,25 +452,47 @@ from middleware.rbac import (
     can_access_cluster,
     can_access_service
 )
+```
 
-# Check if user is admin
+### Function Reference
+
+#### `is_admin(user_id: int, db) -> bool`
+
+Check if user is a global admin.
+
+```python
 if is_admin(user_id, db):
-    # User has global admin rights
+    # User has global:admin permission
     pass
+```
 
-# Check if user can manage other users
+#### `can_manage_users(user_id: int, db) -> bool`
+
+Check if user can manage other users (admin or has user write permission).
+
+```python
 if can_manage_users(user_id, db):
-    # User can create/update/delete users
+    # User has global:admin OR global:users:write
     pass
+```
 
-# Check cluster access
+#### `can_access_cluster(user_id: int, cluster_id: int, db) -> bool`
+
+Check if user can read a specific cluster.
+
+```python
 if can_access_cluster(user_id, cluster_id, db):
-    # User can access this cluster
+    # User has cluster:read permission for this cluster
     pass
+```
 
-# Check service access
+#### `can_access_service(user_id: int, service_id: int, db) -> bool`
+
+Check if user can read a specific service.
+
+```python
 if can_access_service(user_id, service_id, db):
-    # User can access this service
+    # User has service:read permission for this service
     pass
 ```
 
@@ -439,6 +532,71 @@ python migrations/add_rbac_tables.py
 # Or via database migration system
 python migrate.py upgrade
 ```
+
+## Authorization Model: Scope-Based (OIDC Style)
+
+MarchProxy RBAC is built on **scope-based authorization** (OIDC/OAuth2 style), NOT role-name-based. This is critical for security:
+
+### Key Principles
+
+1. **Scopes are the source of truth for authorization decisions**
+   - Application code checks scopes (e.g., `'global:clusters:write'`)
+   - Roles are pre-bundled scope sets for convenience
+   - Roles are informational only — never branch on role names in code
+
+2. **Roles as Scope Bundles**
+   - Each role (Admin, Maintainer, Viewer, etc.) carries a fixed set of scopes
+   - When a role is assigned to a user, those scopes are granted
+   - Permission checks happen against scopes, not role names
+
+3. **Three Scope Levels**
+   - **Global**: System-wide permissions (`global:clusters:write`, `global:users:admin`)
+   - **Cluster**: Scoped to a specific cluster (`cluster:read`, `cluster:write`)
+   - **Service**: Scoped to a specific service (`service:read`, `service:write`)
+
+### Authorization Middleware Pattern
+
+All decorators (`@requires_permission`, `@requires_role`, etc.) ultimately check scopes:
+
+```python
+# These all check scopes, not role names
+@requires_permission('global:clusters:write')    # Direct scope check
+@requires_role('admin')                          # Checks if user's scopes include admin's scope bundle
+@requires_any_permission(scope1, scope2)         # Checks if user has any of these scopes
+```
+
+### ❌ What NOT to Do
+
+Never write authorization logic based on role names:
+
+```python
+# WRONG - checking role names
+if user.role == 'admin':
+    # Allow operation
+    
+if user.role_name == 'maintainer':
+    # Allow operation
+```
+
+This is insecure because roles can change, be renamed, or be misused. Always check scopes instead.
+
+### ✅ What TO Do
+
+Always check scopes in your middleware/decorators:
+
+```python
+# RIGHT - checking scopes
+@requires_permission(Permissions.GLOBAL_ADMIN)
+async def admin_operation():
+    pass
+
+# Or programmatically
+if RBACModel.has_permission(db, user_id, Permissions.GLOBAL_ADMIN):
+    # Allow operation
+    pass
+```
+
+---
 
 ## Best Practices
 

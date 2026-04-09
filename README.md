@@ -85,7 +85,7 @@ docker-compose ps
 - ✅ gRPC inter-container communication
 - ✅ Prometheus metrics collection from all services
 - ✅ Grafana dashboards for visualization
-- ✅ Jaeger for distributed tracing
+- ✅ OpenTelemetry distributed tracing (W3C Trace Context, Jaeger exporter)
 
 **Integration Scripts:**
 ```bash
@@ -173,7 +173,7 @@ kubectl apply -f examples/simple-marchproxy.yaml
 - **Service-to-Service Mapping**: Granular traffic routing and access control
 - **Multi-Cluster Support**: Enterprise-grade cluster management and isolation
 - **Real-time Configuration**: Hot-reload configuration without downtime
-- **Comprehensive Monitoring**: Prometheus metrics, Grafana dashboards, Jaeger tracing, and observability
+- **Comprehensive Monitoring**: Prometheus metrics, Grafana dashboards, OpenTelemetry distributed tracing (W3C Trace Context), and observability
 
 ### Egress Proxy Features
 - **Threat Intelligence**: IP/CIDR blocking, domain blocking (with wildcard support), URL pattern matching
@@ -191,9 +191,10 @@ kubectl apply -f examples/simple-marchproxy.yaml
 - **Content Compression**: Gzip, Brotli, Zstandard, and Deflate support
 
 ### Security & Authentication
-- **Kong-based Authentication**: OAuth2, SAML, SCIM, API key validation
+- **penguin-aaa OIDC Authentication**: JWT with scopes (e.g., `users:read`, `*:admin`), tenant isolation, role-based access control
+- **Kong-based API Gateway Auth**: OAuth2, SAML, SCIM, API key validation
 - **Certificate Management**: Centralized TLS certificate management across all proxies
-- **Multiple Auth Methods**: Base64 tokens, JWT, 2FA/TOTP (via Kong plugins)
+- **Multiple Auth Methods**: Bearer tokens, JWT with scope validation, 2FA/TOTP
 - **Enterprise Authentication**: SAML SSO, SCIM provisioning, OAuth2 integration
 - **Network Access Control**: Granular service-to-service access policies
 - **Rate Limiting & DDoS Protection**: Advanced traffic shaping and attack mitigation
@@ -262,13 +263,14 @@ MarchProxy features a microservice architecture with independent proxy modules o
 
 ### Component Architecture
 
-#### API Server (REST/gRPC)
+#### API Server (Quart + REST/gRPC)
 - **Configuration Management**: Centralized proxy configuration and service mapping
 - **Multi-Cluster Support**: Enterprise cluster isolation with separate credentials
 - **License Validation**: Real-time license checking via license.penguintech.io
 - **Service Discovery**: Dynamic proxy registration and heartbeat health checks
-- **REST API**: External integration with JSON payloads
+- **REST API**: External integration with JSON payloads with penguin-aaa scope-based auth
 - **gRPC Communication**: Internal inter-container communication
+- **Async Framework**: Built on Quart for high-performance async request handling
 
 #### NLB (Network Load Balancer - L3/L4 Entry Point)
 - **Traffic Distribution**: Routes traffic to appropriate modules or direct to applications
@@ -283,7 +285,7 @@ Each module independently scalable based on traffic demands (traffic control han
 - **ALB (Application L7)**: HTTP/HTTPS/gRPC applications, 40+ Gbps throughput
 - **Egress (Secure Egress)**: Egress traffic control with threat intelligence, TLS interception, IP/domain/URL blocking
 - **DBLB (Database)**: Database traffic load balancing with query awareness
-- **AILB (Artificial Intelligence)**: AI model inference routing and optimization
+- **AILB (Artificial Intelligence, Go)**: AI model inference routing and optimization with gRPC inter-service communication
 - **RTMP (Media Streaming)**: x265 codec by default with x264 backwards compatibility
 
 **All downstream modules share:**
@@ -292,6 +294,7 @@ Each module independently scalable based on traffic demands (traffic control han
 - Configuration Sync: Hot-reload without connection drops
 - Zero-Copy Networking: AF_XDP support for ultra-low latency
 - Lightweight Design: Traffic control handled upstream by NLB
+- OpenTelemetry Tracing: W3C Trace Context propagation with span attributes (user_id, tenant_id, api_version)
 
 ### Performance Tiers
 1. **Standard Networking**: Traditional kernel socket processing (~1 Gbps)
