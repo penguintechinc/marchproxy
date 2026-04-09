@@ -19,12 +19,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/spf13/cobra"
 	"marchproxy-egress/internal/auth"
 	"marchproxy-egress/internal/config"
 	"marchproxy-egress/internal/ebpf"
+	"marchproxy-egress/internal/levers"
 	"marchproxy-egress/internal/manager"
+	"marchproxy-egress/internal/oidc"
 	mtls "marchproxy-egress/internal/tls"
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -90,12 +92,12 @@ func runProxy(cmd *cobra.Command, args []string) {
 	if err != nil {
 		fmt.Printf("Warning: Failed to check license status: %v\n", err)
 	} else {
-		fmt.Printf("License: %s (%s) - Proxies: %d/%d\n", 
-			licenseStatus.Edition, 
+		fmt.Printf("License: %s (%s) - Proxies: %d/%d\n",
+			licenseStatus.Edition,
 			map[bool]string{true: "Valid", false: "Invalid"}[licenseStatus.Valid],
 			licenseStatus.CurrentProxies,
 			licenseStatus.MaxProxies)
-		
+
 		if !licenseStatus.CanRegister {
 			fmt.Printf("Error: Cannot register - proxy limit reached or license invalid\n")
 			os.Exit(1)
@@ -163,7 +165,28 @@ func runProxy(cmd *cobra.Command, args []string) {
 			ebpfManager.UpdateMappings(initialConfig.Mappings)
 		}
 	}
-	
+
+	// Start levers API if enabled (receives compiled rule pushes from hub-policy controller)
+	if cfg.Levers.Enabled {
+		oidcValidator := oidc.New()
+		enforcer := levers.NewEnforcer(nil) // nil = no eBPF manager yet (stub)
+		leversServer := levers.NewServer(enforcer, oidcValidator)
+
+		mux := http.NewServeMux()
+		leversServer.RegisterRoutes(mux)
+
+		go func() {
+			addr := cfg.Levers.ListenAddr
+			if addr == "" {
+				addr = ":9003"
+			}
+			fmt.Printf("Starting levers API on %s\n", addr)
+			if err := http.ListenAndServe(addr, mux); err != nil {
+				fmt.Printf("Error: Levers API server failed: %v\n", err)
+			}
+		}()
+	}
+
 	// Initialize TCP proxy server
 	fmt.Printf("Starting TCP proxy server on port %d...\n", cfg.ListenPort)
 	tcpProxyServer := &TCPProxy{
@@ -175,7 +198,7 @@ func runProxy(cmd *cobra.Command, args []string) {
 		ebpfManager:   ebpfManager,
 		mtlsManager:   mtlsManager,
 	}
-	
+
 	// Initialize UDP proxy server
 	fmt.Printf("Starting UDP proxy server on port %d...\n", cfg.ListenPort+1000) // UDP on different port
 	udpProxyServer := &UDPProxy{
@@ -193,7 +216,7 @@ func runProxy(cmd *cobra.Command, args []string) {
 		fmt.Printf("Configuration updated - Version: %s\n", config.Version)
 		tcpProxyServer.updateConfiguration(config)
 		udpProxyServer.updateConfiguration(config)
-		
+
 		// Update eBPF maps
 		if ebpfManager.IsEnabled() {
 			ebpfManager.UpdateServices(config.Services)
@@ -214,7 +237,7 @@ func runProxy(cmd *cobra.Command, args []string) {
 			cancel()
 		}
 	}()
-	
+
 	// Start UDP proxy server in goroutine
 	go func() {
 		if err := udpProxyServer.Start(ctx); err != nil {
@@ -314,26 +337,26 @@ func (p *TCPProxy) Start(ctx context.Context) error {
 	}
 
 	p.listener = listener
-	
+
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			p.mu.RLock()
 			stopping := p.stopping
 			p.mu.RUnlock()
-			
+
 			if stopping {
 				break
 			}
-			
+
 			fmt.Printf("Accept error: %v\n", err)
 			continue
 		}
-		
+
 		p.wg.Add(1)
 		go p.handleConnection(conn)
 	}
-	
+
 	return nil
 }
 
@@ -342,11 +365,11 @@ func (p *TCPProxy) Stop() {
 	p.mu.Lock()
 	p.stopping = true
 	p.mu.Unlock()
-	
+
 	if p.listener != nil {
 		p.listener.Close()
 	}
-	
+
 	p.wg.Wait()
 }
 
@@ -354,19 +377,19 @@ func (p *TCPProxy) Stop() {
 func (p *TCPProxy) handleConnection(clientConn net.Conn) {
 	defer p.wg.Done()
 	defer clientConn.Close()
-	
+
 	// Update metrics
 	p.metrics.mu.Lock()
 	p.metrics.TCPConnections++
 	p.metrics.ActiveConnections++
 	p.metrics.mu.Unlock()
-	
+
 	defer func() {
 		p.metrics.mu.Lock()
 		p.metrics.ActiveConnections--
 		p.metrics.mu.Unlock()
 	}()
-	
+
 	fmt.Printf("New connection from %s\n", clientConn.RemoteAddr())
 
 	// Log mTLS connection details if enabled
@@ -399,7 +422,7 @@ func (p *TCPProxy) handleConnection(clientConn net.Conn) {
 		dstIP := ipStringToUint32(getIPFromAddr(clientConn.LocalAddr()))
 		srcPort := uint16(getPortFromAddr(clientConn.RemoteAddr()))
 		dstPort := uint16(getPortFromAddr(clientConn.LocalAddr()))
-		
+
 		// Check if this connection should be handled in userspace
 		if !p.ebpfManager.ShouldFallbackToUserspace(srcIP, dstIP, srcPort, dstPort, 6) { // TCP = 6
 			// eBPF should handle this - close connection as eBPF will forward
@@ -408,14 +431,14 @@ func (p *TCPProxy) handleConnection(clientConn net.Conn) {
 		}
 		fmt.Printf("eBPF fallback: handling in userspace %s\n", clientConn.RemoteAddr())
 	}
-	
+
 	// Find a matching mapping for this connection
 	mapping := p.findMatchingMapping()
 	if mapping == nil {
 		fmt.Printf("No mapping found for connection from %s\n", clientConn.RemoteAddr())
 		return
 	}
-	
+
 	// Check if authentication is required for this mapping
 	if mapping.AuthRequired {
 		if err := p.handleAuthentication(clientConn, mapping); err != nil {
@@ -423,14 +446,14 @@ func (p *TCPProxy) handleConnection(clientConn net.Conn) {
 			return
 		}
 	}
-	
+
 	// Find destination service
 	destService := p.findDestinationService(mapping)
 	if destService == nil {
 		fmt.Printf("No destination service found for mapping %s\n", mapping.Name)
 		return
 	}
-	
+
 	// Connect to destination - use mapping ports or default to 80
 	destPort := p.getDestinationPort(mapping)
 	destAddr := fmt.Sprintf("%s:%d", destService.IPFQDN, destPort)
@@ -480,31 +503,31 @@ func (p *TCPProxy) handleConnection(clientConn net.Conn) {
 		}
 	}
 	defer destConn.Close()
-	
-	fmt.Printf("Proxying connection from %s to %s (%s)\n", 
+
+	fmt.Printf("Proxying connection from %s to %s (%s)\n",
 		clientConn.RemoteAddr(), destAddr, destService.Name)
-	
+
 	// Start bidirectional forwarding
 	errChan := make(chan error, 2)
-	
+
 	// Forward client -> server
 	go func() {
 		_, err := io.Copy(destConn, clientConn)
 		errChan <- err
 	}()
-	
+
 	// Forward server -> client
 	go func() {
 		_, err := io.Copy(clientConn, destConn)
 		errChan <- err
 	}()
-	
+
 	// Wait for either direction to close
 	err = <-errChan
 	if err != nil && err != io.EOF {
 		fmt.Printf("Proxy error: %v\n", err)
 	}
-	
+
 	fmt.Printf("Connection from %s to %s closed\n", clientConn.RemoteAddr(), destAddr)
 }
 
@@ -515,7 +538,7 @@ func (p *TCPProxy) handleAuthentication(conn net.Conn, mapping *manager.Mapping)
 	if _, err := conn.Write([]byte(authMsg)); err != nil {
 		return fmt.Errorf("failed to send auth challenge: %w", err)
 	}
-	
+
 	// Read authentication response
 	reader := bufio.NewReader(conn)
 	responseLine, err := reader.ReadString('\n')
@@ -523,20 +546,20 @@ func (p *TCPProxy) handleAuthentication(conn net.Conn, mapping *manager.Mapping)
 		return fmt.Errorf("failed to read auth response: %w", err)
 	}
 	response := strings.TrimSpace(responseLine)
-	
+
 	// Parse service ID and token
 	parts := strings.SplitN(response, ":", 2)
 	if len(parts) != 2 {
 		return fmt.Errorf("invalid auth format, expected SERVICE_ID:TOKEN")
 	}
-	
+
 	var serviceID int
 	if _, err := fmt.Sscanf(parts[0], "%d", &serviceID); err != nil {
 		return fmt.Errorf("invalid service ID: %w", err)
 	}
-	
+
 	token := parts[1]
-	
+
 	// Verify service ID is allowed for this mapping
 	allowed := false
 	for _, allowedServiceID := range mapping.SourceServices {
@@ -545,11 +568,11 @@ func (p *TCPProxy) handleAuthentication(conn net.Conn, mapping *manager.Mapping)
 			break
 		}
 	}
-	
+
 	if !allowed {
 		return fmt.Errorf("service %d not allowed for mapping %s", serviceID, mapping.Name)
 	}
-	
+
 	// Authenticate the service
 	if err := p.authenticator.AuthenticateService(serviceID, token); err != nil {
 		p.metrics.mu.Lock()
@@ -557,16 +580,16 @@ func (p *TCPProxy) handleAuthentication(conn net.Conn, mapping *manager.Mapping)
 		p.metrics.mu.Unlock()
 		return fmt.Errorf("authentication failed: %w", err)
 	}
-	
+
 	p.metrics.mu.Lock()
 	p.metrics.AuthSuccesses++
 	p.metrics.mu.Unlock()
-	
+
 	// Send success response
 	if _, err := conn.Write([]byte("AUTH_OK\n")); err != nil {
 		return fmt.Errorf("failed to send auth success: %w", err)
 	}
-	
+
 	fmt.Printf("Authentication successful for service %d from %s\n", serviceID, conn.RemoteAddr())
 	return nil
 }
@@ -575,11 +598,11 @@ func (p *TCPProxy) handleAuthentication(conn net.Conn, mapping *manager.Mapping)
 func (p *TCPProxy) findMatchingMapping() *manager.Mapping {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	
+
 	if p.clusterConfig == nil {
 		return nil
 	}
-	
+
 	// For now, return the first mapping with TCP protocol support
 	for _, mapping := range p.clusterConfig.Mappings {
 		for _, protocol := range mapping.Protocols {
@@ -588,7 +611,7 @@ func (p *TCPProxy) findMatchingMapping() *manager.Mapping {
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -596,11 +619,11 @@ func (p *TCPProxy) findMatchingMapping() *manager.Mapping {
 func (p *TCPProxy) findDestinationService(mapping *manager.Mapping) *manager.Service {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	
+
 	if p.clusterConfig == nil {
 		return nil
 	}
-	
+
 	// Find first available destination service
 	for _, serviceID := range mapping.DestServices {
 		for _, service := range p.clusterConfig.Services {
@@ -609,7 +632,7 @@ func (p *TCPProxy) findDestinationService(mapping *manager.Mapping) *manager.Ser
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -620,20 +643,20 @@ func (p *TCPProxy) getDestinationPort(mapping *manager.Mapping) int {
 	if ports == "" {
 		return 80 // Default to HTTP port
 	}
-	
+
 	// For now, just parse single port or take first port from list
 	var port int
 	if _, err := fmt.Sscanf(ports, "%d", &port); err == nil {
 		return port
 	}
-	
+
 	// If parsing fails, check for comma-separated list
 	if parts := strings.Split(ports, ","); len(parts) > 0 {
 		if _, err := fmt.Sscanf(strings.TrimSpace(parts[0]), "%d", &port); err == nil {
 			return port
 		}
 	}
-	
+
 	// Default to port 80 if all parsing fails
 	return 80
 }
@@ -642,11 +665,11 @@ func (p *TCPProxy) getDestinationPort(mapping *manager.Mapping) int {
 func (p *TCPProxy) updateConfiguration(config *manager.ClusterConfig) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	
+
 	p.clusterConfig = config
 	p.authenticator.UpdateServices(config.Services)
-	
-	fmt.Printf("Proxy configuration updated - Services: %d, Mappings: %d\n", 
+
+	fmt.Printf("Proxy configuration updated - Services: %d, Mappings: %d\n",
 		len(config.Services), len(config.Mappings))
 }
 
@@ -670,25 +693,25 @@ func (p *UDPProxy) Start(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to resolve UDP address: %w", err)
 	}
-	
+
 	conn, err := net.ListenUDP("udp", udpAddr)
 	if err != nil {
 		return fmt.Errorf("failed to listen on UDP %s: %w", udpAddr, err)
 	}
-	
+
 	p.conn = conn
 	fmt.Printf("UDP proxy listening on %s\n", udpAddr)
-	
+
 	buffer := make([]byte, 4096)
 	for {
 		p.mu.RLock()
 		stopping := p.stopping
 		p.mu.RUnlock()
-		
+
 		if stopping {
 			break
 		}
-		
+
 		n, clientAddr, err := conn.ReadFromUDP(buffer)
 		if err != nil {
 			if stopping {
@@ -697,11 +720,11 @@ func (p *UDPProxy) Start(ctx context.Context) error {
 			fmt.Printf("UDP read error: %v\n", err)
 			continue
 		}
-		
+
 		// Handle UDP packet in goroutine for concurrency
 		go p.handleUDPPacket(buffer[:n], clientAddr)
 	}
-	
+
 	return nil
 }
 
@@ -710,7 +733,7 @@ func (p *UDPProxy) Stop() {
 	p.mu.Lock()
 	p.stopping = true
 	p.mu.Unlock()
-	
+
 	if p.conn != nil {
 		p.conn.Close()
 	}
@@ -723,23 +746,23 @@ func (p *UDPProxy) handleUDPPacket(data []byte, clientAddr *net.UDPAddr) {
 	p.metrics.UDPPackets++
 	p.metrics.BytesTransferred += int64(len(data))
 	p.metrics.mu.Unlock()
-	
+
 	fmt.Printf("UDP packet from %s, size: %d bytes\n", clientAddr, len(data))
-	
+
 	// Find a matching mapping for UDP traffic
 	mapping := p.findMatchingUDPMapping()
 	if mapping == nil {
 		fmt.Printf("No UDP mapping found for packet from %s\n", clientAddr)
 		return
 	}
-	
+
 	// Find destination service
 	destService := p.findDestinationService(mapping)
 	if destService == nil {
 		fmt.Printf("No destination service found for UDP mapping %s\n", mapping.Name)
 		return
 	}
-	
+
 	// For UDP, we don't have persistent connections, so we forward each packet individually
 	destPort := p.getDestinationPort(mapping)
 	destAddr := fmt.Sprintf("%s:%d", destService.IPFQDN, destPort)
@@ -748,7 +771,7 @@ func (p *UDPProxy) handleUDPPacket(data []byte, clientAddr *net.UDPAddr) {
 		fmt.Printf("Failed to resolve destination UDP address %s: %v\n", destAddr, err)
 		return
 	}
-	
+
 	// Create a connection to destination
 	destConn, err := net.DialUDP("udp", nil, destUDPAddr)
 	if err != nil {
@@ -756,14 +779,14 @@ func (p *UDPProxy) handleUDPPacket(data []byte, clientAddr *net.UDPAddr) {
 		return
 	}
 	defer destConn.Close()
-	
+
 	// Forward the packet
 	_, err = destConn.Write(data)
 	if err != nil {
 		fmt.Printf("Failed to forward UDP packet to %s: %v\n", destAddr, err)
 		return
 	}
-	
+
 	// Read response
 	responseBuffer := make([]byte, 4096)
 	destConn.SetReadDeadline(time.Now().Add(5 * time.Second))
@@ -772,19 +795,19 @@ func (p *UDPProxy) handleUDPPacket(data []byte, clientAddr *net.UDPAddr) {
 		fmt.Printf("Failed to read UDP response from %s: %v\n", destAddr, err)
 		return
 	}
-	
+
 	// Send response back to client
 	_, err = p.conn.WriteToUDP(responseBuffer[:n], clientAddr)
 	if err != nil {
 		fmt.Printf("Failed to send UDP response to %s: %v\n", clientAddr, err)
 		return
 	}
-	
+
 	// Update response metrics
 	p.metrics.mu.Lock()
 	p.metrics.BytesTransferred += int64(n)
 	p.metrics.mu.Unlock()
-	
+
 	fmt.Printf("UDP packet forwarded: %s -> %s -> %s\n", clientAddr, destAddr, clientAddr)
 }
 
@@ -792,11 +815,11 @@ func (p *UDPProxy) handleUDPPacket(data []byte, clientAddr *net.UDPAddr) {
 func (p *UDPProxy) findMatchingUDPMapping() *manager.Mapping {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	
+
 	if p.clusterConfig == nil {
 		return nil
 	}
-	
+
 	// For now, return the first mapping with UDP protocol support
 	for _, mapping := range p.clusterConfig.Mappings {
 		for _, protocol := range mapping.Protocols {
@@ -805,7 +828,7 @@ func (p *UDPProxy) findMatchingUDPMapping() *manager.Mapping {
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -813,11 +836,11 @@ func (p *UDPProxy) findMatchingUDPMapping() *manager.Mapping {
 func (p *UDPProxy) findDestinationService(mapping *manager.Mapping) *manager.Service {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	
+
 	if p.clusterConfig == nil {
 		return nil
 	}
-	
+
 	// Find first available destination service
 	for _, serviceID := range mapping.DestServices {
 		for _, service := range p.clusterConfig.Services {
@@ -826,7 +849,7 @@ func (p *UDPProxy) findDestinationService(mapping *manager.Mapping) *manager.Ser
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -837,20 +860,20 @@ func (p *UDPProxy) getDestinationPort(mapping *manager.Mapping) int {
 	if ports == "" {
 		return 53 // Default to DNS port for UDP
 	}
-	
+
 	// For now, just parse single port or take first port from list
 	var port int
 	if _, err := fmt.Sscanf(ports, "%d", &port); err == nil {
 		return port
 	}
-	
+
 	// If parsing fails, check for comma-separated list
 	if parts := strings.Split(ports, ","); len(parts) > 0 {
 		if _, err := fmt.Sscanf(strings.TrimSpace(parts[0]), "%d", &port); err == nil {
 			return port
 		}
 	}
-	
+
 	// Default to port 53 if all parsing fails
 	return 53
 }
@@ -859,7 +882,7 @@ func (p *UDPProxy) getDestinationPort(mapping *manager.Mapping) int {
 func (p *UDPProxy) updateConfiguration(config *manager.ClusterConfig) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	
+
 	p.clusterConfig = config
 	p.authenticator.UpdateServices(config.Services)
 }
@@ -867,7 +890,7 @@ func (p *UDPProxy) updateConfiguration(config *manager.ClusterConfig) {
 // startAdminServer starts the admin/metrics HTTP server
 func startAdminServer(port int, metrics *ProxyMetrics, ebpfMgr *ebpf.Manager, mtlsMgr *mtls.MTLSManager) error {
 	mux := http.NewServeMux()
-	
+
 	// Health check endpoint
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -883,7 +906,7 @@ func startAdminServer(port int, metrics *ProxyMetrics, ebpfMgr *ebpf.Manager, mt
 
 		fmt.Fprintf(w, `{"status":"healthy","version":"%s","mtls":"%s"}`, version, mtlsStatus)
 	})
-	
+
 	// Comprehensive metrics endpoint
 	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
 		metrics.mu.RLock()
@@ -894,39 +917,39 @@ func startAdminServer(port int, metrics *ProxyMetrics, ebpfMgr *ebpf.Manager, mt
 		authFailures := metrics.AuthFailures
 		activeConnections := metrics.ActiveConnections
 		metrics.mu.RUnlock()
-		
+
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
-		
+
 		// TCP connection metrics
 		fmt.Fprintf(w, "# HELP marchproxy_tcp_connections_total Total number of TCP connections\n")
 		fmt.Fprintf(w, "# TYPE marchproxy_tcp_connections_total counter\n")
 		fmt.Fprintf(w, "marchproxy_tcp_connections_total %d\n", tcpConnections)
-		
+
 		// UDP packet metrics
 		fmt.Fprintf(w, "# HELP marchproxy_udp_packets_total Total number of UDP packets\n")
 		fmt.Fprintf(w, "# TYPE marchproxy_udp_packets_total counter\n")
 		fmt.Fprintf(w, "marchproxy_udp_packets_total %d\n", udpPackets)
-		
+
 		// Bytes transferred metrics
 		fmt.Fprintf(w, "# HELP marchproxy_bytes_transferred_total Total bytes transferred\n")
 		fmt.Fprintf(w, "# TYPE marchproxy_bytes_transferred_total counter\n")
 		fmt.Fprintf(w, "marchproxy_bytes_transferred_total %d\n", bytesTransferred)
-		
+
 		// Authentication metrics
 		fmt.Fprintf(w, "# HELP marchproxy_auth_successes_total Total successful authentications\n")
 		fmt.Fprintf(w, "# TYPE marchproxy_auth_successes_total counter\n")
 		fmt.Fprintf(w, "marchproxy_auth_successes_total %d\n", authSuccesses)
-		
+
 		fmt.Fprintf(w, "# HELP marchproxy_auth_failures_total Total failed authentications\n")
 		fmt.Fprintf(w, "# TYPE marchproxy_auth_failures_total counter\n")
 		fmt.Fprintf(w, "marchproxy_auth_failures_total %d\n", authFailures)
-		
+
 		// Active connections gauge
 		fmt.Fprintf(w, "# HELP marchproxy_active_connections Current number of active connections\n")
 		fmt.Fprintf(w, "# TYPE marchproxy_active_connections gauge\n")
 		fmt.Fprintf(w, "marchproxy_active_connections %d\n", activeConnections)
-		
+
 		// Version information
 		fmt.Fprintf(w, "# HELP marchproxy_version_info Version information\n")
 		fmt.Fprintf(w, "# TYPE marchproxy_version_info gauge\n")
@@ -968,33 +991,33 @@ func startAdminServer(port int, metrics *ProxyMetrics, ebpfMgr *ebpf.Manager, mt
 		// eBPF metrics
 		if ebpfMgr != nil && ebpfMgr.IsEnabled() {
 			ebpfProxyStats, ebpfStats := ebpfMgr.GetStats()
-			
+
 			fmt.Fprintf(w, "# HELP marchproxy_ebpf_enabled Whether eBPF acceleration is enabled\n")
 			fmt.Fprintf(w, "# TYPE marchproxy_ebpf_enabled gauge\n")
 			fmt.Fprintf(w, "marchproxy_ebpf_enabled %d\n", map[bool]int{true: 1, false: 0}[ebpfStats.ProgramLoaded])
-			
+
 			fmt.Fprintf(w, "# HELP marchproxy_ebpf_total_packets Total packets processed by eBPF\n")
 			fmt.Fprintf(w, "# TYPE marchproxy_ebpf_total_packets counter\n")
 			fmt.Fprintf(w, "marchproxy_ebpf_total_packets %d\n", ebpfProxyStats.TotalPackets)
-			
+
 			fmt.Fprintf(w, "# HELP marchproxy_ebpf_dropped_packets Packets dropped by eBPF\n")
 			fmt.Fprintf(w, "# TYPE marchproxy_ebpf_dropped_packets counter\n")
 			fmt.Fprintf(w, "marchproxy_ebpf_dropped_packets %d\n", ebpfProxyStats.DroppedPackets)
-			
+
 			fmt.Fprintf(w, "# HELP marchproxy_ebpf_forwarded_packets Packets forwarded by eBPF\n")
 			fmt.Fprintf(w, "# TYPE marchproxy_ebpf_forwarded_packets counter\n")
 			fmt.Fprintf(w, "marchproxy_ebpf_forwarded_packets %d\n", ebpfProxyStats.ForwardedPackets)
-			
+
 			fmt.Fprintf(w, "# HELP marchproxy_ebpf_userspace_fallback Packets sent to userspace\n")
 			fmt.Fprintf(w, "# TYPE marchproxy_ebpf_userspace_fallback counter\n")
 			fmt.Fprintf(w, "marchproxy_ebpf_userspace_fallback %d\n", ebpfProxyStats.FallbackToUserspace)
-			
+
 			fmt.Fprintf(w, "# HELP marchproxy_ebpf_map_sync_errors eBPF map synchronization errors\n")
 			fmt.Fprintf(w, "# TYPE marchproxy_ebpf_map_sync_errors counter\n")
 			fmt.Fprintf(w, "marchproxy_ebpf_map_sync_errors %d\n", ebpfStats.MapSyncErrors)
 		}
 	})
-	
+
 	// Stats endpoint for easy debugging
 	mux.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
 		metrics.mu.RLock()
@@ -1005,10 +1028,10 @@ func startAdminServer(port int, metrics *ProxyMetrics, ebpfMgr *ebpf.Manager, mt
 		authFailures := metrics.AuthFailures
 		activeConnections := metrics.ActiveConnections
 		metrics.mu.RUnlock()
-		
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		
+
 		ebpfSection := ""
 		if ebpfMgr != nil && ebpfMgr.IsEnabled() {
 			ebpfProxyStats, ebpfStats := ebpfMgr.GetStats()
@@ -1027,7 +1050,7 @@ func startAdminServer(port int, metrics *ProxyMetrics, ebpfMgr *ebpf.Manager, mt
 				ebpfProxyStats.FallbackToUserspace, ebpfStats.MapSyncErrors,
 				len(ebpfStats.AttachedInterfaces))
 		}
-		
+
 		fmt.Fprintf(w, `{
 	"version": "%s",
 	"tcp_connections": %d,
@@ -1039,12 +1062,12 @@ func startAdminServer(port int, metrics *ProxyMetrics, ebpfMgr *ebpf.Manager, mt
 }`, version, tcpConnections, udpPackets, bytesTransferred,
 			authSuccesses, authFailures, activeConnections, ebpfSection)
 	})
-	
+
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
 		Handler: mux,
 	}
-	
+
 	fmt.Printf("Admin server listening on :%d\n", port)
 	fmt.Printf("Endpoints: /healthz, /metrics, /stats\n")
 	return server.ListenAndServe()

@@ -79,6 +79,12 @@ type AccessControlConfig struct {
 	DefaultAllow       bool `mapstructure:"default_allow"`
 }
 
+// LeversConfig configures the levers API push-receiver endpoint.
+type LeversConfig struct {
+	Enabled    bool   `mapstructure:"enabled" yaml:"enabled"`
+	ListenAddr string `mapstructure:"listen_addr" yaml:"listen_addr"`
+}
+
 // Config holds all configuration for the proxy server
 type Config struct {
 	// Manager connection
@@ -160,6 +166,9 @@ type Config struct {
 
 	// Access Control Configuration (authentication-based restrictions)
 	AccessControl AccessControlConfig `mapstructure:"access_control"`
+
+	// Levers API Configuration (rule push-receiver)
+	Levers LeversConfig `mapstructure:"levers"`
 }
 
 // NewConfig creates a new configuration with default values
@@ -226,6 +235,12 @@ func NewConfig() *Config {
 			Enabled:            false,
 			DefaultRequireAuth: false,
 			DefaultAllow:       true,
+		},
+
+		// Levers API defaults
+		Levers: LeversConfig{
+			Enabled:    false,
+			ListenAddr: ":9003",
 		},
 	}
 	return config
