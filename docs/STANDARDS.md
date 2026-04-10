@@ -9,7 +9,7 @@ Welcome to the Penguin Tech standards hub! 🐧 This is your go-to resource for 
 Ready to build something great? Here's your quick-start checklist:
 
 - Read your language selection criteria (Python vs Go)
-- Set up Flask-Security-Too for authentication
+- Set up penguin-aaa for authentication
 - Pick your database (PostgreSQL recommended)
 - Design your APIs with versioning in mind
 - Run the pre-commit checks before pushing code
@@ -54,7 +54,7 @@ All permission checks use **OIDC-style claims and scopes** — no ad-hoc role st
 [Learn more](standards/AUTHENTICATION.md) | [Security details](standards/SECURITY.md)
 
 ### 3. Database: Multi-DB Support by Default
-Use PyDAL for runtime operations (required) and SQLAlchemy for schema creation. We support PostgreSQL (your default), MySQL, MariaDB Galera, and SQLite. Choose via the `DB_TYPE` environment variable. **Database migrations must be applied before deploying new code** to any environment.
+Use penguin-dal for runtime operations (required) and SQLAlchemy for schema creation. We support PostgreSQL (your default), MySQL, MariaDB Galera, and SQLite. Choose via the `DB_TYPE` environment variable. **Database migrations must be applied before deploying new code** to any environment. Go services use go-common's LogrusAdapter for structured logging (wraps Zap, provides sanitized output).
 
 > **Key insight**: Pick PostgreSQL unless you have a specific reason not to. It's rock solid.
 

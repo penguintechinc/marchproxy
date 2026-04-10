@@ -999,6 +999,32 @@ def create_service(service_data):
         return service
 ```
 
+## Structured Logging (Go Services)
+
+All Go proxy services use the **go-common LogrusAdapter** for structured logging. This wraps Zap (high-performance logger) with a Logrus-compatible API, providing:
+
+- **Sanitized output**: Automatic PII/credential scrubbing from log fields
+- **Structured fields**: JSON output in production, human-readable in development
+- **Standard levels**: DEBUG, INFO, WARN, ERROR with caller information
+
+### Usage
+
+```go
+import "marchproxy/internal/logging"
+
+logger := logging.NewAdapter("proxy-egress")
+logger.WithField("tenant_id", tenantID).Info("Connection established")
+logger.WithError(err).Error("Failed to route request")
+```
+
+### Environment Variables
+
+```bash
+LOG_LEVEL=info          # debug | info | warn | error
+LOG_FORMAT=json         # json | text
+LOG_SANITIZE=true       # Enable PII scrubbing (default: true)
+```
+
 ## Centralized Logging
 
 ### ELK Stack Configuration

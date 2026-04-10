@@ -45,8 +45,15 @@ MarchProxy uses a unified Network Load Balancer (NLB) architecture with modular 
 - **proxy-nlb**: Network Load Balancer (Go + eBPF)
 - **proxy-alb**: Application Load Balancer (Envoy L7)
 - **proxy-dblb**: Database Load Balancer (Go) - *Optional*
-- **proxy-ailb**: AI/LLM Load Balancer (Go) - *Optional*
+- **proxy-ailb**: AI/LLM Load Balancer (Go) providing AI load balancing with provider routing (OpenAI, Anthropic, Ollama, Mistral, Gemini, WaddleAI). Exposes REST on :8080 and gRPC on :50051. - *Optional*
 - **proxy-rtmp**: Video Transcoding (Go + FFmpeg) - *Optional*
+
+### Rate Limiting
+
+API rate limiting is enforced by penguin-limiter middleware (sliding window, 100 req/min default, private IP bypass). Response headers:
+- `X-RateLimit-Limit`: Maximum requests per minute
+- `X-RateLimit-Remaining`: Requests remaining in current window
+- `Retry-After`: Seconds to wait before retry (when rate limited)
 
 ---
 

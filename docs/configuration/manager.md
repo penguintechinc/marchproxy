@@ -4,7 +4,7 @@ This guide covers comprehensive configuration options for the MarchProxy Manager
 
 ## Overview
 
-The MarchProxy Manager is the central control plane component built on Quart/PyDAL that handles:
+The MarchProxy Manager is the central control plane component built on Quart that handles:
 
 - User authentication and authorization
 - Service and mapping configuration
@@ -133,12 +133,27 @@ server:
 
 ### Authentication Settings
 
+**penguin-aaa OIDC Configuration (Environment Variables):**
+
+```bash
+# OIDC Provider Configuration
+OIDC_ISSUER=https://<your-auth-server>
+OIDC_CLIENT_ID=marchproxy-manager
+JWT_SECRET_KEY=<secret>
+JWT_ALGORITHM=HS256
+```
+
+**YAML Configuration:**
+
 ```yaml
 security:
-  # JWT configuration
-  jwt_secret: "your-256-bit-secret-key-here"  # Generate with: openssl rand -base64 32
-  jwt_algorithm: "HS256"                      # JWT signing algorithm
-  jwt_expiry: 86400                          # Token expiry in seconds (24 hours)
+  # OIDC configuration (via penguin-aaa)
+  oidc:
+    issuer: "https://<your-auth-server>"    # OIDC issuer URL
+    client_id: "marchproxy-manager"         # Client ID
+    jwt_secret_key: "<secret>"              # JWT signing secret
+    jwt_algorithm: "HS256"                  # JWT signing algorithm
+    jwt_expiry: 86400                       # Token expiry in seconds (24 hours)
 
   # Session configuration
   session_secret: "your-session-secret-key"   # Session encryption key
@@ -626,8 +641,13 @@ export MARCHPROXY_SERVER_HOST="0.0.0.0"
 export MARCHPROXY_SERVER_PORT="8000"
 export MARCHPROXY_SERVER_WORKERS="4"
 
+# OIDC configuration (penguin-aaa)
+export OIDC_ISSUER="https://<your-auth-server>"
+export OIDC_CLIENT_ID="marchproxy-manager"
+export JWT_SECRET_KEY="your-secret-key"
+export JWT_ALGORITHM="HS256"
+
 # Security configuration
-export MARCHPROXY_SECURITY_JWT_SECRET="your-secret-key"
 export MARCHPROXY_SECURITY_SESSION_SECRET="your-session-secret"
 
 # License configuration
@@ -682,7 +702,11 @@ server:
   reload: true
 
 security:
-  jwt_secret: "dev-secret-key-not-for-production"
+  oidc:
+    issuer: "https://auth-dev.penguintech.io"
+    client_id: "marchproxy-manager-dev"
+    jwt_secret_key: "dev-secret-key-not-for-production"
+    jwt_algorithm: "HS256"
   session_secret: "dev-session-secret"
   password_hash_rounds: 4
 
@@ -718,7 +742,11 @@ server:
   workers: 8
 
 security:
-  jwt_secret: "${JWT_SECRET}"
+  oidc:
+    issuer: "${OIDC_ISSUER}"
+    client_id: "marchproxy-manager"
+    jwt_secret_key: "${JWT_SECRET_KEY}"
+    jwt_algorithm: "HS256"
   session_secret: "${SESSION_SECRET}"
   password_hash_rounds: 12
   login_rate_limit: "3/minute"

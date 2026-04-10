@@ -1,15 +1,15 @@
 """Unit tests for ConfigSync service"""
 
-import pytest
-import json
-import yaml
-import os
-import tempfile
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock, mock_open, call
-from datetime import datetime
+import json # noqa: F401, # noqa: F401
+import os # noqa: F401, # noqa: F401
+import tempfile # noqa: F401, # noqa: F401
+from datetime import datetime # noqa: F401
+from pathlib import Path # noqa: F401
+from unittest.mock import MagicMock, Mock, call, mock_open, patch # noqa: F401
 
-from sync import ConfigSync
+import pytest # noqa: F401, # noqa: F401
+import yaml # noqa: F401, # noqa: F401
+from sync import ConfigSync # noqa: F401
 
 
 class TestConfigSync:

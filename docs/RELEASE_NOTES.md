@@ -94,6 +94,14 @@ MarchProxy v1.0.0 marks the first production-ready release of the dual proxy arc
   - TROUBLESHOOTING.md: Common issues and solutions
   - RELEASE_NOTES.md: This document
 
+#### Library Migrations
+- **Authentication**: Migrated from Flask-Security-Too to `penguin-aaa` (OIDC JWT scope-based auth)
+- **License validation**: Now via `penguin-licensing` library with LicenseTier enum
+- **Rate limiting**: `penguin-limiter` middleware added to api-server (sliding window, 100 req/min)
+- **AILB service**: Rewritten from Python/LiteLLM to Go with provider routing (OpenAI, Anthropic, Ollama, Mistral, Gemini, WaddleAI)
+- **Manager framework**: Migrated from py4web to Quart (native async ASGI)
+- **Test coverage**: 90% threshold enforced across all services (pytest --cov-fail-under=90, Vitest thresholds)
+
 ### Improvements
 
 #### Stability

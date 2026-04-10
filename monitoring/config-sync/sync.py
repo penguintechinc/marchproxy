@@ -4,14 +4,15 @@ Configuration synchronization service for MarchProxy monitoring.
 Pulls configuration from the manager and updates monitoring service configs.
 """
 
-import os
-import json
-import time
-import requests
-import logging
-import yaml
-from pathlib import Path
-from typing import Dict, Any
+import json # noqa: F401, # noqa: F401
+import logging # noqa: F401, # noqa: F401
+import os # noqa: F401, # noqa: F401
+import time # noqa: F401, # noqa: F401
+from pathlib import Path # noqa: F401
+from typing import Any, Dict # noqa: F401
+
+import requests # noqa: F401, # noqa: F401
+import yaml # noqa: F401, # noqa: F401
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
