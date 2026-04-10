@@ -36,9 +36,9 @@ MVP/prototype? 🐍
 
 | Scenario | Choice | Why |
 |----------|--------|-----|
-| Building a REST API for a SaaS app | 🐍 Python | Flask + penguin-dal = shipped in days |
+| Building a REST API for a SaaS app | 🐍 Python | Flask + PyDAL = shipped in days |
 | Processing uploaded files in background | 🐍 Python | Celery/threads work smoothly |
-| Multi-tenant platform with teams | 🐍 Python | penguin-aaa handles complexity |
+| Multi-tenant platform with teams | 🐍 Python | Flask-Security-Too handles complexity |
 | Reporting engine with 2K users | 🐍 Python | Totally fine, even with querying |
 | Admin panel reading from 5 APIs | 🐍 Python | Async Python handles the I/O perfectly |
 
@@ -48,7 +48,7 @@ MVP/prototype? 🐍
 ✅ **Rich Ecosystem**: Pre-built solutions for almost everything
 ✅ **Maintainability**: Your team can actually understand it
 ✅ **Debugging**: Clear error messages, easy to troubleshoot
-✅ **Data Processing**: NumPy, Pandas, penguin-dal excellence
+✅ **Data Processing**: NumPy, Pandas, PyDAL excellence
 ✅ **Low Infrastructure Burden**: Flask is lightweight
 
 ### Gotchas (Honest Truth)

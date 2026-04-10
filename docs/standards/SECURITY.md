@@ -17,13 +17,13 @@ query = f"SELECT * FROM users WHERE username = '{user_input}'"
 
 Someone types: `' OR '1'='1` → Suddenly they can see all users!
 
-**How we protect:** Use parameterized queries with penguin-dal (never concatenate user input):
+**How we protect:** Use parameterized queries with PyDAL (never concatenate user input):
 ```python
 # DO THIS!
 users = db((db.users.username == user_input)).select()
 ```
 
-penguin-dal (a PyDAL-compatible wrapper) automatically sanitizes inputs. Safe and simple. Runtime queries always use penguin-dal; database schema and migrations use SQLAlchemy + Alembic only.
+PyDAL automatically sanitizes inputs. Safe and simple.
 
 ### Cross-Site Scripting (XSS) - The Script Injection
 **The danger:** Attackers inject JavaScript that runs in other users' browsers.
@@ -346,7 +346,7 @@ Even if your app will never scale to multi-tenancy, single-tenant apps use one f
 - JWT tokens expire (1 hour for access, refresh tokens for long-lived access)
 - Secure cookies with `HttpOnly`, `Secure`, `SameSite=Strict` flags
 - Multi-factor authentication support (2FA codes, biometric, U2F keys)
-- Passwords hashed with bcrypt (OIDC tokens issued by penguin-aaa; no password storage in application)
+- Passwords hashed with bcrypt (Flask-Security-Too handles this)
 
 ## Kubernetes Network Security
 
@@ -415,30 +415,6 @@ spec:
 - Superior performance compared to iptables
 
 Use Cilium as your CNI in all environments where network policy enforcement matters (dev, beta, production).
-
-## Rate Limiting - Protecting Against Abuse
-
-Rate limiting prevents brute-force attacks, DDoS, and resource exhaustion. In MarchProxy, rate limiting is enforced via **penguin-limiter middleware** in the api-server using a sliding window algorithm.
-
-**Rate limit dimensions:**
-- **Per-IP**: Limits requests from each client IP independently
-- **Per-tenant**: Limits requests within each tenant's quota, across all users
-- **Tenant + IP combined**: Fine-grained control linking both dimensions
-
-**Example configuration:**
-```
-RATE_LIMIT_PER_IP=1000/hour        # 1000 requests per hour per IP
-RATE_LIMIT_PER_TENANT=10000/hour   # 10000 requests per hour per tenant
-RATE_LIMIT_BURST=100               # Allow 100 requests in rapid succession before throttling
-```
-
-**How it works:**
-- Middleware intercepts every inbound request
-- Checks current token count against limits for that IP/tenant
-- Rejects with `429 Too Many Requests` if limit exceeded
-- Sliding window avoids "thundering herd" at hour boundaries
-
-All API endpoints enforce rate limiting automatically—no per-endpoint configuration needed.
 
 ## Encryption & TLS
 
@@ -627,6 +603,6 @@ Service-to-service communication has hard boundaries:
 
 - [OWASP Top 10](https://owasp.org/www-project-top-ten/) - The most critical web security risks
 - [NIST Cybersecurity Framework](https://www.nist.gov/cyberframework) - Industry standards
-- [penguin-aaa](https://github.com/penguintechinc/penguin-libs/tree/main/packages/penguin-aaa) - OIDC JWT-based auth library
-- [penguin-dal](https://github.com/penguintechinc/penguin-libs) - Runtime database queries with parameterized protection
-- [SQLAlchemy Security](https://docs.sqlalchemy.org/en/14/faq/security.html) - Schema definition and migrations
+- [Flask-Security-Too Docs](https://flask-security-too.readthedocs.io/) - Our auth framework
+- [PyDAL Security](https://py4web.io/chapter-13#security) - Database protection
+- [SQLAlchemy Security](https://docs.sqlalchemy.org/en/14/faq/security.html) - ORM safety
