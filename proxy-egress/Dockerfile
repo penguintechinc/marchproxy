@@ -111,10 +111,12 @@ COPY --chown=marchproxy:marchproxy configs/ /app/configs/
 COPY --chown=marchproxy:marchproxy envoy/bootstrap.yaml /etc/envoy/envoy.yaml
 
 # Create necessary directories
-RUN mkdir -p /app/logs /app/certs /app/ebpf /etc/envoy && \
+RUN mkdir -p /app/logs /app/certs /app/ebpf /etc/envoy /var/log/marchproxy && \
     chown -R marchproxy:marchproxy /app/logs /app/certs /app/ebpf && \
     chown -R marchproxy:marchproxy /etc/envoy && \
-    chmod +x /app/marchproxy-egress /app/test-client
+    chown -R marchproxy:marchproxy /var/log/marchproxy && \
+    chmod +x /app/marchproxy-egress /app/test-client && \
+    chmod 755 /app/logs /app/certs /app/ebpf /var/log/marchproxy
 
 # Environment variables - L4 proxy
 ENV PROXY_TYPE=egress
@@ -158,6 +160,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 EXPOSE 8080 8081 10000 10443 9901 9002
 
 # Switch to non-root user for security
+# NOTE: K8s securityContext requires capabilities.add: [NET_ADMIN, NET_RAW] for eBPF/XDP support
 USER marchproxy
 
 # Start command - Go supervisor manages both L4 proxy and Envoy

@@ -37,9 +37,12 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /build/proxy-nlb .
 
-# Create directories for logs
-RUN mkdir -p /var/log/marchproxy/nlb \
-    && chmod 755 /var/log/marchproxy/nlb
+# Create non-root user and directories
+RUN groupadd -r appuser && useradd -r -g appuser appuser && \
+    mkdir -p /var/log/marchproxy/nlb && \
+    chown -R appuser:appuser /app /var/log/marchproxy/nlb && \
+    chmod 755 /var/log/marchproxy/nlb && \
+    chmod +x /app/proxy-nlb
 
 # Expose ports
 # 8080 - Main traffic port
@@ -52,8 +55,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD ["./proxy-nlb", "--healthcheck"]
 
 # Run as non-root user
-RUN useradd -r -u 1000 marchproxy
-USER marchproxy
+USER appuser
 
 ENTRYPOINT ["./proxy-nlb"]
 

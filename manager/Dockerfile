@@ -37,32 +37,33 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
-RUN groupadd -r marchproxy && useradd -r -g marchproxy marchproxy
+RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 # Set working directory
 WORKDIR /app
 
 # Copy Python packages from builder and set correct permissions
-COPY --from=builder /root/.local /home/marchproxy/.local
-RUN chown -R marchproxy:marchproxy /home/marchproxy/.local
+COPY --from=builder /root/.local /home/appuser/.local
+RUN chown -R appuser:appuser /home/appuser/.local
 
 # Copy application code
-COPY --chown=marchproxy:marchproxy manager/ .
+COPY --chown=appuser:appuser manager/ .
 
 # Create necessary directories, remove Python cache, and fix all permissions
-RUN mkdir -p /app/logs /app/certs && \
+RUN mkdir -p /app/logs /app/certs /var/log/marchproxy && \
     find /app -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true && \
     find /app -type f -name "*.pyc" -delete 2>/dev/null || true && \
-    chown -R marchproxy:marchproxy /app && \
-    chmod -R 755 /app
+    chown -R appuser:appuser /app /var/log/marchproxy && \
+    chmod 755 /app/logs /app/certs /var/log/marchproxy && \
+    chmod -R go-w /app
 
 # Make sure scripts are executable
 RUN chmod +x scripts/*.sh 2>/dev/null || true
 
 # Set Python path to include user packages
-ENV PATH="/home/marchproxy/.local/bin:$PATH"
+ENV PATH="/home/appuser/.local/bin:$PATH"
 ENV PYTHONPATH="/app:$PYTHONPATH"
-ENV PYTHONUSERBASE="/home/marchproxy/.local"
+ENV PYTHONUSERBASE="/home/appuser/.local"
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1
@@ -75,7 +76,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 EXPOSE 8000
 
 # Switch to non-root user
-USER marchproxy
+USER appuser
 
 # Start command - Quart with Hypercorn ASGI server
 CMD ["dumb-init", "python3", "-m", "hypercorn", "quart_app:create_app()", "--bind", "0.0.0.0:8000", "--workers", "4"]
@@ -102,8 +103,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     less \
     && rm -rf /var/lib/apt/lists/*
 
-# Switch back to marchproxy user
-USER marchproxy
+# Switch back to appuser user
+USER appuser
 
 # Override command for development with auto-reload
 CMD ["dumb-init", "hypercorn", "quart_app:create_app()", "--bind", "0.0.0.0:8000", "--reload"]
@@ -118,8 +119,8 @@ USER root
 COPY manager/requirements-dev.txt .
 RUN pip install --no-cache-dir -r requirements-dev.txt
 
-# Switch back to marchproxy user
-USER marchproxy
+# Switch back to appuser user
+USER appuser
 
 # Run tests by default
 CMD ["python3", "-m", "pytest", "tests/", "-v", "--cov=.", "--cov-report=term-missing"]

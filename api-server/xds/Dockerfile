@@ -27,8 +27,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
+# Create non-root user
+RUN useradd -m -u 1000 appuser
+
 # Copy binary from builder
 COPY --from=builder /build/xds-server .
+
+# Set permissions
+RUN chown -R appuser:appuser /app
 
 # Expose ports
 EXPOSE 18000 19000
@@ -36,6 +42,9 @@ EXPOSE 18000 19000
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:19000/healthz || exit 1
+
+# Run as non-root user
+USER appuser
 
 # Run the server
 ENTRYPOINT ["./xds-server"]

@@ -69,12 +69,9 @@ ENV PATH=/root/.local/bin:$PATH
 # Copy application code
 COPY app/ ./app/
 
-# Create non-root user (for future use)
-RUN useradd -m -u 1000 marchproxy && \
-    chown -R marchproxy:marchproxy /app
-
-# Run as root to access installed packages
-# In production, use a service account with proper permissions
+# Create non-root user and set permissions
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app
 
 # Expose ports
 # 8000: FastAPI REST API
@@ -83,6 +80,9 @@ EXPOSE 8000
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"
+
+# Run as non-root user
+USER appuser
 
 # Start FastAPI with uvicorn
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -14,8 +14,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application
 COPY sync.py .
 
-# Create monitoring config directory
-RUN mkdir -p /etc/monitoring
+# Create monitoring config directory and non-root user
+RUN mkdir -p /etc/monitoring && \
+    useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app /etc/monitoring
+
+# Run as non-root user
+USER appuser
 
 # Run the sync service
 CMD ["python3", "sync.py"]

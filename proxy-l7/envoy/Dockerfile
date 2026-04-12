@@ -89,8 +89,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Create directories
-RUN mkdir -p /etc/envoy /var/lib/envoy/xdp /var/lib/envoy/wasm /var/log/envoy
+# Create directories and user
+RUN mkdir -p /etc/envoy /var/lib/envoy/xdp /var/lib/envoy/wasm /var/log/envoy && \
+    groupadd -r appuser && useradd -r -g appuser appuser && \
+    chown -R appuser:appuser /etc/envoy /var/lib/envoy /var/log/envoy && \
+    chmod 755 /etc/envoy /var/lib/envoy /var/lib/envoy/xdp /var/lib/envoy/wasm /var/log/envoy
 
 # Copy XDP program from builder
 COPY --from=xdp-builder /build/xdp/envoy_xdp.o /var/lib/envoy/xdp/
@@ -116,8 +119,8 @@ COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh && \
     chown envoy:envoy /usr/local/bin/entrypoint.sh
 
-# Set permissions
-RUN chown -R envoy:envoy /var/lib/envoy /var/log/envoy /etc/envoy
+# Set permissions (appuser created earlier, allow group access for Envoy)
+RUN chmod g+rx /etc/envoy /var/lib/envoy /var/lib/envoy/xdp /var/lib/envoy/wasm /var/log/envoy
 
 # Expose ports
 # 10000: HTTP/HTTPS listener
@@ -132,8 +135,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
 ENV ENVOY_UID=101
 ENV LOGLEVEL=info
 
-# Run as root initially (entrypoint may need privileges for XDP)
-# The entrypoint script will drop to envoy user after setup
+# NOTE: K8s securityContext requires capabilities.add: [NET_ADMIN, NET_RAW] for XDP socket creation
+# The entrypoint script will drop to envoy user after XDP setup
 USER root
 
 # Run Envoy
