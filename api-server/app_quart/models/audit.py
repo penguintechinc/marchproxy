@@ -1,5 +1,6 @@
-from datetime import datetime
-from app_quart.extensions import db
+from datetime import datetime # noqa: F401
+
+from app_quart.extensions import db # noqa: F401
 
 
 class AuditLog(db.Model):

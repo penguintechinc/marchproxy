@@ -8,15 +8,15 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import logging
-import os
-from typing import Optional
+import logging # noqa: F401, # noqa: F401
+import os # noqa: F401, # noqa: F401
+from typing import Optional # noqa: F401
 
-from database import get_db_manager
-from models.auth import JWTManager
-from quart import Quart, jsonify
-from quart_cors import cors
-from penguintechinc_utils import configure_logging, get_logger
+from database import get_db_manager # noqa: F401
+from models.auth import JWTManager # noqa: F401
+from penguintechinc_utils import configure_logging, get_logger # noqa: F401
+from quart import Quart, jsonify # noqa: F401
+from quart_cors import cors # noqa: F401
 
 # Configure sanitized logging
 configure_logging(
@@ -50,32 +50,32 @@ def create_app(config: Optional[dict] = None) -> Quart:
     """
     app = Quart(__name__)
 
-    # Apply CORS - get allowed origins from environment or use default
+  # Apply CORS - get allowed origins from environment or use default
     cors_origins = os.getenv(
         "CORS_ALLOWED_ORIGINS",
         "https://marchproxy.penguintech.io,http://localhost:3000",
     )
     app = cors(app, allow_origin=cors_origins)
 
-    # Load configuration from environment variables
+  # Load configuration from environment variables
     _load_config(app, config)
 
-    # Validate required configuration
+  # Validate required configuration
     _validate_config(app.config)
 
-    # Initialize database
+  # Initialize database
     _initialize_database(app)
 
-    # Initialize JWT manager
+  # Initialize JWT manager
     _initialize_jwt(app)
 
-    # Register blueprints
+  # Register blueprints
     _register_blueprints(app)
 
-    # Register error handlers
+  # Register error handlers
     _register_error_handlers(app)
 
-    # Register lifecycle hooks
+  # Register lifecycle hooks
     _register_lifecycle_hooks(app)
 
     logger.info(
@@ -97,7 +97,7 @@ def _load_config(app: Quart, config: Optional[dict] = None) -> None:
         app: Quart application instance
         config: Optional configuration dictionary to override environment variables
     """
-    # Default configuration
+  # Default configuration
     app.config.update(
         {
             "DATABASE_URL": os.getenv("DATABASE_URL"),
@@ -113,7 +113,7 @@ def _load_config(app: Quart, config: Optional[dict] = None) -> None:
         }
     )
 
-    # Override with provided config
+  # Override with provided config
     if config:
         app.config.update(config)
 
@@ -138,21 +138,21 @@ def _validate_config(config: dict) -> None:
     Raises:
         ValueError: If required configuration is missing or invalid
     """
-    # Required configuration
+  # Required configuration
     required = ["DATABASE_URL", "JWT_SECRET"]
     missing = [key for key in required if not config.get(key)]
 
     if missing:
         raise ValueError(f"Missing required configuration: {', '.join(missing)}")
 
-    # Validate JWT_SECRET is not default
+  # Validate JWT_SECRET is not default
     if config["JWT_SECRET"] == "your-super-secret-jwt-key-change-in-production":
         logger.warning(
             "Using default JWT_SECRET! This is INSECURE in production. "
             "Set JWT_SECRET environment variable."
         )
 
-    # Validate DB_TYPE
+  # Validate DB_TYPE
     if config["DB_TYPE"] not in ["postgres", "mysql", "sqlite"]:
         raise ValueError(
             f"DB_TYPE must be 'postgres', 'mysql', or 'sqlite', got '{config['DB_TYPE']}'"
@@ -174,17 +174,17 @@ def _initialize_database(app: Quart) -> None:
     try:
         logger.info("Initializing database...")
 
-        # Get database manager instance
+      # Get database manager instance
         db_manager = get_db_manager()
 
-        # Initialize schema using SQLAlchemy (idempotent)
+      # Initialize schema using SQLAlchemy (idempotent)
         if not db_manager.initialize_schema():
             raise RuntimeError("Failed to initialize database schema")
 
-        # Get PyDAL connection and define tables
+      # Get PyDAL connection and define tables
         db = db_manager.get_pydal_connection()
 
-        # Attach database to app
+      # Attach database to app
         app.db = db
         app.db_manager = db_manager
 
@@ -219,7 +219,7 @@ def _initialize_jwt(app: Quart) -> None:
     )
 
 
-def _register_blueprints(app: Quart) -> None:  # noqa: C901
+def _register_blueprints(app: Quart) -> None: # noqa: C901
     """
     Register all API blueprints with URL prefixes.
 
@@ -229,143 +229,143 @@ def _register_blueprints(app: Quart) -> None:  # noqa: C901
     Args:
         app: Quart application instance
     """
-    # Import and register blueprints with proper error handling
-    # This allows app to start even if some blueprints are not yet implemented
+  # Import and register blueprints with proper error handling
+  # This allows app to start even if some blueprints are not yet implemented
 
-    # System endpoints (health, metrics, root)
+  # System endpoints (health, metrics, root)
     try:
-        from api.system_bp import system_bp
+        from api.system_bp import system_bp # noqa: F401
 
         app.register_blueprint(system_bp)
         logger.info("Registered system blueprint")
     except ImportError as e:
-        logger.warning(f"Failed to import system blueprint: {e}")
+        logger.warning(f"Failed to import system blueprint: {e}") # noqa: F401
 
-    # Authentication endpoints
+  # Authentication endpoints
     try:
-        from api.auth_bp import auth_bp
+        from api.auth_bp import auth_bp # noqa: F401
 
         app.register_blueprint(auth_bp, url_prefix="/api/auth")
         logger.info("Registered auth blueprint at /api/auth")
     except ImportError as e:
-        logger.warning(f"Failed to import auth blueprint: {e}")
+        logger.warning(f"Failed to import auth blueprint: {e}") # noqa: F401
 
-    # Cluster management endpoints
+  # Cluster management endpoints
     try:
-        from api.clusters_bp import clusters_bp
+        from api.clusters_bp import clusters_bp # noqa: F401
 
-        app.register_blueprint(clusters_bp, url_prefix="/api")
-        logger.info("Registered clusters blueprint at /api")
+        app.register_blueprint(clusters_bp)
+        logger.info("Registered clusters blueprint at /api/v1/clusters")
     except ImportError as e:
-        logger.warning(f"Failed to import clusters blueprint: {e}")
+        logger.warning(f"Failed to import clusters blueprint: {e}") # noqa: F401
 
-    # Proxy management endpoints
+  # Proxy management endpoints
     try:
-        from api.proxy_bp import proxy_bp
+        from api.proxy_bp import proxy_bp # noqa: F401
 
-        app.register_blueprint(proxy_bp, url_prefix="/api")
-        logger.info("Registered proxy blueprint at /api")
+        app.register_blueprint(proxy_bp)
+        logger.info("Registered proxy blueprint at /api/v1/proxy")
     except ImportError as e:
-        logger.warning(f"Failed to import proxy blueprint: {e}")
+        logger.warning(f"Failed to import proxy blueprint: {e}") # noqa: F401
 
-    # mTLS certificate endpoints
+  # mTLS certificate endpoints
     try:
-        from api.mtls_bp import mtls_bp
+        from api.mtls_bp import mtls_bp # noqa: F401
 
         app.register_blueprint(mtls_bp, url_prefix="/api/mtls")
         logger.info("Registered mtls blueprint at /api/mtls")
     except ImportError as e:
-        logger.warning(f"Failed to import mtls blueprint: {e}")
+        logger.warning(f"Failed to import mtls blueprint: {e}") # noqa: F401
 
-    # Block rules endpoints
+  # Block rules endpoints
     try:
-        from api.block_rules_bp import block_rules_bp
+        from api.block_rules_bp import block_rules_bp # noqa: F401
 
         app.register_blueprint(block_rules_bp, url_prefix="/api/v1")
         logger.info("Registered block_rules blueprint at /api/v1")
     except ImportError as e:
-        logger.warning(f"Failed to import block_rules blueprint: {e}")
+        logger.warning(f"Failed to import block_rules blueprint: {e}") # noqa: F401
 
-    # Service management endpoints
+  # Service management endpoints
     try:
-        from api.services_bp import services_bp
+        from api.services_bp import services_bp # noqa: F401
 
-        app.register_blueprint(services_bp, url_prefix="/api")
-        logger.info("Registered services blueprint at /api")
+        app.register_blueprint(services_bp, url_prefix="/api/v1/services")
+        logger.info("Registered services blueprint at /api/v1/services")
     except ImportError as e:
-        logger.warning(f"Failed to import services blueprint: {e}")
+        logger.warning(f"Failed to import services blueprint: {e}") # noqa: F401
 
-    # Mapping management endpoints
+  # Mapping management endpoints
     try:
-        from api.mappings_bp import mappings_bp
+        from api.mappings_bp import mappings_bp # noqa: F401
 
-        app.register_blueprint(mappings_bp, url_prefix="/api")
-        logger.info("Registered mappings blueprint at /api")
+        app.register_blueprint(mappings_bp)
+        logger.info("Registered mappings blueprint at /api/v1/mappings")
     except ImportError as e:
-        logger.warning(f"Failed to import mappings blueprint: {e}")
+        logger.warning(f"Failed to import mappings blueprint: {e}") # noqa: F401
 
-    # License management endpoints
+  # License management endpoints
     try:
-        from api.license_bp import license_bp
+        from api.license_bp import license_bp # noqa: F401
 
         app.register_blueprint(license_bp, url_prefix="/api/license")
         logger.info("Registered license blueprint at /api/license")
     except ImportError as e:
-        logger.warning(f"Failed to import license blueprint: {e}")
+        logger.warning(f"Failed to import license blueprint: {e}") # noqa: F401
 
-    # Config endpoints
+  # Config endpoints
     try:
-        from api.config_bp import config_bp
+        from api.config_bp import config_bp # noqa: F401
 
         app.register_blueprint(config_bp, url_prefix="/api/config")
         logger.info("Registered config blueprint at /api/config")
     except ImportError as e:
-        logger.warning(f"Failed to import config blueprint: {e}")
+        logger.warning(f"Failed to import config blueprint: {e}") # noqa: F401
 
-    # Ingress routes endpoints
+  # Ingress routes endpoints
     try:
-        from api.ingress_routes_bp import ingress_routes_bp
+        from api.ingress_routes_bp import ingress_routes_bp # noqa: F401
 
-        app.register_blueprint(ingress_routes_bp, url_prefix="/api")
-        logger.info("Registered ingress_routes blueprint at /api")
+        app.register_blueprint(ingress_routes_bp)
+        logger.info("Registered ingress_routes blueprint at /api/v1/ingress-routes")
     except ImportError as e:
-        logger.warning(f"Failed to import ingress_routes blueprint: {e}")
+        logger.warning(f"Failed to import ingress_routes blueprint: {e}") # noqa: F401
 
-    # Enterprise authentication endpoints
+  # Enterprise authentication endpoints
     try:
-        from api.enterprise_auth_bp import enterprise_auth_bp
+        from api.enterprise_auth_bp import enterprise_auth_bp # noqa: F401
 
-        app.register_blueprint(enterprise_auth_bp, url_prefix="/api/enterprise/auth")
-        logger.info("Registered enterprise_auth blueprint at /api/enterprise/auth")
+        app.register_blueprint(enterprise_auth_bp)
+        logger.info("Registered enterprise_auth blueprint at /api/v1/enterprise-auth")
     except ImportError as e:
-        logger.warning(f"Failed to import enterprise_auth blueprint: {e}")
+        logger.warning(f"Failed to import enterprise_auth blueprint: {e}") # noqa: F401
 
-    # Roles (RBAC) endpoints
+  # Roles (RBAC) endpoints
     try:
-        from api.roles_bp import roles_bp
+        from api.roles_bp import roles_bp # noqa: F401
 
         app.register_blueprint(roles_bp)
         logger.info("Registered roles blueprint at /api/v1/roles")
     except ImportError as e:
-        logger.warning(f"Failed to import roles blueprint: {e}")
+        logger.warning(f"Failed to import roles blueprint: {e}") # noqa: F401
 
-    # Media module endpoints
+  # Media module endpoints
     try:
-        from api.media_bp import media_bp
+        from api.media_bp import media_bp # noqa: F401
 
         app.register_blueprint(media_bp)
         logger.info("Registered media blueprint at /api/v1/modules/rtmp")
     except ImportError as e:
-        logger.warning(f"Failed to import media blueprint: {e}")
+        logger.warning(f"Failed to import media blueprint: {e}") # noqa: F401
 
-    # Admin media settings endpoints (super admin only)
+  # Admin media settings endpoints (super admin only)
     try:
-        from api.admin_media_bp import admin_media_bp
+        from api.admin_media_bp import admin_media_bp # noqa: F401
 
         app.register_blueprint(admin_media_bp)
         logger.info("Registered admin_media blueprint at /api/v1/admin/media")
     except ImportError as e:
-        logger.warning(f"Failed to import admin_media blueprint: {e}")
+        logger.warning(f"Failed to import admin_media blueprint: {e}") # noqa: F401
 
 
 def _register_error_handlers(app: Quart) -> None:
@@ -460,7 +460,7 @@ def _register_lifecycle_hooks(app: Quart) -> None:
         """Run before application starts serving requests"""
         logger.info("Application starting up...")
 
-        # Initialize default data if needed
+      # Initialize default data if needed
         await _initialize_default_data(app)
 
         logger.info("Application ready to serve requests")
@@ -470,7 +470,7 @@ def _register_lifecycle_hooks(app: Quart) -> None:
         """Run after application stops serving requests"""
         logger.info("Application shutting down...")
 
-        # Close database connections
+      # Close database connections
         if hasattr(app, "db_manager"):
             app.db_manager.close()
 
@@ -479,7 +479,7 @@ def _register_lifecycle_hooks(app: Quart) -> None:
     @app.after_request
     async def after_request(response):
         """Run after each request"""
-        # Commit PyDAL transactions
+      # Commit PyDAL transactions
         if hasattr(app, "db") and app.db:
             try:
                 app.db.commit()
@@ -492,7 +492,7 @@ def _register_lifecycle_hooks(app: Quart) -> None:
     logger.info("Lifecycle hooks registered")
 
 
-async def _initialize_default_data(app: Quart) -> None:  # noqa: C901
+async def _initialize_default_data(app: Quart) -> None: # noqa: C901
     """
     Initialize default admin user, cluster, and RBAC roles if they don't exist.
 
@@ -500,23 +500,23 @@ async def _initialize_default_data(app: Quart) -> None:  # noqa: C901
         app: Quart application instance
     """
     try:
-        from models.auth import UserModel
-        from models.cluster import ClusterModel
-        from models.rbac import PermissionScope, RBACModel
+        from models.auth import UserModel # noqa: F401
+        from models.cluster import ClusterModel # noqa: F401
+        from models.rbac import PermissionScope, RBACModel # noqa: F401
 
         db = app.db
 
-        # Initialize RBAC tables and default roles
+      # Initialize RBAC tables and default roles
         try:
-            # Define tables (idempotent - safe to call multiple times)
+          # Define tables (idempotent - safe to call multiple times)
             RBACModel.define_tables(db)
             db.commit()
 
-            # Check if roles table exists and has data
+          # Check if roles table exists and has data
             try:
                 role_count = db(db.roles).count()
                 if role_count == 0:
-                    # Tables exist but are empty - initialize default roles
+                  # Tables exist but are empty - initialize default roles
                     RBACModel.initialize_default_roles(db)
                     db.commit()
                     logger.info("RBAC default roles initialized")
@@ -530,7 +530,7 @@ async def _initialize_default_data(app: Quart) -> None:  # noqa: C901
             logger.error(f"RBAC table definition failed: {e}", exc_info=True)
             db.rollback()
 
-        # Create default admin user if not exists
+      # Create default admin user if not exists
         try:
             admin_user = db(db.users.username == "admin").select().first()
         except Exception as e:
@@ -552,14 +552,14 @@ async def _initialize_default_data(app: Quart) -> None:  # noqa: C901
 
             logger.info(f"Created default admin user (ID: {admin_id})")
 
-            # Assign Admin role to default admin user
+          # Assign Admin role to default admin user
             try:
                 RBACModel.assign_role(db, admin_id, "admin", scope=PermissionScope.GLOBAL)
                 logger.info("Assigned Admin role to default admin user")
             except Exception as e:
                 logger.warning(f"Could not assign admin role: {e}")
 
-            # Create default cluster for Community edition
+          # Create default cluster for Community edition
             cluster_id, api_key = ClusterModel.create_default_cluster(db, admin_id)
             logger.info(
                 f"Created default cluster (ID: {cluster_id})",

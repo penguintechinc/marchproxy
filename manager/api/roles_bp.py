@@ -7,15 +7,16 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import logging
-from penguintechinc_utils import get_logger
-from datetime import datetime
-from typing import List
+import logging # noqa: F401, # noqa: F401
+from datetime import datetime # noqa: F401
+from typing import List # noqa: F401
 
-from middleware.rbac import requires_permission
-from models.rbac import Permissions, PermissionScope, RBACModel
-from pydantic import BaseModel, Field, validator
-from quart import Blueprint, g, jsonify, request
+from middleware.auth import require_auth # noqa: F401
+from middleware.rbac import requires_permission # noqa: F401
+from models.rbac import Permissions, PermissionScope, RBACModel # noqa: F401
+from penguintechinc_utils import get_logger # noqa: F401
+from pydantic import BaseModel, Field, validator # noqa: F401
+from quart import Blueprint, g, jsonify, request # noqa: F401
 
 logger = get_logger(__name__)
 
@@ -60,8 +61,9 @@ class RoleAssignmentRequest(BaseModel):
 
 # Routes
 @roles_bp.route("", methods=["GET"])
+@require_auth()
 @requires_permission(Permissions.GLOBAL_ADMIN)
-async def list_roles():
+async def list_roles(user_data=None):
     """
     List all roles
 
@@ -95,8 +97,9 @@ async def list_roles():
 
 
 @roles_bp.route("/<int:role_id>", methods=["GET"])
+@require_auth()
 @requires_permission(Permissions.GLOBAL_ADMIN)
-async def get_role(role_id: int):
+async def get_role(role_id: int, user_data=None):
     """
     Get role details
 
@@ -109,7 +112,7 @@ async def get_role(role_id: int):
     if not role or not role.is_active:
         return jsonify({"error": "Role not found"}), 404
 
-    # Get users with this role
+  # Get users with this role
     assignments = db(
         (db.user_roles.role_id == role_id) & (db.user_roles.is_active == True)  # noqa: E712
     ).select(
@@ -154,8 +157,9 @@ async def get_role(role_id: int):
 
 
 @roles_bp.route("", methods=["POST"])
+@require_auth()
 @requires_permission(Permissions.GLOBAL_ADMIN)
-async def create_role():
+async def create_role(user_data=None):
     """
     Create a new custom role
 
@@ -172,12 +176,12 @@ async def create_role():
 
     db = g.db
 
-    # Check if role name already exists
+  # Check if role name already exists
     existing = db(db.roles.name == role_data.name).select().first()
     if existing:
         return jsonify({"error": "Role name already exists"}), 409
 
-    # Create role
+  # Create role
     role_id = db.roles.insert(
         name=role_data.name,
         display_name=role_data.display_name,
@@ -213,8 +217,9 @@ async def create_role():
 
 
 @roles_bp.route("/<int:role_id>", methods=["PUT"])
+@require_auth()
 @requires_permission(Permissions.GLOBAL_ADMIN)
-async def update_role(role_id: int):
+async def update_role(role_id: int, user_data=None):
     """
     Update role details
 
@@ -235,17 +240,17 @@ async def update_role(role_id: int):
     if not role:
         return jsonify({"error": "Role not found"}), 404
 
-    # Cannot modify system roles
+  # Cannot modify system roles
     if role.is_system:
         return jsonify({"error": "Cannot modify system role"}), 403
 
-    # Update role
+  # Update role
     update_dict = update_data.dict(exclude_unset=True)
     if update_dict:
         update_dict["updated_at"] = datetime.utcnow()
         db(db.roles.id == role_id).update(**update_dict)
 
-        # Invalidate permission cache for all users with this role
+      # Invalidate permission cache for all users with this role
         assignments = db(
             (db.user_roles.role_id == role_id) & (db.user_roles.is_active == True)  # noqa: E712
         ).select(db.user_roles.user_id, distinct=True)
@@ -277,8 +282,9 @@ async def update_role(role_id: int):
 
 
 @roles_bp.route("/<int:role_id>", methods=["DELETE"])
+@require_auth()
 @requires_permission(Permissions.GLOBAL_ADMIN)
-async def delete_role(role_id: int):
+async def delete_role(role_id: int, user_data=None):
     """
     Delete a custom role
 
@@ -291,17 +297,17 @@ async def delete_role(role_id: int):
     if not role:
         return jsonify({"error": "Role not found"}), 404
 
-    # Cannot delete system roles
+  # Cannot delete system roles
     if role.is_system:
         return jsonify({"error": "Cannot delete system role"}), 403
 
-    # Deactivate role
+  # Deactivate role
     db(db.roles.id == role_id).update(is_active=False, updated_at=datetime.utcnow())
 
-    # Deactivate all assignments
+  # Deactivate all assignments
     db(db.user_roles.role_id == role_id).update(is_active=False)
 
-    # Invalidate permission cache for affected users
+  # Invalidate permission cache for affected users
     assignments = db(db.user_roles.role_id == role_id).select(db.user_roles.user_id, distinct=True)
     for assignment in assignments:
         RBACModel.invalidate_permission_cache(db, assignment.user_id)
@@ -314,8 +320,9 @@ async def delete_role(role_id: int):
 
 
 @roles_bp.route("/assign", methods=["POST"])
+@require_auth()
 @requires_permission(Permissions.GLOBAL_USER_WRITE)
-async def assign_role():
+async def assign_role(user_data=None):
     """
     Assign role to user
 
@@ -333,12 +340,12 @@ async def assign_role():
     db = g.db
     user_id = g.user_id
 
-    # Verify user exists
+  # Verify user exists
     user = db.users[assignment_data.user_id]
     if not user or not user.is_active:
         return jsonify({"error": "User not found"}), 404
 
-    # Assign role
+  # Assign role
     try:
         scope = PermissionScope(assignment_data.scope)
         assignment_id = RBACModel.assign_role(
@@ -370,8 +377,9 @@ async def assign_role():
 
 
 @roles_bp.route("/revoke", methods=["POST"])
+@require_auth()
 @requires_permission(Permissions.GLOBAL_USER_WRITE)
-async def revoke_role():
+async def revoke_role(user_data=None):
     """
     Revoke role from user
 
@@ -402,8 +410,9 @@ async def revoke_role():
 
 
 @roles_bp.route("/user/<int:user_id>", methods=["GET"])
+@require_auth()
 @requires_permission(Permissions.GLOBAL_USER_READ)
-async def get_user_roles(user_id: int):
+async def get_user_roles(user_id: int, user_data=None):
     """
     Get all roles assigned to a user
 
@@ -412,15 +421,15 @@ async def get_user_roles(user_id: int):
     """
     db = g.db
 
-    # Verify user exists
+  # Verify user exists
     user = db.users[user_id]
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    # Get roles
+  # Get roles
     roles = RBACModel.get_user_roles(db, user_id)
 
-    # Get permissions
+  # Get permissions
     permissions = RBACModel.get_user_permissions(db, user_id)
 
     return (
@@ -444,7 +453,7 @@ async def list_available_permissions():
 
     Returns: List of all permission scopes
     """
-    # Get all permission attributes from Permissions class
+  # Get all permission attributes from Permissions class
     all_permissions = [
         getattr(Permissions, attr)
         for attr in dir(Permissions)

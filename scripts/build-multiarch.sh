@@ -86,19 +86,19 @@ fi
 
 # Build function
 build_component() {
-    local component="$1"
-    local tag="$2"
-    local should_push="$3"
+    local component; component; component; component; component; component; component; component="""$1"""
+    local tag; tag; tag; tag; tag; tag; tag; tag="""$2"""
+    local should_push; should_push; should_push; should_push; should_push; should_push; should_push; should_push="""$3"""
     
-    local image_name="$NAMESPACE/$component"
-    local dockerfile="$PROJECT_ROOT/docker/$component/Dockerfile"
+    local image_name; image_name; image_name; image_name; image_name; image_name; image_name; image_name="""$NAMESPACE/$component"""
+    local dockerfile; dockerfile; dockerfile; dockerfile; dockerfile; dockerfile; dockerfile; dockerfile="""$PROJECT_ROOT/docker/$component/Dockerfile"""
     
     log "Building $component for platforms: $PLATFORMS"
     info "Image: $image_name:$tag"
     info "Dockerfile: $dockerfile"
     
     # Build arguments
-    local build_args=(
+    local build_args; build_args; build_args; build_args; build_args; build_args; build_args; build_args=""(""
         --platform "$PLATFORMS"
         --file "$dockerfile"
         --tag "$image_name:$tag"
@@ -163,7 +163,7 @@ log "🎉 Multi-architecture build complete!"
 
 # Show platform information
 info "Built for platforms:"
-for platform in $(echo $PLATFORMS | tr ',' '\n'); do
+for platform in $($(echo "PLATFORMS | tr ',' '\n'); do")
     info "  ✓ $platform"
 done
 

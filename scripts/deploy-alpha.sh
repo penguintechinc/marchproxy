@@ -94,7 +94,7 @@ kctl() {
 
 check_prerequisites() {
     print_info "Checking prerequisites..."
-    local missing=()
+    local missing; missing; missing; missing; missing; missing; missing; missing=""()""
 
     for cmd in kubectl docker microk8s; do
         if ! command -v "${cmd}" &>/dev/null; then
@@ -136,9 +136,9 @@ check_prerequisites() {
 # =============================================================================
 
 build_and_import() {
-    local service="$1"
-    local tag="$2"
-    local service_path="${PROJECT_ROOT}/${SERVICE_PATHS[${service}]}"
+    local service; service; service; service; service; service; service; service="""$1"""
+    local tag; tag; tag; tag; tag; tag; tag; tag="""$2"""
+    local service_path; service_path; service_path; service_path; service_path; service_path; service_path; service_path="""${PROJECT_ROOT}/${SERVICE_PATHS[${service}]}"""
 
     if [[ ! -d "${service_path}" ]]; then
         print_warning "Service directory not found: ${SERVICE_PATHS[${service}]} — skipping"
@@ -146,7 +146,7 @@ build_and_import() {
     fi
 
     # Find Dockerfile (prefer Dockerfile.notests for faster alpha builds)
-    local dockerfile="${service_path}/Dockerfile"
+    local dockerfile; dockerfile; dockerfile; dockerfile; dockerfile; dockerfile; dockerfile; dockerfile="""${service_path}/Dockerfile"""
     if [[ -f "${service_path}/Dockerfile.notests" ]]; then
         dockerfile="${service_path}/Dockerfile.notests"
         print_info "Using Dockerfile.notests for ${service} (faster alpha build)"
@@ -157,7 +157,7 @@ build_and_import() {
         return 0
     fi
 
-    local image_name="${IMAGE_PREFIX}/${service}:${tag}"
+    local image_name; image_name; image_name; image_name; image_name; image_name; image_name; image_name="""${IMAGE_PREFIX}/${service}:${tag}"""
 
     print_info "Building image: ${image_name}"
     if ! docker build \
@@ -227,7 +227,7 @@ wait_for_rollout() {
         return 0
     fi
 
-    local failed=false
+    local failed; failed; failed; failed; failed; failed; failed; failed=""false""
     for deploy in ${deployments}; do
         print_info "Waiting for deployment/${deploy}..."
         if ! kctl rollout status "deployment/${deploy}" -n "${NAMESPACE}" --timeout=300s; then

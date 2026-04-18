@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"go.uber.org/zap"
+	"marchproxy-dblb/internal/logging"
 )
 
 func TestNewManager(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	m := NewManager(nil, logger)
 
 	if m == nil {
@@ -26,7 +26,7 @@ func TestNewManager(t *testing.T) {
 }
 
 func TestAddAndGetUser(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	m := NewManager(nil, logger)
 
 	user := &User{
@@ -61,7 +61,7 @@ func TestAddAndGetUser(t *testing.T) {
 }
 
 func TestAddAndGetPermission(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	m := NewManager(nil, logger)
 
 	perm := &Permission{
@@ -88,7 +88,7 @@ func TestAddAndGetPermission(t *testing.T) {
 }
 
 func TestAuthenticate(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	m := NewManager(nil, logger)
 	ctx := context.Background()
 
@@ -131,7 +131,7 @@ func TestAuthenticate(t *testing.T) {
 }
 
 func TestAuthenticateWithIP(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	m := NewManager(nil, logger)
 	ctx := context.Background()
 
@@ -166,7 +166,7 @@ func TestAuthenticateWithIP(t *testing.T) {
 }
 
 func TestAuthorize(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	m := NewManager(nil, logger)
 	ctx := context.Background()
 
@@ -204,7 +204,7 @@ func TestAuthorize(t *testing.T) {
 }
 
 func TestHashPassword(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	m := NewManager(nil, logger)
 
 	hash1 := m.HashPassword("password123")
@@ -225,7 +225,7 @@ func TestHashPassword(t *testing.T) {
 }
 
 func TestValidatePassword(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	m := NewManager(nil, logger)
 
 	user := &User{
@@ -249,7 +249,7 @@ func TestValidatePassword(t *testing.T) {
 }
 
 func TestGenerateAPIKey(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	m := NewManager(nil, logger)
 
 	key1 := m.GenerateAPIKey()
@@ -265,7 +265,7 @@ func TestGenerateAPIKey(t *testing.T) {
 }
 
 func TestValidateAPIKey(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	m := NewManager(nil, logger)
 	ctx := context.Background()
 
@@ -307,7 +307,7 @@ func TestValidateAPIKey(t *testing.T) {
 }
 
 func TestIsIPAllowed(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	m := NewManager(nil, logger)
 
 	allowedIPs := []string{
@@ -339,7 +339,7 @@ func TestIsIPAllowed(t *testing.T) {
 }
 
 func TestCheckTLSRequired(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	m := NewManager(nil, logger)
 
 	tlsUser := &User{
@@ -368,7 +368,7 @@ func TestCheckTLSRequired(t *testing.T) {
 }
 
 func TestGetUserRateLimit(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	m := NewManager(nil, logger)
 
 	user := &User{
@@ -389,7 +389,7 @@ func TestGetUserRateLimit(t *testing.T) {
 }
 
 func TestGetStats(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	m := NewManager(nil, logger)
 
 	m.AddUser(&User{Username: "user1"})
@@ -408,7 +408,7 @@ func TestGetStats(t *testing.T) {
 }
 
 func TestAccountExpiration(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	m := NewManager(nil, logger)
 	ctx := context.Background()
 

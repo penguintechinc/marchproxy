@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"go.uber.org/zap"
+	"marchproxy-dblb/internal/logging"
 )
 
 // Pool manages database connection pooling
@@ -127,7 +127,7 @@ func (p *Pool) CreatePool(protocol string, maxConns int) error {
 
 	p.pools[protocol] = protocolPool
 
-	p.logger.WithFields(logrus.Fields{
+	p.logger.WithFields(logging.Fields{
 		"protocol":  protocol,
 		"max_conns": maxConns,
 	}).Info("Protocol pool created")

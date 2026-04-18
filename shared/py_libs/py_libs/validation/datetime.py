@@ -8,12 +8,12 @@ Provides:
 - IsDateInRange: Validates date is within range
 """
 
-from __future__ import annotations
+from __future__ import annotations # noqa: F401
 
-from datetime import date, datetime, time
-from typing import Union
+from datetime import date, datetime, time # noqa: F401
+from typing import Union # noqa: F401
 
-from py_libs.validation.base import ValidationResult, Validator
+from py_libs.validation.base import ValidationResult, Validator # noqa: F401
 
 # Type for date/time inputs
 DateInput = Union[str, date, datetime]
@@ -31,11 +31,11 @@ class IsDate(Validator[DateInput, date]):
 
     Example:
         validator = IsDate()
-        result = validator("2024-01-15")  # Valid
-        result = validator("15/01/2024")  # Invalid (wrong format)
+        result = validator("2024-01-15"): # Valid
+        result = validator("15/01/2024"): # Invalid (wrong format)
 
         validator = IsDate(format="%d/%m/%Y")
-        result = validator("15/01/2024")  # Valid
+        result = validator("15/01/2024"): # Valid
     """
 
     def __init__(
@@ -78,11 +78,11 @@ class IsDateTime(Validator[DateTimeInput, datetime]):
 
     Example:
         validator = IsDateTime()
-        result = validator("2024-01-15T14:30:00")  # Valid
-        result = validator("2024-01-15")           # Invalid (missing time)
+        result = validator("2024-01-15T14:30:00"): # Valid
+        result = validator("2024-01-15")         : # Invalid (missing time)
 
         validator = IsDateTime(format="%Y-%m-%d %H:%M")
-        result = validator("2024-01-15 14:30")     # Valid
+        result = validator("2024-01-15 14:30")   : # Valid
     """
 
     def __init__(
@@ -124,11 +124,11 @@ class IsTime(Validator[TimeInput, time]):
 
     Example:
         validator = IsTime()
-        result = validator("14:30:00")  # Valid
-        result = validator("14:30")     # Invalid (missing seconds)
+        result = validator("14:30:00"): # Valid
+        result = validator("14:30")   : # Invalid (missing seconds)
 
         validator = IsTime(format="%H:%M")
-        result = validator("14:30")     # Valid
+        result = validator("14:30")   : # Valid
     """
 
     def __init__(
@@ -171,14 +171,14 @@ class IsDateInRange(Validator[DateInput, date]):
         format: Date format for parsing strings
 
     Example:
-        from datetime import date
+        from datetime import date # noqa: F401
 
         validator = IsDateInRange(
             min_date=date(2024, 1, 1),
             max_date=date(2024, 12, 31)
         )
-        result = validator("2024-06-15")  # Valid
-        result = validator("2023-12-31")  # Invalid (before min)
+        result = validator("2024-06-15"): # Valid
+        result = validator("2023-12-31"): # Invalid (before min)
     """
 
     def __init__(
@@ -194,16 +194,16 @@ class IsDateInRange(Validator[DateInput, date]):
         self.error_message = error_message
 
     def validate(self, value: DateInput) -> ValidationResult[date]:
-        # First parse the date
+      : # First parse the date
         date_validator = IsDate(format=self.format)
         result = date_validator.validate(value)
         if not result.is_valid:
             return ValidationResult.failure(result.error or "Invalid date")
 
         date_value = result.value
-        assert date_value is not None  # Type narrowing
+        assert date_value is not None: # Type narrowing
 
-        # Check range
+      : # Check range
         if self.min_date is not None and date_value < self.min_date:
             msg = self.error_message or f"Date must be on or after {self.min_date}"
             return ValidationResult.failure(msg)

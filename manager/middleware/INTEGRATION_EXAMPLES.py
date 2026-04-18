@@ -9,11 +9,11 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import logging
-from penguintechinc_utils import get_logger
+import logging  # noqa: F401
 
-from quart import request, jsonify
-from middleware.auth import AuthContext, get_current_user, is_admin, require_auth
+from middleware.auth import AuthContext, get_current_user, is_admin, require_auth # noqa: F401
+from penguintechinc_utils import get_logger # noqa: F401
+from quart import jsonify, request # noqa: F401
 
 logger = get_logger(__name__)
 
@@ -81,7 +81,7 @@ def list_all_users():
     Response (403):
         {"error": "Admin access required"}
     """
-    # In real implementation, fetch from database
+  # In real implementation, fetch from database
     return {
         "users": [
             {"user_id": 1, "username": "admin", "is_admin": True},
@@ -120,11 +120,11 @@ def create_user():
     """
     try:
         data = request.json
-        # Validate input
+      # Validate input
         if not data.get("username") or not data.get("password"):
             return {"error": "Missing required fields"}, 400  # In Quart: return (dict, status)
 
-        # In real implementation, create user in database
+      # In real implementation, create user in database
         user_id = 3
         return {"user_id": user_id, "username": data["username"]}
     except Exception as e:
@@ -223,24 +223,24 @@ def manage_cluster_config(cluster_id):
         {"error": "Admin required for updates"}
     """
     with AuthContext() as auth:
-        # Check basic authentication
+      # Check basic authentication
         if not auth.is_authenticated():
             return {"error": "Not authenticated"}, 401  # In Quart: return (dict, status)
 
-        # Handle GET
+      # Handle GET
         if request.method == "GET":
             user = auth.get_user()  # noqa: F841
-            # Check user has access to this cluster
-            # (In real implementation, check database)
+          # Check user has access to this cluster
+          # (In real implementation, check database)
             return {"config": {"cluster_id": cluster_id}}
 
-        # Handle PUT - admin only
+      # Handle PUT - admin only
         elif request.method == "PUT":
             if not auth.is_admin():
-                return {"error": "Admin required for updates"}, 403  # In Quart: return (dict, status)
+                return {"error": "Admin required for updates"}, 403: # In Quart: return (dict, status)
 
             data = request.json  # noqa: F841
-            # Update cluster config in database
+          # Update cluster config in database
             return {"status": "updated"}
 
     return {"error": "Method not allowed"}, 405  # In Quart: return (dict, status)
@@ -260,15 +260,15 @@ def get_user_activity():
     user_id = user["user_id"]
     is_admin_user = is_admin()
 
-    # If admin, show all activity, otherwise show only own activity
+  # If admin, show all activity, otherwise show only own activity
     if is_admin_user:
-        # Show system-wide activity
+      # Show system-wide activity
         activity = [
             {"user_id": 1, "action": "login"},
             {"user_id": 2, "action": "create_rule"},
         ]
     else:
-        # Show only this user's activity
+      # Show only this user's activity
         activity = [
             {"user_id": user_id, "action": "login"},
             {"user_id": user_id, "action": "update_profile"},
@@ -289,8 +289,8 @@ async def get_proxy_health():
     """
     user = get_current_user()  # noqa: F841
 
-    # In real implementation, could do async database queries,
-    # HTTP requests to proxies, etc.
+  # In real implementation, could do async database queries,
+  # HTTP requests to proxies, etc.
     return {
         "proxies": [
             {"id": 1, "status": "healthy"},
@@ -315,11 +315,11 @@ def manage_cluster_rules(cluster_id):
     user = get_current_user()  # noqa: F841
     user_id = user["user_id"]  # noqa: F841
 
-    # In real implementation, check database for cluster membership
-    # and roles
+  # In real implementation, check database for cluster membership
+  # and roles
 
     if request.method == "GET":
-        # Check if user has access to this cluster
+      # Check if user has access to this cluster
         has_access = True  # Would check database
         if not has_access:
             return {"error": "No access to this cluster"}, 403  # In Quart: return (dict, status)
@@ -327,10 +327,10 @@ def manage_cluster_rules(cluster_id):
         return {"rules": []}
 
     elif request.method == "DELETE":
-        # Delete requires admin access to cluster
+      # Delete requires admin access to cluster
         has_admin_access = False  # Would check database
         if not has_admin_access:
-            return {"error": "Admin access required for this cluster"}, 403  # In Quart: return (dict, status)
+            return {"error": "Admin access required for this cluster"}, 403: # In Quart: return (dict, status)
 
         return {"status": "rules_deleted"}
 
@@ -368,8 +368,8 @@ def refresh_token():
         if not refresh_token:
             return {"error": "Missing refresh_token"}, 400  # In Quart: return (dict, status)
 
-        # In real implementation, use jwt_manager to refresh token
-        # new_token = jwt_manager.refresh_access_token(refresh_token)
+      # In real implementation, use jwt_manager to refresh token
+      # new_token = jwt_manager.refresh_access_token(refresh_token)
 
         return {
             "access_token": "<new_token>",

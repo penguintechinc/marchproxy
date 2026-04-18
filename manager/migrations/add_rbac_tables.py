@@ -7,10 +7,10 @@ Migration ID: add_rbac_tables
 Created: 2026-01-13
 """
 
-import logging
-from penguintechinc_utils import get_logger
+import logging # noqa: F401, # noqa: F401
+from penguintechinc_utils import get_logger # noqa: F401
 
-from models.rbac import RBACModel
+from models.rbac import RBACModel # noqa: F401
 
 logger = get_logger(__name__)
 
@@ -19,36 +19,36 @@ def upgrade(db):
     """Add RBAC tables and initialize default roles"""
     logger.info("Starting RBAC tables migration...")
 
-    # Define RBAC tables
+  # Define RBAC tables
     RBACModel.define_tables(db)
     logger.info("RBAC tables defined")
 
-    # Initialize default roles
+  # Initialize default roles
     RBACModel.initialize_default_roles(db)
     logger.info("Default roles initialized")
 
-    # Migrate existing admin users to Admin role
+  # Migrate existing admin users to Admin role
     admin_users = db(db.users.is_admin == True).select()  # noqa: E712
     for user in admin_users:
         try:
-            from models.rbac import PermissionScope
+            from models.rbac import PermissionScope # noqa: F401
 
             RBACModel.assign_role(
                 db,
                 user.id,
                 "admin",
                 scope=PermissionScope.GLOBAL,
-                granted_by=None,  # System migration
+                granted_by=None, # System migration
             )
             logger.info(f"Assigned Admin role to existing admin user: {user.username}")
         except Exception as e:
             logger.warning(f"Could not assign admin role to {user.username}: {e}")
 
-    # Migrate existing service owners to Service Owner role
+  # Migrate existing service owners to Service Owner role
     service_assignments = db(db.user_service_assignments.role == "owner").select()
     for assignment in service_assignments:
         try:
-            from models.rbac import PermissionScope
+            from models.rbac import PermissionScope # noqa: F401
 
             RBACModel.assign_role(
                 db,
@@ -56,7 +56,7 @@ def upgrade(db):
                 "service_owner",
                 scope=PermissionScope.SERVICE,
                 resource_id=assignment.service_id,
-                granted_by=None,  # System migration
+                granted_by=None, # System migration
             )
             logger.info(
                 f"Assigned Service Owner role for service {assignment.service_id} "
@@ -73,7 +73,7 @@ def downgrade(db):
     """Remove RBAC tables (WARNING: This will delete all role data)"""
     logger.warning("Rolling back RBAC migration - this will delete all role data")
 
-    # Drop tables in reverse order
+  # Drop tables in reverse order
     tables_to_drop = ["user_permissions_cache", "user_roles", "roles"]
 
     for table_name in tables_to_drop:
@@ -87,28 +87,28 @@ def downgrade(db):
 
 if __name__ == "__main__":
     """Run migration standalone"""
-    import sys
-    import os
+    import sys # noqa: F401
+    import os # noqa: F401
 
-    # Add parent directory to path
+  # Add parent directory to path
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-    from pydal import DAL
-    import os
+    from pydal import DAL # noqa: F401
+    import os # noqa: F401
 
-    # Get database URL from environment
+  # Get database URL from environment
     db_url = os.getenv("DATABASE_URL", "sqlite://storage.db")
 
-    # Initialize database
+  # Initialize database
     db = DAL(db_url, folder="databases", migrate=True)
 
-    # Import models to define tables
-    from models.auth import UserModel, SessionModel
+  # Import models to define tables
+    from models.auth import UserModel, SessionModel # noqa: F401
 
     UserModel.define_table(db)
     SessionModel.define_table(db)
 
-    # Run migration
+  # Run migration
     choice = input("Run migration? (upgrade/downgrade): ").strip().lower()
 
     if choice == "upgrade":

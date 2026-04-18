@@ -8,14 +8,14 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import logging
-from penguintechinc_utils import get_logger
-from datetime import datetime
+import logging # noqa: F401, # noqa: F401
+from datetime import datetime # noqa: F401
 
-from middleware.auth import require_auth
-from models.media_settings import CreateRestreamRequest, MediaSettingsModel, MediaStreamModel
-from pydantic import ValidationError
-from quart import Blueprint, current_app, jsonify, request
+from middleware.auth import require_auth # noqa: F401
+from models.media_settings import CreateRestreamRequest, MediaSettingsModel, MediaStreamModel # noqa: F401
+from penguintechinc_utils import get_logger # noqa: F401
+from pydantic import ValidationError # noqa: F401
+from quart import Blueprint, current_app, jsonify, request # noqa: F401
 
 logger = get_logger(__name__)
 
@@ -24,15 +24,15 @@ media_bp = Blueprint("media", __name__, url_prefix="/api/v1/modules/rtmp")
 
 @media_bp.route("/config", methods=["GET", "PUT"])
 @require_auth()
-async def media_config(user_data):  # noqa: C901
+async def media_config(user_data): # noqa: C901
     """Get or update media module configuration"""
     db = current_app.db
 
     if request.method == "GET":
-        # Get current settings
+      # Get current settings
         settings = MediaSettingsModel.get_settings(db)
         if not settings:
-            # Return defaults if no settings exist
+          # Return defaults if no settings exist
             settings = {
                 "admin_max_resolution": None,
                 "admin_max_bitrate_kbps": None,
@@ -45,13 +45,13 @@ async def media_config(user_data):  # noqa: C901
         return jsonify({"config": settings, "status": "ok"}), 200
 
     elif request.method == "PUT":
-        # Only admins can update config
+      # Only admins can update config
         if not user_data.get("is_admin", False):
             return jsonify({"error": "Admin access required"}), 403
 
         try:
             data_json = await request.get_json()
-            # Validate transcode ladder if provided
+          # Validate transcode ladder if provided
             if "transcode_ladder_resolutions" in data_json:
                 valid_res = [360, 480, 540, 720, 1080, 1440, 2160, 4320]
                 for res in data_json["transcode_ladder_resolutions"]:
@@ -150,7 +150,7 @@ async def stream_detail(user_data, stream_key):
         )
 
     elif request.method == "DELETE":
-        # Only admins can stop streams
+      # Only admins can stop streams
         if not user_data.get("is_admin", False):
             return jsonify({"error": "Admin access required"}), 403
 
@@ -159,10 +159,10 @@ async def stream_detail(user_data, stream_key):
             return jsonify({"error": "Stream not found"}), 404
 
         try:
-            # Mark stream as ended in DB
+          # Mark stream as ended in DB
             MediaStreamModel.end_stream(db, stream_key)
 
-            # TODO: Send gRPC command to proxy-rtmp to actually stop the stream
+          # TODO: Send gRPC command to proxy-rtmp to actually stop the stream
 
             logger.info(f"Stream {stream_key} stopped by user {user_data['user_id']}")
             return jsonify({"status": "stopped", "stream_key": stream_key}), 200
@@ -178,22 +178,22 @@ async def get_capabilities(user_data):
     """Get media module hardware capabilities and current limits"""
     db = current_app.db
 
-    # Get admin settings
+  # Get admin settings
     settings = MediaSettingsModel.get_settings(db)
 
-    # TODO: Query actual hardware capabilities from proxy-rtmp via gRPC
-    # For now, return mock data
+  # TODO: Query actual hardware capabilities from proxy-rtmp via gRPC
+  # For now, return mock data
     hardware = {
         "gpu_type": "nvidia",
         "gpu_model": "NVIDIA GeForce RTX 4080",
         "vram_gb": 16,
-        "hardware_max_resolution": 4320,  # 8K
+        "hardware_max_resolution": 4320, # 8K
         "av1_supported": True,
         "supports_8k": True,
         "supports_4k": True,
     }
 
-    # Calculate effective max resolution
+  # Calculate effective max resolution
     admin_max = settings.get("admin_max_resolution") if settings else None
     hardware_max = hardware["hardware_max_resolution"]
     effective_max = min(admin_max, hardware_max) if admin_max else hardware_max
@@ -228,14 +228,14 @@ async def manage_restream(user_data, stream_key):
     """Manage restreaming destinations for a stream"""
     db = current_app.db
 
-    # Check stream exists
+  # Check stream exists
     stream = MediaStreamModel.get_stream(db, stream_key)
     if not stream:
         return jsonify({"error": "Stream not found"}), 404
 
     if request.method == "GET":
-        # TODO: Get restream destinations from database
-        # For now, return empty list
+      # TODO: Get restream destinations from database
+      # For now, return empty list
         return jsonify({"stream_key": stream_key, "destinations": []}), 200
 
     elif request.method == "POST":
@@ -248,7 +248,7 @@ async def manage_restream(user_data, stream_key):
         except ValidationError as e:
             return jsonify({"error": "Validation error", "details": str(e)}), 400
 
-        # TODO: Store restream config and notify proxy-rtmp via gRPC
+      # TODO: Store restream config and notify proxy-rtmp via gRPC
         logger.info(f"Restream created for {stream_key} to {restream.platform}")
 
         return (
@@ -270,7 +270,7 @@ async def manage_restream(user_data, stream_key):
         if not user_data.get("is_admin", False):
             return jsonify({"error": "Admin access required"}), 403
 
-        # TODO: Remove restream destination
+      # TODO: Remove restream destination
         return jsonify({"status": "deleted", "stream_key": stream_key}), 200
 
 
@@ -283,11 +283,11 @@ async def get_stats(user_data):
     try:
         active_streams = MediaStreamModel.get_active_streams(db)
 
-        # Calculate totals
+      # Calculate totals
         total_bytes_in = sum(s.get("bytes_in", 0) for s in active_streams)
         total_bytes_out = sum(s.get("bytes_out", 0) for s in active_streams)
 
-        # Group by protocol
+      # Group by protocol
         by_protocol = {}
         for stream in active_streams:
             proto = stream.get("protocol", "unknown")

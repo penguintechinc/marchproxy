@@ -3,18 +3,18 @@ Service Management Service for MarchProxy
 Handles service CRUD operations, authentication configuration, and cluster assignments
 """
 
-import base64
-import json
-import logging
-from penguintechinc_utils import get_logger
-import secrets
-from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+import base64 # noqa: F401, # noqa: F401
+import json # noqa: F401, # noqa: F401
+import logging # noqa: F401, # noqa: F401
+import secrets # noqa: F401, # noqa: F401
+from datetime import datetime, timedelta # noqa: F401
+from typing import Any, Dict, Optional # noqa: F401
 
-from quart import abort
+from penguintechinc_utils import get_logger # noqa: F401
+from quart import abort # noqa: F401
 
-from ..models import get_db
-from .license_service import LicenseService
+from ..models import get_db # noqa: F401
+from .license_service import LicenseService # noqa: F401
 
 logger = get_logger(__name__)
 
@@ -30,20 +30,20 @@ class ServiceManagementService:
     def create_service(self, service_data: Dict, user_id: int) -> Dict:
         """Create a new service with cluster assignment and authentication"""
 
-        # Validate cluster access
+      # Validate cluster access
         cluster_id = service_data.get("cluster_id")
         if not self._user_has_cluster_access(user_id, cluster_id):
             abort(403, "Access denied to specified cluster")
 
-        # Validate authentication method
+      # Validate authentication method
         auth_type = service_data.get("auth_type", "none")
         if auth_type not in ["none", "token", "jwt"]:
             abort(400, "Invalid authentication type")
 
-        # Generate authentication credentials based on type
+      # Generate authentication credentials based on type
         auth_config = self._generate_auth_config(auth_type)
 
-        # Create service record
+      # Create service record
         service_id = self.db.services.insert(
             name=service_data["name"],
             ip_fqdn=service_data["ip_fqdn"],
@@ -59,7 +59,7 @@ class ServiceManagementService:
             created_at=datetime.utcnow(),
         )
 
-        # Assign service to user
+      # Assign service to user
         self.db.user_service_assignments.insert(
             user_id=user_id,
             service_id=service_id,
@@ -82,7 +82,7 @@ class ServiceManagementService:
         if not service or not service.is_active:
             abort(404, "Service not found")
 
-        # Check access permissions
+      # Check access permissions
         if not self._user_has_service_access(user_id, service_id):
             abort(403, "Access denied to service")
 
@@ -95,26 +95,26 @@ class ServiceManagementService:
         if not service or not service.is_active:
             abort(404, "Service not found")
 
-        # Check write permissions
+      # Check write permissions
         if not self._user_has_service_write_access(user_id, service_id):
             abort(403, "Write access denied to service")
 
-        # Validate cluster change
+      # Validate cluster change
         if "cluster_id" in service_data:
             new_cluster_id = service_data["cluster_id"]
             if new_cluster_id != service.cluster_id:
                 if not self._user_has_cluster_access(user_id, new_cluster_id):
                     abort(403, "Access denied to target cluster")
 
-        # Handle authentication type changes
+      # Handle authentication type changes
         if "auth_type" in service_data and service_data["auth_type"] != service.auth_type:
             auth_config = self._generate_auth_config(service_data["auth_type"])
             service_data.update(auth_config)
 
-        # Update service
+      # Update service
         update_fields = {"updated_at": datetime.utcnow(), "updated_by": user_id}
 
-        # Update allowed fields
+      # Update allowed fields
         allowed_fields = [
             "name",
             "ip_fqdn",
@@ -146,11 +146,11 @@ class ServiceManagementService:
         if not service or not service.is_active:
             abort(404, "Service not found")
 
-        # Check write permissions
+      # Check write permissions
         if not self._user_has_service_write_access(user_id, service_id):
             abort(403, "Delete access denied")
 
-        # Soft delete
+      # Soft delete
         self.db(self.db.services.id == service_id).update(
             is_active=False, updated_at=datetime.utcnow(), updated_by=user_id
         )
@@ -168,13 +168,13 @@ class ServiceManagementService:
     ) -> Dict:
         """List services accessible to user"""
 
-        # Build base query for user's accessible services
+      # Build base query for user's accessible services
         query = self._build_user_services_query(user_id, cluster_id)
 
-        # Get total count
+      # Get total count
         total_count = self.db(query).count()
 
-        # Apply pagination
+      # Apply pagination
         offset = (page - 1) * per_page
         services = self.db(query).select(
             self.db.services.ALL,
@@ -201,15 +201,15 @@ class ServiceManagementService:
     ) -> bool:
         """Assign user to service"""
 
-        # Validate service exists and user has access
+      # Validate service exists and user has access
         if not self._user_has_service_write_access(assigner_user_id, service_id):
             abort(403, "Access denied")
 
-        # Validate role
+      # Validate role
         if role not in ["viewer", "editor", "owner"]:
             abort(400, "Invalid role")
 
-        # Check if assignment already exists
+      # Check if assignment already exists
         existing = (
             self.db(
                 (self.db.user_service_assignments.user_id == target_user_id)
@@ -220,13 +220,13 @@ class ServiceManagementService:
         )
 
         if existing:
-            # Update existing assignment
+          # Update existing assignment
             self.db(
                 (self.db.user_service_assignments.user_id == target_user_id)
                 & (self.db.user_service_assignments.service_id == service_id)
             ).update(role=role, assigned_at=datetime.utcnow(), assigned_by=assigner_user_id)
         else:
-            # Create new assignment
+          # Create new assignment
             self.db.user_service_assignments.insert(
                 user_id=target_user_id,
                 service_id=service_id,
@@ -269,19 +269,19 @@ class ServiceManagementService:
         if not self._user_has_service_write_access(user_id, service_id):
             abort(403, "Access denied")
 
-        # Generate new JWT secret
+      # Generate new JWT secret
         new_secret = self._generate_jwt_secret()
 
-        # Store old secret temporarily for zero-downtime rotation
+      # Store old secret temporarily for zero-downtime rotation
         old_secret = service.jwt_secret
         rotation_data = {
             "old_secret": old_secret,
             "new_secret": new_secret,
             "rotation_started": datetime.utcnow().isoformat(),
-            "rotation_window": 300,  # 5 minutes
+            "rotation_window": 300, # 5 minutes
         }
 
-        # Update service with new secret and rotation data
+      # Update service with new secret and rotation data
         self.db(self.db.services.id == service_id).update(
             jwt_secret=new_secret,
             jwt_rotation_data=json.dumps(rotation_data),
@@ -309,7 +309,7 @@ class ServiceManagementService:
         if not self._user_has_service_write_access(user_id, service_id):
             abort(403, "Access denied")
 
-        # Clear rotation data
+      # Clear rotation data
         self.db(self.db.services.id == service_id).update(
             jwt_rotation_data=None, updated_at=datetime.utcnow()
         )
@@ -331,7 +331,7 @@ class ServiceManagementService:
         if not self._user_has_service_write_access(user_id, service_id):
             abort(403, "Access denied")
 
-        # Generate new token
+      # Generate new token
         new_token = self._generate_base64_token()
 
         self.db(self.db.services.id == service_id).update(
@@ -359,7 +359,7 @@ class ServiceManagementService:
             auth_config["jwt_secret"] = service.jwt_secret
             auth_config["jwt_expiry"] = service.jwt_expiry
 
-            # Include old secret during rotation
+          # Include old secret during rotation
             if service.jwt_rotation_data:
                 try:
                     rotation_data = json.loads(service.jwt_rotation_data)
@@ -382,21 +382,21 @@ class ServiceManagementService:
         elif auth_type == "jwt":
             return {
                 "jwt_secret": self._generate_jwt_secret(),
-                "jwt_expiry": 3600,  # 1 hour default
+                "jwt_expiry": 3600, # 1 hour default
             }
 
-        else:  # 'none'
+        else: # 'none'
             return {}
 
     def _generate_base64_token(self) -> str:
         """Generate secure Base64 token"""
-        # Generate 32 bytes of random data
+      # Generate 32 bytes of random data
         token_bytes = secrets.token_bytes(32)
         return base64.b64encode(token_bytes).decode("ascii")
 
     def _generate_jwt_secret(self) -> str:
         """Generate secure JWT signing secret"""
-        # Generate 64 bytes of random data for HS512
+      # Generate 64 bytes of random data for HS512
         secret_bytes = secrets.token_bytes(64)
         return base64.b64encode(secret_bytes).decode("ascii")
 
@@ -407,11 +407,11 @@ class ServiceManagementService:
         if not user:
             return False
 
-        # Admins have access to all clusters
+      # Admins have access to all clusters
         if user.is_admin:
             return True
 
-        # Check cluster assignment
+      # Check cluster assignment
         assignment = (
             self.db(
                 (self.db.user_cluster_assignments.user_id == user_id)
@@ -430,11 +430,11 @@ class ServiceManagementService:
         if not user:
             return False
 
-        # Admins have access to all services
+      # Admins have access to all services
         if user.is_admin:
             return True
 
-        # Check service assignment
+      # Check service assignment
         assignment = (
             self.db(
                 (self.db.user_service_assignments.user_id == user_id)
@@ -453,11 +453,11 @@ class ServiceManagementService:
         if not user:
             return False
 
-        # Admins have write access to all services
+      # Admins have write access to all services
         if user.is_admin:
             return True
 
-        # Check service assignment with appropriate role
+      # Check service assignment with appropriate role
         assignment = (
             self.db(
                 (self.db.user_service_assignments.user_id == user_id)
@@ -474,14 +474,14 @@ class ServiceManagementService:
 
         user = self.db.auth_user[user_id]
 
-        # Start with active services
+      # Start with active services
         query = self.db.services.is_active == True  # noqa: E712
 
-        # Add cluster filter if specified
+      # Add cluster filter if specified
         if cluster_id:
             query &= self.db.services.cluster_id == cluster_id
 
-        # If not admin, filter by service assignments
+      # If not admin, filter by service assignments
         if not user.is_admin:
             query &= self.db.services.id.belongs(
                 self.db(self.db.user_service_assignments.user_id == user_id)._select(
@@ -507,7 +507,7 @@ class ServiceManagementService:
             "updated_at": (service.updated_at.isoformat() if service.updated_at else None),
         }
 
-        # Include authentication secrets only when requested
+      # Include authentication secrets only when requested
         if include_secrets:
             if service.auth_type == "token" and service.token_base64:
                 result["token_base64"] = service.token_base64
@@ -516,7 +516,7 @@ class ServiceManagementService:
                 result["jwt_secret"] = service.jwt_secret
                 result["jwt_expiry"] = service.jwt_expiry
 
-                # Include rotation status
+              # Include rotation status
                 if service.jwt_rotation_data:
                     try:
                         rotation_data = json.loads(service.jwt_rotation_data)

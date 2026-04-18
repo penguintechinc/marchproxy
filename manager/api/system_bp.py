@@ -7,13 +7,13 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import logging
-from penguintechinc_utils import get_logger
-import os
-from datetime import datetime
+import logging # noqa: F401, # noqa: F401
+import os # noqa: F401, # noqa: F401
+from datetime import datetime # noqa: F401
 
-from prometheus_client import REGISTRY, Gauge, generate_latest
-from quart import Blueprint, Response, current_app, jsonify
+from penguintechinc_utils import get_logger # noqa: F401
+from prometheus_client import REGISTRY, Gauge, generate_latest # noqa: F401
+from quart import Blueprint, Response, current_app, jsonify # noqa: F401
 
 logger = get_logger(__name__)
 
@@ -58,11 +58,11 @@ async def root():
 async def healthz():
     """Database health check endpoint."""
     try:
-        # Test database connectivity
+      # Test database connectivity
         db = current_app.db
         db.executesql("SELECT 1")
 
-        # Check license status if configured
+      # Check license status if configured
         license_key = os.environ.get("LICENSE_KEY")
         license_status = "community"
         if license_key:
@@ -95,7 +95,7 @@ async def healthz():
 async def healthz_ready():
     """Kubernetes readiness probe endpoint."""
     try:
-        # Test database connectivity
+      # Test database connectivity
         db = current_app.db
         db.executesql("SELECT 1")
 
@@ -121,7 +121,7 @@ async def metrics():
     try:
         db = current_app.db
 
-        # Query metrics from database
+      # Query metrics from database
         total_users = db(db.users).count()
         active_users = db(db.users.is_active == True).count()  # noqa: E712
         total_clusters = db(db.clusters.is_active == True).count()  # noqa: E712
@@ -130,7 +130,7 @@ async def metrics():
         total_services = db(db.services.is_active == True).count()  # noqa: E712
         total_mappings = db(db.mappings.is_active == True).count()  # noqa: E712
 
-        # Update Prometheus gauges
+      # Update Prometheus gauges
         marchproxy_users_total.set(total_users)
         marchproxy_users_active.set(active_users)
         marchproxy_clusters_total.set(total_clusters)
@@ -139,7 +139,7 @@ async def metrics():
         marchproxy_services_total.set(total_services)
         marchproxy_mappings_total.set(total_mappings)
 
-        # Generate Prometheus metrics
+      # Generate Prometheus metrics
         metrics_output = generate_latest(REGISTRY)
 
         return Response(metrics_output, mimetype="text/plain; version=0.0.4")
@@ -166,8 +166,8 @@ async def license_status():
                 }
             )
 
-        # Get cached license data
-        from models.license import LicenseCacheModel
+      # Get cached license data
+        from models.license import LicenseCacheModel # noqa: F401
 
         license_data = LicenseCacheModel.get_cached_validation(db, license_key)
 

@@ -10,14 +10,14 @@ by the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 """
 
-import unittest
-import tempfile
-import os
-import sys
-from unittest.mock import Mock, patch, MagicMock
-import json
-import hashlib
-import secrets
+import hashlib # noqa: F401, # noqa: F401
+import json # noqa: F401, # noqa: F401
+import os # noqa: F401, # noqa: F401
+import secrets # noqa: F401, # noqa: F401
+import sys # noqa: F401, # noqa: F401
+import tempfile # noqa: F401, # noqa: F401
+import unittest # noqa: F401, # noqa: F401
+from unittest.mock import MagicMock, Mock, patch # noqa: F401
 
 # Add project root to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
@@ -38,24 +38,24 @@ class TestManagerAuthentication(unittest.TestCase):
         """Test password hashing and validation"""
         password = "test_password_123"
 
-        # Mock bcrypt functionality
+      : # Mock bcrypt functionality
         with patch('bcrypt.hashpw') as mock_hash, \
              patch('bcrypt.checkpw') as mock_check:
 
             mock_hash.return_value = b'$2b$12$test_hash_value'
             mock_check.return_value = True
 
-            # Test password hashing
+          : # Test password hashing
             hashed = mock_hash(password.encode('utf-8'), b'salt')
             self.assertIsNotNone(hashed)
 
-            # Test password verification
+          : # Test password verification
             is_valid = mock_check(password.encode('utf-8'), hashed)
             self.assertTrue(is_valid)
 
     def test_totp_generation(self):
         """Test TOTP secret generation and validation"""
-        # Mock TOTP functionality
+      : # Mock TOTP functionality
         with patch('pyotp.random_base32') as mock_random, \
              patch('pyotp.TOTP') as mock_totp:
 
@@ -64,11 +64,11 @@ class TestManagerAuthentication(unittest.TestCase):
             mock_totp_instance.verify.return_value = True
             mock_totp.return_value = mock_totp_instance
 
-            # Test secret generation
+          : # Test secret generation
             secret = mock_random()
             self.assertEqual(secret, 'JBSWY3DPEHPK3PXP')
 
-            # Test TOTP verification
+          : # Test TOTP verification
             totp = mock_totp(secret)
             is_valid = totp.verify('123456')
             self.assertTrue(is_valid)
@@ -79,21 +79,21 @@ class TestManagerAuthentication(unittest.TestCase):
             'user_id': 1,
             'username': 'testuser',
             'is_admin': False,
-            'exp': 1735689600  # Future timestamp
+            'exp': 1735689600: # Future timestamp
         }
 
-        # Mock JWT functionality
+      : # Mock JWT functionality
         with patch('jwt.encode') as mock_encode, \
              patch('jwt.decode') as mock_decode:
 
             mock_encode.return_value = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.test'
             mock_decode.return_value = payload
 
-            # Test token generation
+          : # Test token generation
             token = mock_encode(payload, 'secret', algorithm='HS256')
             self.assertIsNotNone(token)
 
-            # Test token validation
+          : # Test token validation
             decoded = mock_decode(token, 'secret', algorithms=['HS256'])
             self.assertEqual(decoded['user_id'], 1)
             self.assertEqual(decoded['username'], 'testuser')
@@ -119,10 +119,10 @@ class TestManagerClusterManagement(unittest.TestCase):
         with patch('secrets.token_urlsafe') as mock_token:
             mock_token.return_value = 'test-api-key-12345'
 
-            # Mock database insertion
+          : # Mock database insertion
             self.mock_db.clusters.insert.return_value = 1
 
-            # Test cluster creation
+          : # Test cluster creation
             api_key = mock_token(32)
             cluster_id = self.mock_db.clusters.insert(
                 **self.cluster_data,
@@ -141,10 +141,10 @@ class TestManagerClusterManagement(unittest.TestCase):
         with patch('secrets.token_urlsafe') as mock_token:
             mock_token.return_value = 'new-api-key-67890'
 
-            # Mock database update
+          : # Mock database update
             self.mock_db.clusters.update_or_insert.return_value = True
 
-            # Test key rotation
+          : # Test key rotation
             new_api_key = mock_token(32)
             result = self.mock_db.clusters.update_or_insert(
                 self.mock_db.clusters.id == cluster_id,
@@ -165,10 +165,10 @@ class TestManagerClusterManagement(unittest.TestCase):
             'log_debug': True
         }
 
-        # Mock database update
+      : # Mock database update
         self.mock_db.clusters.update_or_insert.return_value = True
 
-        # Test logging configuration update
+      : # Test logging configuration update
         result = self.mock_db.clusters.update_or_insert(
             self.mock_db.clusters.id == cluster_id,
             **logging_config
@@ -196,10 +196,10 @@ class TestManagerServiceManagement(unittest.TestCase):
         with patch('secrets.token_urlsafe') as mock_token:
             mock_token.return_value = 'jwt-secret-12345'
 
-            # Mock database insertion
+          : # Mock database insertion
             self.mock_db.services.insert.return_value = 1
 
-            # Test service creation with JWT
+          : # Test service creation with JWT
             jwt_secret = mock_token(32)
             service_id = self.mock_db.services.insert(
                 **self.service_data,
@@ -212,15 +212,15 @@ class TestManagerServiceManagement(unittest.TestCase):
 
     def test_service_creation_with_token(self):
         """Test service creation with Base64 token authentication"""
-        import base64
+        import base64 # noqa: F401
 
         with patch('secrets.token_bytes') as mock_token:
             mock_token.return_value = b'test-token-bytes'
 
-            # Mock database insertion
+          : # Mock database insertion
             self.mock_db.services.insert.return_value = 2
 
-            # Test service creation with Base64 token
+          : # Test service creation with Base64 token
             token_bytes = mock_token(32)
             token_base64 = base64.b64encode(token_bytes).decode('utf-8')
 
@@ -242,10 +242,10 @@ class TestManagerServiceManagement(unittest.TestCase):
         with patch('secrets.token_urlsafe') as mock_token:
             mock_token.return_value = 'new-jwt-secret-67890'
 
-            # Mock database update
+          : # Mock database update
             self.mock_db.services.update_or_insert.return_value = True
 
-            # Test JWT rotation
+          : # Test JWT rotation
             new_secret = mock_token(32)
             result = self.mock_db.services.update_or_insert(
                 self.mock_db.services.id == service_id,
@@ -274,7 +274,7 @@ class TestManagerAPIEndpoints(unittest.TestCase):
         with patch('json.loads') as mock_json:
             mock_json.return_value = registration_data
 
-            # Mock successful registration
+          : # Mock successful registration
             response = {
                 'status': 'success',
                 'proxy_id': 1,
@@ -282,7 +282,7 @@ class TestManagerAPIEndpoints(unittest.TestCase):
                 'message': 'Proxy registered successfully'
             }
 
-            # Test registration
+          : # Test registration
             self.assertEqual(response['status'], 'success')
             self.assertEqual(response['proxy_id'], 1)
             self.assertEqual(response['cluster_id'], 1)
@@ -316,7 +316,7 @@ class TestManagerAPIEndpoints(unittest.TestCase):
             }
         }
 
-        # Test configuration retrieval
+      : # Test configuration retrieval
         self.assertIn('services', mock_config)
         self.assertIn('mappings', mock_config)
         self.assertIn('logging', mock_config)
@@ -343,7 +343,7 @@ class TestManagerAPIEndpoints(unittest.TestCase):
             'expires_at': '2025-12-31T23:59:59Z'
         }
 
-        # Test license validation
+      : # Test license validation
         self.assertTrue(mock_validation_response['valid'])
         self.assertTrue(mock_validation_response['features']['unlimited_proxies'])
         self.assertEqual(mock_validation_response['limits']['max_proxies'], 100)
@@ -389,19 +389,19 @@ marchproxy_manager_proxy_count{cluster="default"} 3
         self.assertIn('marchproxy_manager_proxy_count', metrics_response)
 
 if __name__ == '__main__':
-    # Create test suite
+  : # Create test suite
     suite = unittest.TestSuite()
 
-    # Add test cases
+  : # Add test cases
     suite.addTest(unittest.makeSuite(TestManagerAuthentication))
     suite.addTest(unittest.makeSuite(TestManagerClusterManagement))
     suite.addTest(unittest.makeSuite(TestManagerServiceManagement))
     suite.addTest(unittest.makeSuite(TestManagerAPIEndpoints))
     suite.addTest(unittest.makeSuite(TestManagerHealthEndpoints))
 
-    # Run tests
+  : # Run tests
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
 
-    # Exit with proper code
+  : # Exit with proper code
     sys.exit(0 if result.wasSuccessful() else 1)

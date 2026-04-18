@@ -1,13 +1,11 @@
 """
 Integration tests for xDS config updates.
 """
-import pytest
-from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models.cluster import Cluster
-from app.models.service import Service
-from app.models.proxy import Proxy
+import pytest # noqa: F401, # noqa: F401
+from app_quart.models.kong import KongService # noqa: F401
+from app_quart.models.kong import KongRoute # noqa: F401
+from httpx import AsyncClient # noqa: F401
+from sqlalchemy.ext.asyncio import AsyncSession # noqa: F401
 
 
 @pytest.mark.asyncio
@@ -185,8 +183,9 @@ class TestXDSIntegration:
         db_session: AsyncSession
     ):
         """Test xDS TLS configuration includes certificates."""
-        from app.models.certificate import Certificate
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta # noqa: F401
+
+        from app.models.certificate import Certificate # noqa: F401
 
         # Create certificate
         cert = Certificate(

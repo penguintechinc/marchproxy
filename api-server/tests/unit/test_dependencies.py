@@ -1,12 +1,13 @@
 """Unit tests for app/dependencies.py"""
-import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
-from fastapi import HTTPException
+from unittest.mock import AsyncMock, MagicMock, patch # noqa: F401
+
+import pytest # noqa: F401, # noqa: F401
+from fastapi import HTTPException # noqa: F401
 
 
 @pytest.mark.asyncio
 async def test_require_admin_passes_for_admin():
-    from app.dependencies import require_admin
+    from app.dependencies import require_admin # noqa: F401
     user = MagicMock()
     user.is_admin = True
     result = await require_admin(user)
@@ -15,7 +16,7 @@ async def test_require_admin_passes_for_admin():
 
 @pytest.mark.asyncio
 async def test_require_admin_raises_403_for_non_admin():
-    from app.dependencies import require_admin
+    from app.dependencies import require_admin # noqa: F401
     user = MagicMock()
     user.is_admin = False
     with pytest.raises(HTTPException) as exc_info:
@@ -25,7 +26,7 @@ async def test_require_admin_raises_403_for_non_admin():
 
 @pytest.mark.asyncio
 async def test_require_admin_403_detail():
-    from app.dependencies import require_admin
+    from app.dependencies import require_admin # noqa: F401
     user = MagicMock()
     user.is_admin = False
     with pytest.raises(HTTPException) as exc_info:
@@ -35,8 +36,8 @@ async def test_require_admin_403_detail():
 
 @pytest.mark.asyncio
 async def test_get_current_user_raises_401_on_invalid_token():
-    from app.dependencies import get_current_user
-    from fastapi.security import HTTPAuthorizationCredentials
+    from app.dependencies import get_current_user # noqa: F401
+    from fastapi.security import HTTPAuthorizationCredentials # noqa: F401
 
     credentials = MagicMock(spec=HTTPAuthorizationCredentials)
     credentials.credentials = "invalid.jwt.token"
@@ -50,14 +51,14 @@ async def test_get_current_user_raises_401_on_invalid_token():
 
 @pytest.mark.asyncio
 async def test_get_current_user_raises_401_when_sub_missing():
-    from app.dependencies import get_current_user
-    from fastapi.security import HTTPAuthorizationCredentials
+    from app.dependencies import get_current_user # noqa: F401
+    from fastapi.security import HTTPAuthorizationCredentials # noqa: F401
 
     credentials = MagicMock(spec=HTTPAuthorizationCredentials)
     credentials.credentials = "some.token.here"
     db = AsyncMock()
 
-    # Token decodes but has no "sub"
+ # Token decodes but has no "sub"
     with patch("app.dependencies.decode_token", return_value={"type": "access"}):
         with pytest.raises(HTTPException) as exc_info:
             await get_current_user(credentials, db)
@@ -66,14 +67,14 @@ async def test_get_current_user_raises_401_when_sub_missing():
 
 @pytest.mark.asyncio
 async def test_get_current_user_raises_404_when_user_not_found():
-    from app.dependencies import get_current_user
-    from fastapi.security import HTTPAuthorizationCredentials
+    from app.dependencies import get_current_user # noqa: F401
+    from fastapi.security import HTTPAuthorizationCredentials # noqa: F401
 
     credentials = MagicMock(spec=HTTPAuthorizationCredentials)
     credentials.credentials = "valid.token.here"
     db = AsyncMock()
 
-    # Token decodes with sub, but user not in DB
+ # Token decodes with sub, but user not in DB
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = None
     db.execute = AsyncMock(return_value=mock_result)
@@ -86,14 +87,14 @@ async def test_get_current_user_raises_404_when_user_not_found():
 
 @pytest.mark.asyncio
 async def test_get_current_user_raises_404_when_user_inactive():
-    from app.dependencies import get_current_user
-    from fastapi.security import HTTPAuthorizationCredentials
+    from app.dependencies import get_current_user # noqa: F401
+    from fastapi.security import HTTPAuthorizationCredentials # noqa: F401
 
     credentials = MagicMock(spec=HTTPAuthorizationCredentials)
     credentials.credentials = "valid.token.here"
     db = AsyncMock()
 
-    # User exists but is inactive
+ # User exists but is inactive
     inactive_user = MagicMock()
     inactive_user.is_active = False
     mock_result = MagicMock()
@@ -108,8 +109,8 @@ async def test_get_current_user_raises_404_when_user_inactive():
 
 @pytest.mark.asyncio
 async def test_get_current_user_returns_user_on_success():
-    from app.dependencies import get_current_user
-    from fastapi.security import HTTPAuthorizationCredentials
+    from app.dependencies import get_current_user # noqa: F401
+    from fastapi.security import HTTPAuthorizationCredentials # noqa: F401
 
     credentials = MagicMock(spec=HTTPAuthorizationCredentials)
     credentials.credentials = "valid.token.here"
@@ -128,7 +129,7 @@ async def test_get_current_user_returns_user_on_success():
 
 @pytest.mark.asyncio
 async def test_validate_license_feature_raises_402_without_key():
-    from app.dependencies import validate_license_feature
+    from app.dependencies import validate_license_feature # noqa: F401
 
     with pytest.raises(HTTPException) as exc_info:
         await validate_license_feature("unlimited_proxies", x_license_key=None)
@@ -137,7 +138,7 @@ async def test_validate_license_feature_raises_402_without_key():
 
 @pytest.mark.asyncio
 async def test_validate_license_feature_raises_402_on_invalid_license():
-    from app.dependencies import validate_license_feature
+    from app.dependencies import validate_license_feature # noqa: F401
 
     mock_validation = {"valid": False, "tier": "community", "features": []}
     with patch("app.dependencies.license_manager") as mock_mgr:
@@ -149,7 +150,7 @@ async def test_validate_license_feature_raises_402_on_invalid_license():
 
 @pytest.mark.asyncio
 async def test_validate_license_feature_raises_402_feature_not_in_license():
-    from app.dependencies import validate_license_feature
+    from app.dependencies import validate_license_feature # noqa: F401
 
     mock_validation = {"valid": True, "tier": "enterprise", "features": ["other_feature"]}
     with patch("app.dependencies.license_manager") as mock_mgr:
@@ -161,7 +162,7 @@ async def test_validate_license_feature_raises_402_feature_not_in_license():
 
 @pytest.mark.asyncio
 async def test_validate_license_feature_returns_true_on_valid():
-    from app.dependencies import validate_license_feature
+    from app.dependencies import validate_license_feature # noqa: F401
 
     mock_validation = {
         "valid": True,

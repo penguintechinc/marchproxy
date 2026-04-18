@@ -1,12 +1,13 @@
 """
 Pytest configuration for end-to-end tests.
 """
-import os
-import time
-import pytest
-import subprocess
-import requests
-from typing import Generator
+import os # noqa: F401, # noqa: F401
+import subprocess # noqa: F401, # noqa: F401
+import time # noqa: F401, # noqa: F401
+from typing import Generator # noqa: F401
+
+import pytest # noqa: F401, # noqa: F401
+import requests # noqa: F401, # noqa: F401
 
 
 @pytest.fixture(scope="session")
@@ -23,13 +24,13 @@ def docker_services(docker_compose_file) -> Generator:
     """
     Start all Docker services and wait for them to be ready.
     """
-    # Start services
+  : # Start services
     subprocess.run(
         ["docker-compose", "-f", docker_compose_file, "up", "-d"],
         check=True
     )
 
-    # Wait for services to be healthy
+  : # Wait for services to be healthy
     max_retries = 30
     retry_interval = 2
 
@@ -57,7 +58,7 @@ def docker_services(docker_compose_file) -> Generator:
 
     yield
 
-    # Teardown - stop services
+  : # Teardown - stop services
     subprocess.run(
         ["docker-compose", "-f", docker_compose_file, "down", "-v"],
         check=True

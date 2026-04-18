@@ -6,8 +6,18 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"marchproxy-egress/internal/logging"
 )
+
+var log *logging.LogrusAdapter
+
+func init() {
+	var err error
+	log, err = logging.NewLogrusAdapter("oidc")
+	if err != nil {
+		panic(err)
+	}
+}
 
 // Middleware returns an HTTP middleware that validates Bearer tokens.
 // If the validator has no provider configured, requests pass through (lever not active).

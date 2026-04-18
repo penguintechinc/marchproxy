@@ -10,7 +10,6 @@ import (
 
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/config"
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/transcode"
-	"go.uber.org/zap"
 )
 
 // Server handles RTMP connections and stream routing
@@ -54,7 +53,7 @@ func (s *Server) Start(ctx context.Context) error {
 	}
 
 	s.listener = listener
-	logrus.WithField("address", addr).Info("RTMP server started")
+	logger.WithFields(map[string]interface{}{"address": addr}).Info("RTMP server started")
 
 	// Accept connections
 	go s.acceptLoop(ctx)
@@ -104,7 +103,7 @@ func (s *Server) acceptLoop(ctx context.Context) {
 			if !running {
 				break
 			}
-			logrus.WithError(err).Error("Failed to accept connection")
+			logger.WithError(err).Error("Failed to accept connection")
 			continue
 		}
 
@@ -117,21 +116,21 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 	defer conn.Close()
 
 	clientAddr := conn.RemoteAddr().String()
-	logrus.WithField("client", clientAddr).Debug("New RTMP connection")
+	logger.WithFields(map[string]interface{}{"client": clientAddr}).Info("New RTMP connection")
 
 	// Perform RTMP handshake
 	streamKey, err := s.performHandshake(conn)
 	if err != nil {
-		logrus.WithError(err).WithField("client", clientAddr).Warn("Handshake failed")
+		logger.WithError(err).WithFields(map[string]interface{}{"client": clientAddr}).Warn("Handshake failed")
 		return
 	}
 
 	if streamKey == "" {
-		logrus.WithField("client", clientAddr).Warn("No stream key provided")
+		logger.WithFields(map[string]interface{}{"client": clientAddr}).Warn("No stream key provided")
 		return
 	}
 
-	logrus.WithFields(logrus.Fields{
+	logger.WithFields(map[string]interface{}{
 		"client":     clientAddr,
 		"stream_key": streamKey,
 	}).Info("RTMP handshake successful")
@@ -146,7 +145,7 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 
 	// Handle stream
 	if err := session.Start(ctx); err != nil {
-		logrus.WithError(err).WithField("stream_key", streamKey).Error("Session failed")
+		logger.WithError(err).WithFields(map[string]interface{}{"stream_key": streamKey}).Error("Session failed")
 	}
 
 	// Unregister session
@@ -154,7 +153,7 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) {
 	delete(s.sessions, streamKey)
 	s.sessionsMutex.Unlock()
 
-	logrus.WithField("stream_key", streamKey).Info("Session ended")
+	logger.WithFields(map[string]interface{}{"stream_key": streamKey}).Info("Session ended")
 }
 
 // performHandshake performs RTMP handshake and extracts stream key

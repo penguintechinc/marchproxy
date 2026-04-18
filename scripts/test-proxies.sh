@@ -42,16 +42,16 @@ print_error() {
 }
 
 run_test() {
-    local test_name="$1"
-    local test_command="$2"
-    local expected_result="$3"
+    local test_name; test_name; test_name; test_name; test_name; test_name; test_name; test_name="""$1"""
+    local test_command; test_command; test_command; test_command; test_command; test_command; test_command; test_command="""$2"""
+    local expected_result; expected_result; expected_result; expected_result; expected_result; expected_result; expected_result; expected_result="""$3"""
 
     ((TOTAL_TESTS++))
     print_status "Running test: $test_name"
 
     if eval "$test_command"; then
         if [[ -n "$expected_result" ]]; then
-            local result=$(eval "$test_command" 2>/dev/null)
+            local result; result; result; result; result; result; result; result=""$(eval "$test_command" 2>/dev/null)""
             if echo "$result" | grep -q "$expected_result"; then
                 print_success "✓ $test_name"
                 TEST_RESULTS+=("PASS: $test_name")
@@ -72,9 +72,9 @@ run_test() {
 }
 
 wait_for_service() {
-    local service_url="$1"
-    local service_name="$2"
-    local timeout="${3:-60}"
+    local service_url; service_url; service_url; service_url; service_url; service_url; service_url; service_url="""$1"""
+    local service_name; service_name; service_name; service_name; service_name; service_name; service_name; service_name="""$2"""
+    local timeout; timeout; timeout; timeout; timeout; timeout; timeout; timeout="""${3:-60}"""
 
     print_status "Waiting for $service_name to be ready ($timeout seconds timeout)..."
 
@@ -112,7 +112,7 @@ test_certificate_generation() {
     fi
 
     # Verify certificate files exist
-    local cert_files=("ca.pem" "server-cert.pem" "server-key.pem" "client-cert.pem" "client-key.pem")
+    local cert_files; cert_files; cert_files; cert_files; cert_files; cert_files; cert_files; cert_files=""("ca.pem" "server-cert.pem" "server-key.pem" "client-cert.pem" "client-key.pem")""
     for cert_file in "${cert_files[@]}"; do
         run_test "Certificate file exists: $cert_file" \
                  "test -f '$CERT_DIR/$cert_file'" ""

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"marchproxy-dblb/internal/logging"
 	"context"
 	"database/sql"
 	"fmt"
@@ -14,7 +15,6 @@ import (
 	"marchproxy-dblb/internal/security"
 
 	_ "github.com/go-sql-driver/mysql"
-	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
 
@@ -100,7 +100,7 @@ func (h *MySQLHandler) Start(ctx context.Context) error {
 	h.wg.Add(1)
 	go h.acceptConnections()
 
-	h.logger.WithFields(logrus.Fields{
+	h.logger.WithFields(logging.Fields{
 		"protocol": h.route.Protocol,
 		"port":     h.route.ListenPort,
 		"backend":  fmt.Sprintf("%s:%d", h.route.BackendHost, h.route.BackendPort),
@@ -204,7 +204,7 @@ func (h *MySQLHandler) initSQLPools() error {
 	key := fmt.Sprintf("%s:%d", h.route.BackendHost, h.route.BackendPort)
 	h.sqlPools[key] = db
 
-	h.logger.WithFields(logrus.Fields{
+	h.logger.WithFields(logging.Fields{
 		"backend":   key,
 		"max_conns": maxConns,
 	}).Info("MySQL connection pool initialized")
@@ -276,7 +276,7 @@ func (h *MySQLHandler) handleConnection(clientConn net.Conn) {
 		return
 	}
 
-	h.logger.WithFields(logrus.Fields{
+	h.logger.WithFields(logging.Fields{
 		"username": username,
 		"database": database,
 		"client":   clientConn.RemoteAddr().String(),
@@ -493,7 +493,7 @@ func (h *MySQLHandler) proxyClientToBackend(client net.Conn, backend *sql.Conn, 
 					if isMalicious, reason := h.securityChecker.CheckQuery(query); isMalicious {
 						atomic.AddInt64(&h.blockedQueries, 1)
 
-						h.logger.WithFields(logrus.Fields{
+						h.logger.WithFields(logging.Fields{
 							"username": username,
 							"database": database,
 							"query":    query[:min(100, len(query))],
@@ -516,7 +516,7 @@ func (h *MySQLHandler) proxyClientToBackend(client net.Conn, backend *sql.Conn, 
 					atomic.AddInt64(&h.readQueries, 1)
 				}
 
-				h.logger.WithFields(logrus.Fields{
+				h.logger.WithFields(logging.Fields{
 					"username": username,
 					"database": database,
 					"query":    query[:min(50, len(query))],

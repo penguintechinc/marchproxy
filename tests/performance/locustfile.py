@@ -4,9 +4,10 @@ Locust load testing for MarchProxy API Server.
 Usage:
     locust -f locustfile.py --host=http://localhost:8000
 """
-from locust import HttpUser, task, between
-import random
-import json
+import json # noqa: F401, # noqa: F401
+import random # noqa: F401, # noqa: F401
+
+from locust import HttpUser, between, task # noqa: F401
 
 
 class MarchProxyUser(HttpUser):
@@ -18,7 +19,7 @@ class MarchProxyUser(HttpUser):
 
     def on_start(self):
         """Login and setup before tasks."""
-        # Login
+      : # Login
         response = self.client.post(
             "/api/v1/auth/login",
             data={
@@ -30,7 +31,7 @@ class MarchProxyUser(HttpUser):
         if response.status_code == 200:
             self.token = response.json()["access_token"]
 
-            # Get or create a test cluster
+          : # Get or create a test cluster
             headers = {"Authorization": f"Bearer {self.token}"}
             clusters_response = self.client.get(
                 "/api/v1/clusters",

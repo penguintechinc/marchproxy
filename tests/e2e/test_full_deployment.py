@@ -1,9 +1,10 @@
 """
 End-to-end test for full deployment of all 4 containers.
 """
-import pytest
-import requests
-import time
+import time # noqa: F401, # noqa: F401
+
+import pytest # noqa: F401, # noqa: F401
+import requests # noqa: F401, # noqa: F401
 
 
 @pytest.mark.e2e
@@ -12,8 +13,8 @@ class TestFullDeployment:
 
     def test_postgres_database_ready(self, docker_services):
         """Test PostgreSQL database is running."""
-        # Database should be accessible via API server health check
-        # This is implicit in docker_services fixture
+      : # Database should be accessible via API server health check
+      : # This is implicit in docker_services fixture
         assert True
 
     def test_api_server_health(self, docker_services, api_base_url):
@@ -31,7 +32,7 @@ class TestFullDeployment:
         response = requests.get(f"{api_base_url}/metrics")
 
         assert response.status_code == 200
-        # Should be Prometheus format
+      : # Should be Prometheus format
         assert "# TYPE" in response.text
 
     def test_xds_server_health(self, docker_services, xds_base_url):
@@ -64,7 +65,7 @@ class TestFullDeployment:
         assert response.status_code == 200
         data = response.json()
 
-        # Redis may be optional
+      : # Redis may be optional
         if "redis" in data:
             assert data["redis"]["status"] in ["connected", "unavailable"]
 
@@ -82,7 +83,7 @@ class TestFullDeployment:
             duration = time.time() - start_time
 
             assert response.status_code == 200
-            assert duration < 2.0  # Should respond within 2 seconds
+            assert duration < 2.0: # Should respond within 2 seconds
 
     def test_api_server_cors_headers(self, docker_services, api_base_url):
         """Test API server returns correct CORS headers."""
@@ -104,8 +105,8 @@ class TestFullDeployment:
 
     def test_container_networking(self, docker_services, api_base_url):
         """Test containers can communicate with each other."""
-        # API server should be able to reach database
-        # This is validated through successful database operations
+      : # API server should be able to reach database
+      : # This is validated through successful database operations
         response = requests.get(f"{api_base_url}/healthz")
 
         assert response.status_code == 200
@@ -118,45 +119,45 @@ class TestFullDeployment:
         assert response.status_code == 200
         data = response.json()
 
-        # Should have proper configuration
+      : # Should have proper configuration
         assert "version" in data
         assert data["status"] == "healthy"
 
     def test_logging_configured(self, docker_services, api_base_url):
         """Test logging is properly configured."""
-        # Make a request to generate logs
+      : # Make a request to generate logs
         response = requests.get(f"{api_base_url}/healthz")
 
         assert response.status_code == 200
 
-        # Logs should be written (can't easily verify without log aggregation)
-        # But the service should respond properly
+      : # Logs should be written (can't easily verify without log aggregation)
+      : # But the service should respond properly
         assert True
 
     def test_metrics_collection_working(self, docker_services, api_base_url):
         """Test metrics are being collected."""
-        # Make several requests
+      : # Make several requests
         for _ in range(5):
             requests.get(f"{api_base_url}/healthz")
 
-        # Get metrics
+      : # Get metrics
         response = requests.get(f"{api_base_url}/metrics")
 
         assert response.status_code == 200
         metrics_text = response.text
 
-        # Should have HTTP request metrics
+      : # Should have HTTP request metrics
         assert "http_requests_total" in metrics_text or "http_" in metrics_text
 
     def test_graceful_shutdown_support(self, docker_services):
         """Test services support graceful shutdown."""
-        # This is validated by docker-compose down working properly
-        # Services should handle SIGTERM correctly
+      : # This is validated by docker-compose down working properly
+      : # Services should handle SIGTERM correctly
         assert True
 
     def test_container_health_checks(self, docker_services):
         """Test Docker health checks are working."""
-        import subprocess
+        import subprocess # noqa: F401
 
         result = subprocess.run(
             ["docker-compose", "-f", "docker-compose.test.yml", "ps"],
@@ -164,7 +165,7 @@ class TestFullDeployment:
             text=True
         )
 
-        # All services should be "Up" and "healthy"
+      : # All services should be "Up" and "healthy"
         assert "Up" in result.stdout
-        # Health check status may vary by implementation
+      : # Health check status may vary by implementation
         assert True

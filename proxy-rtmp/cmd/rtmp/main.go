@@ -10,9 +10,9 @@ import (
 
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/config"
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/grpc"
+	"github.com/penguintech/marchproxy/proxy-rtmp/internal/logging"
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/rtmp"
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/transcode"
-	"go.uber.org/zap"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -20,7 +20,16 @@ import (
 var (
 	cfgFile string
 	version = "1.0.0"
+	logger  *logging.LogrusAdapter
 )
+
+func init() {
+	var err error
+	logger, err = logging.NewLogrusAdapter("rtmp-proxy")
+	if err != nil {
+		panic("failed to initialize logger: " + err.Error())
+	}
+}
 
 func main() {
 	rootCmd := &cobra.Command{
@@ -48,7 +57,8 @@ Outputs HLS and DASH adaptive streams.`,
 	viper.BindPFlags(rootCmd.PersistentFlags())
 
 	if err := rootCmd.Execute(); err != nil {
-		logrus.WithError(err).Fatal("Failed to execute command")
+		logger.WithError(err).Fatal("Failed to execute command")
+		os.Exit(1)
 	}
 }
 
@@ -56,17 +66,11 @@ func run(cmd *cobra.Command, args []string) {
 	// Initialize configuration
 	cfg, err := config.Load(cfgFile)
 	if err != nil {
-		logrus.WithError(err).Fatal("Failed to load configuration")
+		logger.WithError(err).Fatal("Failed to load configuration")
+		os.Exit(1)
 	}
 
-	// Configure logging
-	level, err := logrus.ParseLevel(cfg.LogLevel)
-	if err != nil {
-		logrus.WithError(err).Warn("Invalid log level, using info")
-		level = logrus.InfoLevel
-	}
-
-	logrus.WithFields(logrus.Fields{
+	logger.WithFields(map[string]interface{}{
 		"version":    version,
 		"host":       cfg.Host,
 		"port":       cfg.Port,
@@ -83,10 +87,11 @@ func run(cmd *cobra.Command, args []string) {
 	detector := transcode.NewDetector()
 	encoderConfig, err := detector.SelectEncoder(cfg.Encoder)
 	if err != nil {
-		logrus.WithError(err).Fatal("Failed to select encoder")
+		logger.WithError(err).Fatal("Failed to select encoder")
+		os.Exit(1)
 	}
 
-	logrus.WithFields(logrus.Fields{
+	logger.WithFields(map[string]interface{}{
 		"encoder":      encoderConfig.Name,
 		"codec":        encoderConfig.Codec,
 		"hw_accel":     encoderConfig.HWAccel,
@@ -99,7 +104,8 @@ func run(cmd *cobra.Command, args []string) {
 	// Initialize RTMP server
 	rtmpServer, err := rtmp.NewServer(cfg, ffmpegManager)
 	if err != nil {
-		logrus.WithError(err).Fatal("Failed to create RTMP server")
+		logger.WithError(err).Fatal("Failed to create RTMP server")
+		os.Exit(1)
 	}
 
 	// Initialize gRPC server (ModuleService)
@@ -132,9 +138,9 @@ func run(cmd *cobra.Command, args []string) {
 
 	select {
 	case err := <-errChan:
-		logrus.WithError(err).Error("Server error")
+		logger.WithError(err).Error("Server error")
 	case sig := <-sigChan:
-		logrus.WithField("signal", sig).Info("Received shutdown signal")
+		logger.WithFields(map[string]interface{}{"signal": sig}).Info("Received shutdown signal")
 	}
 
 	// Graceful shutdown
@@ -147,7 +153,7 @@ func run(cmd *cobra.Command, args []string) {
 
 	// Stop RTMP server
 	if err := rtmpServer.Stop(shutdownCtx); err != nil {
-		logrus.WithError(err).Error("Error stopping RTMP server")
+		logger.WithError(err).Error("Error stopping RTMP server")
 	}
 
 	logger.Info("Shutdown complete")

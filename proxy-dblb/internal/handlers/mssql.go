@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"marchproxy-dblb/internal/logging"
 	"context"
 	"fmt"
 	"io"
@@ -15,7 +16,6 @@ import (
 	"marchproxy-dblb/internal/pool"
 	"marchproxy-dblb/internal/security"
 
-	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
 
@@ -85,7 +85,7 @@ func (h *MSSQLHandler) Start(ctx context.Context) error {
 
 	go h.acceptConnections()
 
-	h.logger.WithFields(logrus.Fields{
+	h.logger.WithFields(logging.Fields{
 		"protocol": h.protocol,
 		"port":     h.route.ListenPort,
 		"backend":  fmt.Sprintf("%s:%d", h.route.BackendHost, h.route.BackendPort),
@@ -184,7 +184,7 @@ func (h *MSSQLHandler) handleConnection(clientConn net.Conn) {
 		return
 	}
 
-	h.logger.WithFields(logrus.Fields{
+	h.logger.WithFields(logging.Fields{
 		"username": username,
 		"database": database,
 		"protocol": h.protocol,
@@ -380,7 +380,7 @@ func (h *MSSQLHandler) proxyTrafficWithInspection(ctx context.Context, clientCon
 					query := h.extractSQLFromTDS(buf[:n])
 					if query != "" {
 						if blocked, reason := h.securityChecker.CheckQuery(query); blocked {
-							h.logger.WithFields(logrus.Fields{
+							h.logger.WithFields(logging.Fields{
 								"username": username,
 								"database": database,
 								"reason":   reason,

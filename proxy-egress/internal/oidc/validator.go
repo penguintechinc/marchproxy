@@ -11,8 +11,18 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"marchproxy-egress/internal/logging"
 )
+
+var logValidator *logging.LogrusAdapter
+
+func init() {
+	var err error
+	logValidator, err = logging.NewLogrusAdapter("oidc-validator")
+	if err != nil {
+		panic(err)
+	}
+}
 
 // Config holds the OIDC provider settings pushed via the levers API.
 type Config struct {
@@ -48,7 +58,7 @@ func (v *Validator) SetProvider(cfg Config) {
 	v.cfg = &cfg
 	v.jwks = nil // force JWKS refresh on next validation
 	v.jwksExpiry = time.Time{}
-	log.WithField("issuer", cfg.IssuerURL).Info("oidc: provider configured")
+	logValidator.WithField("issuer", cfg.IssuerURL).Info("oidc: provider configured")
 }
 
 // Validate validates a raw Bearer token string.
@@ -126,7 +136,7 @@ func (v *Validator) refreshJWKSIfNeeded(ctx context.Context, cfg *Config) error 
 		}
 		pub, err := jwkToRSA(k.N, k.E)
 		if err != nil {
-			log.WithField("kid", k.Kid).WithError(err).Warn("oidc: failed to parse JWK key")
+			logValidator.WithField("kid", k.Kid).WithError(err).Warn("oidc: failed to parse JWK key")
 			continue
 		}
 		keys[k.Kid] = pub
@@ -137,7 +147,7 @@ func (v *Validator) refreshJWKSIfNeeded(ctx context.Context, cfg *Config) error 
 	v.jwksExpiry = time.Now().Add(time.Hour)
 	v.mu.Unlock()
 
-	log.WithField("key_count", len(keys)).Info("oidc: JWKS refreshed")
+	logValidator.WithField("key_count", len(keys)).Info("oidc: JWKS refreshed")
 	return nil
 }
 

@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"go.uber.org/zap"
+	"marchproxy-nlb/internal/logging"
 )
 
 func testLogger() *logging.LogrusAdapter {
-	l := NewLogrusAdapter("marchproxy")
+	l, _ := logging.NewLogrusAdapter("marchproxy")
 	return l
 }
 

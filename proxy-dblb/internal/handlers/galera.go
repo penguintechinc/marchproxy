@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"marchproxy-dblb/internal/logging"
 	"context"
 	"database/sql"
 	"fmt"
@@ -17,7 +18,6 @@ import (
 	"marchproxy-dblb/internal/security"
 
 	_ "github.com/go-sql-driver/mysql"
-	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
 
@@ -229,7 +229,7 @@ func (h *GaleraHandler) Start(ctx context.Context) error {
 
 	go h.acceptConnections()
 
-	h.logger.WithFields(logrus.Fields{
+	h.logger.WithFields(logging.Fields{
 		"protocol": h.protocol,
 		"port":     h.port,
 		"backends": len(h.backends),
@@ -326,7 +326,7 @@ func (h *GaleraHandler) initPools() error {
 
 		sqlPool, err := pool.NewSQLPool("mysql", dsn, maxConnsPerBackend, h.logger)
 		if err != nil {
-			h.logger.WithError(err).WithFields(logrus.Fields{
+			h.logger.WithError(err).WithFields(logging.Fields{
 				"host": backend.Host,
 				"port": backend.Port,
 			}).Warn("Failed to create pool for backend, will retry in health check")
@@ -349,7 +349,7 @@ func (h *GaleraHandler) initPools() error {
 		}
 		h.nodeInfoMu.Unlock()
 
-		h.logger.WithFields(logrus.Fields{
+		h.logger.WithFields(logging.Fields{
 			"backend":   key,
 			"max_conns": maxConnsPerBackend,
 		}).Info("Galera backend pool initialized")
@@ -417,7 +417,7 @@ func (h *GaleraHandler) checkNodeHealth(ctx context.Context, key string, node *G
 	h.poolMu.RUnlock()
 
 	if !exists {
-		h.logger.Warn("Pool not found for node", logrus.Fields{"node": key})
+		h.logger.Warn("Pool not found for node", logging.Fields{"node": key})
 		return
 	}
 
@@ -546,7 +546,7 @@ func (h *GaleraHandler) updateNodeInfo(key string, node *GaleraNodeInfo, statusM
 	node.LastUpdated = time.Now()
 	node.LastHealthCheck = time.Now()
 
-	h.logger.WithFields(logrus.Fields{
+	h.logger.WithFields(logging.Fields{
 		"node":                key,
 		"state":               node.State.String(),
 		"ready":               node.Ready,
@@ -576,7 +576,7 @@ func (h *GaleraHandler) updateNodeError(key string, node *GaleraNodeInfo, err er
 		node.State = GaleraStateError
 	}
 
-	h.logger.WithFields(logrus.Fields{
+	h.logger.WithFields(logging.Fields{
 		"node":               key,
 		"error":              err.Error(),
 		"consecutive_errors": node.ConsecutiveErrors,
@@ -646,7 +646,7 @@ func (h *GaleraHandler) handleConnection(clientConn net.Conn) {
 		return
 	}
 
-	h.logger.WithFields(logrus.Fields{
+	h.logger.WithFields(logging.Fields{
 		"username": username,
 		"database": database,
 		"client":   clientConn.RemoteAddr().String(),
@@ -945,7 +945,7 @@ func (h *GaleraHandler) proxyTraffic(ctx context.Context, client net.Conn,
 					// Security check if enabled
 					if h.config.EnableSQLInjectionDetection {
 						if suspicious, reason := h.securityChecker.CheckQuery(query); suspicious {
-							h.logger.WithFields(logrus.Fields{
+							h.logger.WithFields(logging.Fields{
 								"user":     username,
 								"database": database,
 								"reason":   reason,

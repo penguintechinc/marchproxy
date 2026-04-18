@@ -5,9 +5,10 @@ import (
 	"sync"
 	"time"
 
+	"marchproxy-nlb/internal/logging"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"go.uber.org/zap"
 )
 
 var (
@@ -147,7 +148,7 @@ func (rl *RateLimiter) AddBucket(name string, protocol Protocol, capacity float6
 
 	rl.buckets[name] = NewTokenBucket(capacity, refillRate, name, protocol, rl.logger)
 
-	rl.logger.WithFields(logrus.Fields{
+	rl.logger.WithFields(logging.Fields{
 		"bucket":      name,
 		"protocol":    protocol.String(),
 		"capacity":    capacity,

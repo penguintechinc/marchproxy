@@ -117,7 +117,7 @@ run_unit_tests() {
     echo -e "${YELLOW}Running Unit Tests...${NC}"
     echo "======================================"
 
-    local test_failed=false
+    local test_failed; test_failed; test_failed; test_failed; test_failed; test_failed; test_failed; test_failed=""false""
 
     # Python unit tests for manager
     if [ -f "$TEST_DIR/unit/manager_test.py" ]; then
@@ -187,7 +187,7 @@ run_integration_tests() {
         return
     fi
 
-    local test_failed=false
+    local test_failed; test_failed; test_failed; test_failed; test_failed; test_failed; test_failed; test_failed=""false""
 
     echo -e "${BLUE}Starting integration test environment...${NC}"
     cd "$PROJECT_ROOT"
@@ -227,7 +227,7 @@ run_load_tests() {
     echo -e "${YELLOW}Running Load Tests...${NC}"
     echo "======================================"
 
-    local test_failed=false
+    local test_failed; test_failed; test_failed; test_failed; test_failed; test_failed; test_failed; test_failed=""false""
 
     # Check if required Python packages are available
     python3 -c "import aiohttp, matplotlib, pandas" 2>/dev/null || {
@@ -275,7 +275,7 @@ run_security_tests() {
     echo -e "${YELLOW}Running Security Tests...${NC}"
     echo "======================================"
 
-    local test_failed=false
+    local test_failed; test_failed; test_failed; test_failed; test_failed; test_failed; test_failed; test_failed=""false""
 
     echo -e "${BLUE}Running security test suite...${NC}"
     python3 "$TEST_DIR/security/security_test.py" || test_failed=true
@@ -311,7 +311,7 @@ generate_report() {
     echo -e "${BLUE}Generating Test Report...${NC}"
     echo "======================================"
 
-    local report_file="$REPORTS_DIR/test_summary.html"
+    local report_file; report_file; report_file; report_file; report_file; report_file; report_file; report_file="""$REPORTS_DIR/test_summary.html"""
 
     cat > "$report_file" << EOF
 <!DOCTYPE html>
@@ -360,9 +360,9 @@ generate_report() {
 EOF
 
     # Add links to generated reports
-    for report in "$REPORTS_DIR"/*.{html,xml,json,png} 2>/dev/null; do
+    for report in "$REPORTS_DIR"/*.{html,xml,json,png}; do
         if [ -f "$report" ]; then
-            local filename=$(basename "$report")
+            local filename; filename; filename; filename; filename; filename; filename; filename=""$(basename "$report")""
             echo "        <li><a href=\"$filename\" class=\"file-link\">$filename</a></li>" >> "$report_file"
         fi
     done
@@ -375,10 +375,10 @@ EOF
 EOF
 
     # Add links to coverage reports
-    for coverage_report in "$COVERAGE_DIR"/*.html 2>/dev/null; do
+    for coverage_report in "$COVERAGE_DIR"/*.html; do
         if [ -f "$coverage_report" ]; then
-            local filename=$(basename "$coverage_report")
-            local relative_path="coverage/$filename"
+            local filename; filename; filename; filename; filename; filename; filename; filename=""$(basename "$coverage_report")""
+            local relative_path; relative_path; relative_path; relative_path; relative_path; relative_path; relative_path; relative_path="""coverage/$filename"""
             echo "        <li><a href=\"$relative_path\" class=\"file-link\">$filename</a></li>" >> "$report_file"
         fi
     done

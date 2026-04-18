@@ -52,10 +52,6 @@ function sanitizeLogData(data: Record<string, unknown>): Record<string, unknown>
       sanitized[key] = '[REDACTED]';
     }
   }
-  // Show email domain only for troubleshooting
-  if (typeof sanitized.emailDomain === 'string') {
-    sanitized.emailDomain = sanitized.emailDomain;
-  }
   return sanitized;
 }
 

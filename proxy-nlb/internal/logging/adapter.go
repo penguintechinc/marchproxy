@@ -7,6 +7,14 @@ import (
 	"go.uber.org/zap"
 )
 
+// Fields is an alias for logrus-compatible field type
+type Fields map[string]interface{}
+
+// Logrus compatibility types for easier migration
+const (
+	// logrus package compatibility placeholder
+)
+
 // LogrusAdapter wraps SanitizedLogger to provide a logrus-compatible interface.
 type LogrusAdapter struct {
 	logger *logging.SanitizedLogger
@@ -51,6 +59,25 @@ func (la *LogrusAdapter) WithFields(fields map[string]interface{}) *LogrusAdapte
 // WithError returns a new adapter with error field.
 func (la *LogrusAdapter) WithError(err error) *LogrusAdapter {
 	return la.WithFields(map[string]interface{}{"error": err.Error()})
+}
+
+// WithField returns a new adapter with a single field.
+func (la *LogrusAdapter) WithField(key string, value interface{}) *LogrusAdapter {
+	return la.WithFields(map[string]interface{}{key: value})
+}
+
+// Debug logs a debug message.
+func (la *LogrusAdapter) Debug(args ...interface{}) {
+	msg := ""
+	if len(args) > 0 {
+		msg = fmt.Sprint(args...)
+	}
+	la.logger.Debug(msg, la.fields...)
+}
+
+// Debugf logs a formatted debug message.
+func (la *LogrusAdapter) Debugf(format string, args ...interface{}) {
+	la.logger.Debug(fmt.Sprintf(format, args...), la.fields...)
 }
 
 // Info logs an info message.

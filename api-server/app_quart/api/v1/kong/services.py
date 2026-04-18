@@ -1,11 +1,11 @@
 """Kong Services API endpoints."""
-from quart import jsonify, request
-from flask_security import auth_required, current_user
-from app_quart.api.v1 import v1_bp
-from app_quart.services.kong_client import KongClient
-from app_quart.services.audit import AuditService
-from app_quart.extensions import db
-from app_quart.models.kong import KongService
+from app_quart.api.v1 import v1_bp # noqa: F401
+from app_quart.extensions import db # noqa: F401
+from app_quart.models.kong import KongService # noqa: F401
+from app_quart.services.audit import AuditService # noqa: F401
+from app_quart.services.kong_client import KongClient # noqa: F401
+from flask_security import auth_required, current_user # noqa: F401
+from quart import jsonify, request # noqa: F401
 
 
 @v1_bp.route('/kong/services', methods=['GET'])

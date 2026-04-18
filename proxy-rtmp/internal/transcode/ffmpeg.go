@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/config"
-	"go.uber.org/zap"
 )
 
 // ProcessStatus represents FFmpeg process status
@@ -91,7 +90,7 @@ func (m *Manager) StartTranscode(ctx context.Context, streamKey string, inputURL
 	args := m.buildFFmpegArgs(inputURL, outputPaths, bitrate)
 	proc.Cmd = exec.CommandContext(ctx, m.config.FFmpegPath, args...)
 
-	logrus.WithFields(logrus.Fields{
+	logger.WithFields(map[string]interface{}{
 		"stream_key": streamKey,
 		"encoder":    m.encoder.Name,
 		"bitrate":    bitrate.Name,
@@ -253,10 +252,10 @@ func (m *Manager) monitorProcess(ctx context.Context, proc *Process) {
 		if err != nil {
 			proc.Status = StatusError
 			proc.Error = err
-			logrus.WithError(err).WithField("stream_key", proc.StreamKey).Error("FFmpeg process failed")
+			logger.WithError(err).WithFields(map[string]interface{}{"stream_key": proc.StreamKey}).Error("FFmpeg process failed")
 		} else {
 			proc.Status = StatusStopped
-			logrus.WithField("stream_key", proc.StreamKey).Info("FFmpeg process stopped normally")
+			logger.WithFields(map[string]interface{}{"stream_key": proc.StreamKey}).Info("FFmpeg process stopped normally")
 		}
 		proc.mutex.Unlock()
 
@@ -275,7 +274,7 @@ func (m *Manager) monitorProcess(ctx context.Context, proc *Process) {
 		proc.StopTime = time.Now()
 		proc.mutex.Unlock()
 
-		logrus.WithField("stream_key", proc.StreamKey).Info("FFmpeg process stopped by context")
+		logger.WithFields(map[string]interface{}{"stream_key": proc.StreamKey}).Info("FFmpeg process stopped by context")
 	}
 }
 

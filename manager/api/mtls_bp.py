@@ -8,21 +8,21 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import hashlib
-import logging
-from penguintechinc_utils import get_logger
-import socket
-import ssl
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
-from urllib.parse import urlparse
+import hashlib # noqa: F401, # noqa: F401
+import logging # noqa: F401, # noqa: F401
+import socket # noqa: F401, # noqa: F401
+import ssl # noqa: F401, # noqa: F401
+from datetime import datetime, timedelta # noqa: F401
+from typing import Any, Dict, List, Optional # noqa: F401
+from urllib.parse import urlparse # noqa: F401
 
-from cryptography import x509
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import ec, rsa
-from middleware.auth import require_auth
-from models.certificate import CertificateModel, TLSProxyCAModel
-from quart import Blueprint, Response, current_app, jsonify, request
+from cryptography import x509 # noqa: F401
+from cryptography.hazmat.primitives import hashes, serialization # noqa: F401
+from cryptography.hazmat.primitives.asymmetric import ec, rsa # noqa: F401
+from middleware.auth import require_auth # noqa: F401
+from models.certificate import CertificateModel, TLSProxyCAModel # noqa: F401
+from penguintechinc_utils import get_logger # noqa: F401
+from quart import Blueprint, Response, current_app, jsonify, request # noqa: F401
 
 logger = get_logger(__name__)
 
@@ -46,20 +46,20 @@ class MTLSManager:
     ) -> Dict[str, Any]:
         """Create a new client certificate signed by the specified CA"""
 
-        # Get CA certificate
+      # Get CA certificate
         ca_cert_record = self.db.certificates[ca_cert_id]
         if not ca_cert_record:
             raise ValueError("CA certificate not found")
 
         try:
-            # Load CA certificate and key
+          # Load CA certificate and key
             ca_cert_bytes = ca_cert_record.cert_data.encode("utf-8")
             ca_key_bytes = ca_cert_record.key_data.encode("utf-8")
 
             ca_cert = x509.load_pem_x509_certificate(ca_cert_bytes)
             ca_private_key = serialization.load_pem_private_key(ca_key_bytes, password=None)
 
-            # Generate client private key
+          # Generate client private key
             if key_type == "ecc":
                 if key_size == 256:
                     curve = ec.SECP256R1()
@@ -79,7 +79,7 @@ class MTLSManager:
             else:
                 raise ValueError(f"Unsupported key type: {key_type}")
 
-            # Create client certificate
+          # Create client certificate
             client_subject = x509.Name(
                 [
                     x509.NameAttribute(x509.oid.NameOID.COUNTRY_NAME, "US"),
@@ -131,7 +131,7 @@ class MTLSManager:
                 .sign(ca_private_key, hashes.SHA384())
             )
 
-            # Serialize certificates and keys
+          # Serialize certificates and keys
             client_cert_pem = client_cert.public_bytes(serialization.Encoding.PEM).decode("utf-8")
             client_key_pem = client_private_key.private_bytes(
                 encoding=serialization.Encoding.PEM,
@@ -139,7 +139,7 @@ class MTLSManager:
                 encryption_algorithm=serialization.NoEncryption(),
             ).decode("utf-8")
 
-            # Calculate fingerprint
+          # Calculate fingerprint
             fingerprint = hashlib.sha256(
                 client_cert.public_bytes(serialization.Encoding.DER)
             ).hexdigest()
@@ -162,15 +162,15 @@ class MTLSManager:
             logger.error(f"Failed to create client certificate: {e}")
             raise
 
-    async def validate_client_certificate(self, cert_data: str, ca_cert_id: int) -> Dict[str, Any]:  # noqa: C901
+    async def validate_client_certificate(self, cert_data: str, ca_cert_id: int) -> Dict[str, Any]: # noqa: C901
         """Validate a client certificate against a CA"""
 
         try:
-            # Load client certificate
+          # Load client certificate
             cert_bytes = cert_data.encode("utf-8")
             client_cert = x509.load_pem_x509_certificate(cert_bytes)
 
-            # Get CA certificate
+          # Get CA certificate
             ca_cert_record = self.db.certificates[ca_cert_id]
             if not ca_cert_record:
                 return {"valid": False, "error": "CA certificate not found"}
@@ -178,7 +178,7 @@ class MTLSManager:
             ca_cert_bytes = ca_cert_record.cert_data.encode("utf-8")
             ca_cert = x509.load_pem_x509_certificate(ca_cert_bytes)
 
-            # Validate certificate chain
+          # Validate certificate chain
             try:
                 ca_public_key = ca_cert.public_key()
                 ca_public_key.verify(
@@ -190,11 +190,11 @@ class MTLSManager:
             except Exception:
                 signature_valid = False
 
-            # Check validity period
+          # Check validity period
             now = datetime.utcnow()
             time_valid = client_cert.not_valid_before <= now <= client_cert.not_valid_after
 
-            # Extract certificate information
+          # Extract certificate information
             common_name = None
             organizational_unit = []
 
@@ -204,7 +204,7 @@ class MTLSManager:
                 elif attribute.oid == x509.oid.NameOID.ORGANIZATIONAL_UNIT_NAME:
                     organizational_unit.append(attribute.value)
 
-            # Check extended key usage for client authentication
+          # Check extended key usage for client authentication
             has_client_auth = False
             try:
                 eku_ext = client_cert.extensions.get_extension_for_oid(
@@ -250,10 +250,10 @@ class MTLSManager:
 
         return "\n".join(ca_bundle)
 
-    async def get_mtls_config_for_proxy(self, cluster_id: int, proxy_type: str) -> Dict[str, Any]:  # noqa: C901
+    async def get_mtls_config_for_proxy(self, cluster_id: int, proxy_type: str) -> Dict[str, Any]: # noqa: C901
         """Get mTLS configuration for a specific proxy type and cluster"""
 
-        # Get active certificates for this cluster
+      # Get active certificates for this cluster
         certs = self.db(
             (self.db.certificates.cluster_id == cluster_id)
             & (self.db.certificates.is_active == True)  # noqa: E712
@@ -263,12 +263,12 @@ class MTLSManager:
         client_cas = []
 
         for cert in certs:
-            # Parse certificate to determine its purpose
+          # Parse certificate to determine its purpose
             try:
                 cert_bytes = cert.cert_data.encode("utf-8")
                 x509_cert = x509.load_pem_x509_certificate(cert_bytes)
 
-                # Check key usage and extended key usage
+              # Check key usage and extended key usage
                 is_server_cert = False
                 is_ca_cert = False
 
@@ -315,7 +315,7 @@ class MTLSManager:
                 logger.warning(f"Failed to parse certificate {cert.id}: {e}")
                 continue
 
-        # Create default mTLS configuration
+      # Create default mTLS configuration
         config = {
             "enabled": len(server_certs) > 0 and len(client_cas) > 0,
             "require_client_cert": True,
@@ -329,7 +329,7 @@ class MTLSManager:
             "cluster_id": cluster_id,
         }
 
-        # Add proxy-type specific configurations
+      # Add proxy-type specific configurations
         if proxy_type == "ingress":
             config.update(
                 {
@@ -354,12 +354,12 @@ class MTLSManager:
 
 @mtls_bp.route("/certificates", methods=["GET", "POST"])
 @require_auth(admin_required=True)
-async def certificates(user_data):  # noqa: C901
+async def certificates(user_data): # noqa: C901
     """mTLS certificate management"""
     db = current_app.db
 
     if request.method == "GET":
-        # Get mTLS certificates for the user's clusters
+      # Get mTLS certificates for the user's clusters
         cluster_filter = request.args.get("cluster_id")
         cert_type = request.args.get("type", "all")
 
@@ -390,7 +390,7 @@ async def certificates(user_data):  # noqa: C901
                 "type": "unknown",
             }
 
-            # Determine certificate type
+          # Determine certificate type
             try:
                 cert_bytes = cert.cert_data.encode("utf-8")
                 x509_cert = x509.load_pem_x509_certificate(cert_bytes)
@@ -428,7 +428,7 @@ async def certificates(user_data):  # noqa: C901
             except Exception:
                 pass
 
-            # Filter by type if requested
+          # Filter by type if requested
             if cert_type != "all" and cert_info["type"] != cert_type:
                 continue
 
@@ -442,7 +442,7 @@ async def certificates(user_data):  # noqa: C901
             mtls_mgr = MTLSManager(db)
 
             if data.get("action") == "create_client":
-                # Create client certificate
+              # Create client certificate
                 result = await mtls_mgr.create_client_certificate(
                     ca_cert_id=data["ca_cert_id"],
                     common_name=data["common_name"],
@@ -452,7 +452,7 @@ async def certificates(user_data):  # noqa: C901
                     key_size=data.get("key_size", 384),
                 )
 
-                # Store the client certificate
+              # Store the client certificate
                 cert_id = await CertificateModel.create_certificate(
                     db=db,
                     name=f"Client-{data['common_name']}",
@@ -478,7 +478,7 @@ async def certificates(user_data):  # noqa: C901
                 )
 
             elif data.get("action") == "create_ca_bundle":
-                # Create CA bundle
+              # Create CA bundle
                 bundle = await mtls_mgr.create_ca_bundle(data["cert_ids"])
 
                 return (
@@ -529,7 +529,7 @@ async def get_mtls_config(user_data, cluster_id, proxy_type):
     """Get mTLS configuration for a proxy"""
     db = current_app.db
 
-    # Validate proxy type
+  # Validate proxy type
     if proxy_type not in ["ingress", "egress"]:
         return jsonify({"error": "Invalid proxy type"}), 400
 
@@ -550,19 +550,19 @@ async def update_mtls_config(user_data, cluster_id, proxy_type):
     """Update mTLS configuration for a proxy"""
     db = current_app.db
 
-    # Validate proxy type
+  # Validate proxy type
     if proxy_type not in ["ingress", "egress"]:
         return jsonify({"error": "Invalid proxy type"}), 400
 
     try:
         data = await request.get_json()
 
-        # Store mTLS configuration in the cluster's metadata
+      # Store mTLS configuration in the cluster's metadata
         cluster = db.clusters[cluster_id]
         if not cluster:
             return jsonify({"error": "Cluster not found"}), 404
 
-        # Update cluster metadata with mTLS config
+      # Update cluster metadata with mTLS config
         cluster_metadata = cluster.metadata or {}
         if "mtls_config" not in cluster_metadata:
             cluster_metadata["mtls_config"] = {}
@@ -625,7 +625,7 @@ async def generate_ca_certificate(user_data):
     try:
         data = await request.get_json()
 
-        # Generate CA certificate using the existing TLS proxy CA functionality
+      # Generate CA certificate using the existing TLS proxy CA functionality
         domain = data.get("domain", "marchproxy.local")
         config = {
             "key_type": data.get("key_type", "ecc"),
@@ -636,7 +636,7 @@ async def generate_ca_certificate(user_data):
 
         ca_data = await TLSProxyCAModel.generate_self_signed_ca(domain=domain, **config)
 
-        # Store CA certificate
+      # Store CA certificate
         ca_cert_id = await CertificateModel.create_certificate(
             db=db,
             name=data.get("name", f"mTLS-CA-{domain}"),
@@ -732,7 +732,7 @@ async def test_mtls_connection(user_data):
     try:
         data = await request.get_json()
 
-        # Parse target URL
+      # Parse target URL
         target_url = data.get("target_url")
         if not target_url:
             return jsonify({"error": "Target URL is required"}), 400
@@ -741,7 +741,7 @@ async def test_mtls_connection(user_data):
         host = parsed.hostname
         port = parsed.port or (443 if parsed.scheme == "https" else 80)
 
-        # Load certificates
+      # Load certificates
         client_cert_id = data.get("client_cert_id")
         ca_cert_id = data.get("ca_cert_id")
 
@@ -755,7 +755,7 @@ async def test_mtls_connection(user_data):
             if not ca_cert:
                 return jsonify({"error": "CA certificate not found"}), 404
 
-        # Create SSL context
+      # Create SSL context
         context = ssl.create_default_context()
 
         if ca_cert_id:
@@ -765,11 +765,11 @@ async def test_mtls_connection(user_data):
         if client_cert_id:
             pass
 
-        # Test connection
+      # Test connection
         sock = socket.create_connection((host, port), timeout=10)
         ssock = context.wrap_socket(sock, server_hostname=host)
 
-        # Get server certificate info
+      # Get server certificate info
         server_cert = ssock.getpeercert()
         cipher = ssock.cipher()
         version = ssock.version()

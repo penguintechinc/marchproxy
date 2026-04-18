@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"marchproxy-dblb/internal/logging"
 	"bufio"
 	"context"
 	"fmt"
@@ -12,7 +13,6 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	"go.uber.org/zap"
 
 	"marchproxy-dblb/internal/config"
 	"marchproxy-dblb/internal/pool"
@@ -146,7 +146,7 @@ func NewRedisClusterHandler(
 		logger.WithError(err).Warn("Initial cluster discovery failed, will retry")
 	}
 
-	logger.WithFields(logrus.Fields{
+	logger.WithFields(logging.Fields{
 		"route": routeConfig.Name,
 		"nodes": len(handler.clusterNodes),
 	}).Info("Redis cluster handler initialized")
@@ -173,7 +173,7 @@ func (h *RedisClusterHandler) Start(ctx context.Context) error {
 
 	go h.acceptConnections()
 
-	h.logger.WithFields(logrus.Fields{
+	h.logger.WithFields(logging.Fields{
 		"port":  h.routeConfig.ListenPort,
 		"route": h.routeConfig.Name,
 	}).Info("Redis cluster handler started")
@@ -296,7 +296,7 @@ func (h *RedisClusterHandler) processRedisCommand(
 	// Security checks
 	if h.cfg.BlockSuspiciousQueries {
 		if h.isBlockedRedisCommand(*cmd) {
-			h.logger.WithFields(logrus.Fields{
+			h.logger.WithFields(logging.Fields{
 				"user":    username,
 				"command": cmd.Command,
 			}).Warn("Blocked Redis command")
@@ -573,7 +573,7 @@ func (h *RedisClusterHandler) parseClusterNodes(nodesInfo string) error {
 	h.updateStatsCounters()
 	h.stats.LastRefresh = time.Now()
 
-	h.logger.WithFields(logrus.Fields{
+	h.logger.WithFields(logging.Fields{
 		"total_nodes":   h.stats.TotalNodes,
 		"master_nodes":  h.stats.MasterNodes,
 		"replica_nodes": h.stats.ReplicaNodes,

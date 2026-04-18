@@ -1,7 +1,8 @@
 """Kong Admin API client."""
-import httpx
-from typing import Optional, Dict, Any, List
-from app_quart.config import config
+from typing import Any, Dict, List, Optional # noqa: F401
+
+import httpx # noqa: F401, # noqa: F401
+from app_quart.config import config # noqa: F401
 
 
 class KongClient:
@@ -18,13 +19,13 @@ class KongClient:
     async def close(self):
         await self._client.aclose()
 
-    # Status
+ # Status
     async def get_status(self) -> Dict[str, Any]:
         response = await self._client.get('/status')
         response.raise_for_status()
         return response.json()
 
-    # Services
+ # Services
     async def list_services(self, offset: int = 0, size: int = 100) -> Dict[str, Any]:
         response = await self._client.get('/services', params={'offset': offset, 'size': size})
         response.raise_for_status()
@@ -49,7 +50,7 @@ class KongClient:
         response = await self._client.delete(f'/services/{id_or_name}')
         response.raise_for_status()
 
-    # Routes
+ # Routes
     async def list_routes(self, offset: int = 0, size: int = 100) -> Dict[str, Any]:
         response = await self._client.get('/routes', params={'offset': offset, 'size': size})
         response.raise_for_status()
@@ -74,7 +75,7 @@ class KongClient:
         response = await self._client.delete(f'/routes/{id_or_name}')
         response.raise_for_status()
 
-    # Upstreams
+ # Upstreams
     async def list_upstreams(self) -> Dict[str, Any]:
         response = await self._client.get('/upstreams')
         response.raise_for_status()
@@ -99,7 +100,7 @@ class KongClient:
         response = await self._client.delete(f'/upstreams/{id_or_name}')
         response.raise_for_status()
 
-    # Targets
+ # Targets
     async def list_targets(self, upstream_id: str) -> Dict[str, Any]:
         response = await self._client.get(f'/upstreams/{upstream_id}/targets')
         response.raise_for_status()
@@ -114,7 +115,7 @@ class KongClient:
         response = await self._client.delete(f'/upstreams/{upstream_id}/targets/{target_id}')
         response.raise_for_status()
 
-    # Consumers
+ # Consumers
     async def list_consumers(self) -> Dict[str, Any]:
         response = await self._client.get('/consumers')
         response.raise_for_status()
@@ -139,7 +140,7 @@ class KongClient:
         response = await self._client.delete(f'/consumers/{id_or_username}')
         response.raise_for_status()
 
-    # Plugins
+ # Plugins
     async def list_plugins(self) -> Dict[str, Any]:
         response = await self._client.get('/plugins')
         response.raise_for_status()
@@ -174,7 +175,7 @@ class KongClient:
         response = await self._client.delete(f'/plugins/{plugin_id}')
         response.raise_for_status()
 
-    # Certificates
+ # Certificates
     async def list_certificates(self) -> Dict[str, Any]:
         response = await self._client.get('/certificates')
         response.raise_for_status()
@@ -199,7 +200,7 @@ class KongClient:
         response = await self._client.delete(f'/certificates/{cert_id}')
         response.raise_for_status()
 
-    # SNIs
+ # SNIs
     async def list_snis(self) -> Dict[str, Any]:
         response = await self._client.get('/snis')
         response.raise_for_status()
@@ -214,7 +215,7 @@ class KongClient:
         response = await self._client.delete(f'/snis/{sni_id}')
         response.raise_for_status()
 
-    # Declarative Config
+ # Declarative Config
     async def get_config(self) -> str:
         response = await self._client.get('/config')
         response.raise_for_status()

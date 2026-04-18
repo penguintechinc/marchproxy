@@ -11,8 +11,9 @@ import (
 	"sync"
 	"time"
 
+	"marchproxy-dblb/internal/logging"
+
 	"github.com/go-redis/redis/v8"
-	"go.uber.org/zap"
 )
 
 // ThreatIntelConfig configures the threat intelligence engine
@@ -120,7 +121,7 @@ func NewThreatIntelligenceEngine(config *ThreatIntelConfig, redisClient *redis.C
 	go engine.feedUpdateLoop()
 	go engine.cleanupLoop()
 
-	logger.WithFields(logrus.Fields{
+	logger.WithFields(logging.Fields{
 		"feeds":      len(config.Feeds),
 		"auto_block": config.AutoBlock.Enabled,
 	}).Info("Threat Intelligence Engine initialized")
@@ -159,7 +160,7 @@ func (tie *ThreatIntelligenceEngine) updateAllFeeds() {
 
 		go func(id string, f *Feed) {
 			if err := tie.updateFeed(id, f); err != nil {
-				tie.logger.WithFields(logrus.Fields{
+				tie.logger.WithFields(logging.Fields{
 					"feed":  id,
 					"error": err,
 				}).Error("Failed to update threat feed")
@@ -244,7 +245,7 @@ func (tie *ThreatIntelligenceEngine) updateFeed(feedID string, feed *Feed) error
 	stats.LastHash = newHash
 	tie.mu.Unlock()
 
-	tie.logger.WithFields(logrus.Fields{
+	tie.logger.WithFields(logging.Fields{
 		"feed":           feedID,
 		"total":          len(indicators),
 		"new_indicators": newCount,
@@ -565,7 +566,7 @@ func (tie *ThreatIntelligenceEngine) AddCustomThreat(indicatorType, value string
 
 	tie.processIndicator(indicator)
 
-	tie.logger.WithFields(logrus.Fields{
+	tie.logger.WithFields(logging.Fields{
 		"type":  indicatorType,
 		"value": value,
 	}).Info("Added custom threat indicator")

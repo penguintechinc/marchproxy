@@ -5,19 +5,19 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import logging
-from penguintechinc_utils import get_logger
+import logging # noqa: F401, # noqa: F401
 
-from middleware.auth import require_auth
-from models.block_rules import (
+from middleware.auth import require_auth # noqa: F401
+from models.block_rules import ( # noqa: F401
     BlockRuleModel,
     BlockRuleSyncModel,
     CreateBlockRuleRequest,
     UpdateBlockRuleRequest,
 )
-from models.cluster import ClusterModel, UserClusterAssignmentModel
-from pydantic import ValidationError
-from quart import Blueprint, current_app, jsonify, request
+from models.cluster import ClusterModel, UserClusterAssignmentModel # noqa: F401
+from penguintechinc_utils import get_logger # noqa: F401
+from pydantic import ValidationError # noqa: F401
+from quart import Blueprint, current_app, jsonify, request # noqa: F401
 
 logger = get_logger(__name__)
 
@@ -26,13 +26,13 @@ block_rules_bp = Blueprint("block_rules", __name__, url_prefix="/api/v1/clusters
 
 @block_rules_bp.route("/<int:cluster_id>/block-rules", methods=["GET", "POST"])
 @require_auth()
-async def manage_block_rules(user_data, cluster_id):  # noqa: C901
+async def manage_block_rules(user_data, cluster_id): # noqa: C901
     """List or create block rules for a cluster"""
     db = current_app.db
     user = user_data
 
     if request.method == "GET":
-        # Check access to cluster
+      # Check access to cluster
         if not user["is_admin"]:
             user_role = UserClusterAssignmentModel.check_user_cluster_access(
                 db, user["user_id"], cluster_id
@@ -40,7 +40,7 @@ async def manage_block_rules(user_data, cluster_id):  # noqa: C901
             if not user_role:
                 return jsonify({"error": "Access denied to cluster"}), 403
 
-        # Verify cluster exists
+      # Verify cluster exists
         cluster = (
             db((db.clusters.id == cluster_id) & (db.clusters.is_active == True))  # noqa: E712
             .select()
@@ -49,7 +49,7 @@ async def manage_block_rules(user_data, cluster_id):  # noqa: C901
         if not cluster:
             return jsonify({"error": "Cluster not found"}), 404
 
-        # Get query parameters
+      # Get query parameters
         rule_type = request.args.get("rule_type")
         layer = request.args.get("layer")
         proxy_type = request.args.get("proxy_type")
@@ -70,11 +70,11 @@ async def manage_block_rules(user_data, cluster_id):  # noqa: C901
         )
 
     elif request.method == "POST":
-        # Check authentication - admin required
+      # Check authentication - admin required
         if not user["is_admin"]:
             return jsonify({"error": "Admin access required"}), 403
 
-        # Verify cluster exists
+      # Verify cluster exists
         cluster = (
             db((db.clusters.id == cluster_id) & (db.clusters.is_active == True))  # noqa: E712
             .select()
@@ -128,13 +128,13 @@ async def manage_block_rules(user_data, cluster_id):  # noqa: C901
     "/<int:cluster_id>/block-rules/<int:rule_id>", methods=["GET", "PUT", "DELETE"]
 )
 @require_auth()
-async def manage_single_block_rule(user_data, cluster_id, rule_id):  # noqa: C901
+async def manage_single_block_rule(user_data, cluster_id, rule_id): # noqa: C901
     """Get, update, or delete a specific block rule"""
     db = current_app.db
     user = user_data
 
     if request.method == "GET":
-        # Check access to cluster
+      # Check access to cluster
         if not user["is_admin"]:
             user_role = UserClusterAssignmentModel.check_user_cluster_access(
                 db, user["user_id"], cluster_id
@@ -149,11 +149,11 @@ async def manage_single_block_rule(user_data, cluster_id, rule_id):  # noqa: C90
         return jsonify(rule), 200
 
     elif request.method == "PUT":
-        # Check authentication - admin required
+      # Check authentication - admin required
         if not user["is_admin"]:
             return jsonify({"error": "Admin access required"}), 403
 
-        # Verify rule exists and belongs to cluster
+      # Verify rule exists and belongs to cluster
         rule = BlockRuleModel.get_rule(db, rule_id)
         if not rule or rule["cluster_id"] != int(cluster_id):
             return jsonify({"error": "Block rule not found"}), 404
@@ -182,16 +182,16 @@ async def manage_single_block_rule(user_data, cluster_id, rule_id):  # noqa: C90
             return jsonify({"error": "Failed to update block rule"}), 500
 
     elif request.method == "DELETE":
-        # Check authentication - admin required
+      # Check authentication - admin required
         if not user["is_admin"]:
             return jsonify({"error": "Admin access required"}), 403
 
-        # Verify rule exists and belongs to cluster
+      # Verify rule exists and belongs to cluster
         rule = BlockRuleModel.get_rule(db, rule_id)
         if not rule or rule["cluster_id"] != int(cluster_id):
             return jsonify({"error": "Block rule not found"}), 404
 
-        # Check for hard delete parameter
+      # Check for hard delete parameter
         hard_delete = request.args.get("hard_delete", "false").lower() == "true"
 
         try:
@@ -213,7 +213,7 @@ async def bulk_create_block_rules(user_data, cluster_id):
     db = current_app.db
     user = user_data
 
-    # Verify cluster exists
+  # Verify cluster exists
     cluster = (
         db((db.clusters.id == cluster_id) & (db.clusters.is_active == True)).select().first()  # noqa: E712
     )
@@ -285,26 +285,26 @@ async def get_threat_feed(cluster_id):
     """Get threat feed for proxy consumption (API key authenticated)"""
     db = current_app.db
 
-    # This endpoint uses API key authentication instead of JWT
+  # This endpoint uses API key authentication instead of JWT
     api_key = request.headers.get("X-API-Key") or request.args.get("api_key")
     if not api_key:
         return jsonify({"error": "API key required"}), 401
 
-    # Validate cluster API key
+  # Validate cluster API key
     cluster_info = ClusterModel.validate_api_key(db, api_key)
     if not cluster_info or cluster_info["cluster_id"] != int(cluster_id):
         return jsonify({"error": "Invalid API key for cluster"}), 401
 
-    # Get query parameters
+  # Get query parameters
     proxy_type = request.args.get("proxy_type")  # alb, nlb, egress
     since_version = request.args.get("since_version")  # For delta updates
 
-    # Get threat feed
+  # Get threat feed
     threat_feed = BlockRuleModel.get_threat_feed(
         db, cluster_id, proxy_type=proxy_type, since_version=since_version
     )
 
-    # Record proxy sync if proxy_id provided
+  # Record proxy sync if proxy_id provided
     proxy_id = request.args.get("proxy_id")
     if proxy_id:
         try:
@@ -326,12 +326,12 @@ async def get_rules_version(cluster_id):
     """Get current rules version hash for change detection"""
     db = current_app.db
 
-    # This endpoint uses API key authentication
+  # This endpoint uses API key authentication
     api_key = request.headers.get("X-API-Key") or request.args.get("api_key")
     if not api_key:
         return jsonify({"error": "API key required"}), 401
 
-    # Validate cluster API key
+  # Validate cluster API key
     cluster_info = ClusterModel.validate_api_key(db, api_key)
     if not cluster_info or cluster_info["cluster_id"] != int(cluster_id):
         return jsonify({"error": "Invalid API key for cluster"}), 401
@@ -349,7 +349,7 @@ async def get_sync_status(user_data, cluster_id):
     db = current_app.db
     user = user_data
 
-    # Check access to cluster
+  # Check access to cluster
     if not user["is_admin"]:
         user_role = UserClusterAssignmentModel.check_user_cluster_access(
             db, user["user_id"], cluster_id
@@ -357,7 +357,7 @@ async def get_sync_status(user_data, cluster_id):
         if not user_role:
             return jsonify({"error": "Access denied to cluster"}), 403
 
-    # Get all proxies in cluster and their sync status
+  # Get all proxies in cluster and their sync status
     proxies = db(
         (db.proxy_servers.cluster_id == cluster_id) & (db.proxy_servers.status == "active")
     ).select()

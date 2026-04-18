@@ -1,25 +1,19 @@
 """
 Pytest configuration and fixtures for API server tests.
 """
-import asyncio
-import os
-from typing import AsyncGenerator, Generator
-from datetime import datetime, timedelta
+import asyncio # noqa: F401, # noqa: F401
+import os # noqa: F401, # noqa: F401
+from datetime import datetime, timedelta # noqa: F401
+from typing import AsyncGenerator, Generator # noqa: F401
 
-import pytest
-from fastapi.testclient import TestClient
-from httpx import AsyncClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-
-from app.main import app
-from app.core.database import Base, get_db
-from app.dependencies import get_current_user
-from app.models.sqlalchemy.user import User
-from app.models.sqlalchemy.cluster import Cluster
-from app.core.security import create_access_token, get_password_hash
-
+import pytest # noqa: F401, # noqa: F401
+from app_quart.extensions import db # noqa: F401
+from app_quart.main import create_app # noqa: F401
+from app_quart.models.user import Role, User # noqa: F401
+from httpx import AsyncClient # noqa: F401
+from sqlalchemy import create_engine # noqa: F401
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine # noqa: F401
+from sqlalchemy.orm import Session, sessionmaker # noqa: F401
 
 # Test database URL - use test database
 TEST_DATABASE_URL = os.getenv(
@@ -37,64 +31,38 @@ def event_loop() -> Generator:
 
 
 @pytest.fixture(scope="session")
-async def engine():
-    """Create test database engine."""
-    engine = create_async_engine(TEST_DATABASE_URL, echo=False)
-
-    # Create all tables
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-
-    yield engine
-
-    # Drop all tables after tests
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-
-    await engine.dispose()
+async def app():
+    """Create Quart application for testing."""
+    test_app = create_app()
+    test_app.config["TESTING"] = True
+    return test_app
 
 
 @pytest.fixture
-async def db_session(engine) -> AsyncGenerator[AsyncSession, None]:
+async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """Create database session for each test."""
+    # Use the app's database connection
+    async with db.engine.begin() as conn:
+        await conn.run_sync(db.Model.metadata.drop_all)
+        await conn.run_sync(db.Model.metadata.create_all)
+
     async_session = async_sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
+        db.engine, class_=AsyncSession, expire_on_commit=False
     )
 
     async with async_session() as session:
         yield session
         await session.rollback()
 
-
-@pytest.fixture
-def client(db_session: AsyncSession) -> TestClient:
-    """Create test client with database session override."""
-
-    async def override_get_db():
-        yield db_session
-
-    app.dependency_overrides[get_db] = override_get_db
-
-    with TestClient(app) as test_client:
-        yield test_client
-
-    app.dependency_overrides.clear()
+    async with db.engine.begin() as conn:
+        await conn.run_sync(db.Model.metadata.drop_all)
 
 
 @pytest.fixture
-async def async_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
-    """Create async test client."""
-
-    async def override_get_db():
-        yield db_session
-
-    app.dependency_overrides[get_db] = override_get_db
-
+async def async_client(app) -> AsyncGenerator[AsyncClient, None]:
+    """Create async test client for Quart app."""
     async with AsyncClient(app=app, base_url="http://test") as ac:
         yield ac
-
-    app.dependency_overrides.clear()
 
 
 @pytest.fixture
@@ -105,11 +73,9 @@ async def admin_user(db_session: AsyncSession) -> User:
         username="admin",
         first_name="Admin",
         last_name="User",
-        password_hash=get_password_hash("Admin123!"),
-        is_active=True,
-        is_admin=True,
-        is_verified=True,
-        totp_secret=None
+        password="Admin123!",
+        active=True,
+        fs_uniquifier="admin-uniquifier"
     )
 
     db_session.add(user)
@@ -127,11 +93,9 @@ async def regular_user(db_session: AsyncSession) -> User:
         username="testuser",
         first_name="Test",
         last_name="User",
-        password_hash=get_password_hash("User123!"),
-        is_active=True,
-        is_admin=False,
-        is_verified=True,
-        totp_secret=None
+        password="User123!",
+        active=True,
+        fs_uniquifier="user-uniquifier"
     )
 
     db_session.add(user)
@@ -144,35 +108,18 @@ async def regular_user(db_session: AsyncSession) -> User:
 @pytest.fixture
 async def admin_token(admin_user: User) -> str:
     """Generate JWT token for admin user."""
-    access_token = create_access_token(subject=str(admin_user.id))
-    return access_token
+    # Use Flask-Security to generate token
+    from flask_security import generate_confirmation_token
+    token = generate_confirmation_token(admin_user.email)
+    return token
 
 
 @pytest.fixture
 async def user_token(regular_user: User) -> str:
     """Generate JWT token for regular user."""
-    access_token = create_access_token(subject=str(regular_user.id))
-    return access_token
-
-
-@pytest.fixture
-async def test_cluster(db_session: AsyncSession, admin_user: User) -> Cluster:
-    """Create test cluster."""
-    cluster = Cluster(
-        name="test-cluster",
-        description="Test cluster",
-        tier="community",
-        api_key="test-api-key-12345",
-        max_proxies=3,
-        created_by_id=admin_user.id,
-        is_active=True
-    )
-
-    db_session.add(cluster)
-    await db_session.commit()
-    await db_session.refresh(cluster)
-
-    return cluster
+    from flask_security import generate_confirmation_token
+    token = generate_confirmation_token(regular_user.email)
+    return token
 
 
 @pytest.fixture

@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"go.uber.org/zap"
+	"github.com/PenguinTech/MarchProxy/proxy-alb/internal/logging"
 )
 
 // Manager manages the Envoy proxy lifecycle
@@ -30,7 +30,11 @@ type Manager struct {
 // NewManager creates a new Envoy manager
 func NewManager(binary, configPath string, adminPort int, logLevel string, logger *logging.LogrusAdapter) *Manager {
 	if logger == nil {
-		logger = NewLogrusAdapter("marchproxy")
+		var err error
+		logger, err = logging.NewLogrusAdapter("marchproxy")
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	return &Manager{
@@ -81,7 +85,7 @@ func (m *Manager) Start(ctx context.Context) error {
 		Setpgid: true,
 	}
 
-	m.logger.WithFields(logrus.Fields{
+	m.logger.WithFields(logging.Fields{
 		"binary": m.binary,
 		"config": m.configPath,
 		"args":   args,

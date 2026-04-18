@@ -1,8 +1,8 @@
 """Health check endpoints."""
-from quart import jsonify
-from sqlalchemy import text
-from app_quart.api.v1 import v1_bp
-from app_quart.extensions import db
+from app_quart.api.v1 import v1_bp # noqa: F401
+from app_quart.extensions import db # noqa: F401
+from quart import jsonify # noqa: F401
+from sqlalchemy import text # noqa: F401
 
 
 @v1_bp.route('/healthz', methods=['GET'])

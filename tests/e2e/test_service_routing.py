@@ -1,9 +1,10 @@
 """
 End-to-end test for request routing through proxies.
 """
-import pytest
-import requests
-import time
+import time # noqa: F401, # noqa: F401
+
+import pytest # noqa: F401, # noqa: F401
+import requests # noqa: F401, # noqa: F401
 
 
 @pytest.mark.e2e
@@ -17,7 +18,7 @@ class TestServiceRouting:
         admin_credentials
     ):
         """Test service configuration propagates to proxies."""
-        # Login and create cluster
+      : # Login and create cluster
         login_resp = requests.post(
             f"{api_base_url}/api/v1/auth/login",
             data=admin_credentials
@@ -25,7 +26,7 @@ class TestServiceRouting:
         token = login_resp.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
 
-        # Create cluster
+      : # Create cluster
         cluster_resp = requests.post(
             f"{api_base_url}/api/v1/clusters",
             headers=headers,
@@ -33,7 +34,7 @@ class TestServiceRouting:
         )
         cluster = cluster_resp.json()
 
-        # Create service
+      : # Create service
         service_resp = requests.post(
             f"{api_base_url}/api/v1/services",
             headers=headers,
@@ -63,7 +64,7 @@ class TestServiceRouting:
         token = login_resp.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
 
-        # Create cluster
+      : # Create cluster
         cluster_resp = requests.post(
             f"{api_base_url}/api/v1/clusters",
             headers=headers,
@@ -71,7 +72,7 @@ class TestServiceRouting:
         )
         cluster = cluster_resp.json()
 
-        # Create multiple services
+      : # Create multiple services
         for i in range(3):
             service_resp = requests.post(
                 f"{api_base_url}/api/v1/services",

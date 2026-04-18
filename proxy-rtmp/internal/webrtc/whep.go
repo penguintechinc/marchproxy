@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/config"
-	"go.uber.org/zap"
 )
 
 // WHEPServer handles WebRTC-HTTP egress protocol (playback)
@@ -27,12 +26,12 @@ type WHEPServer struct {
 
 // WHEPStats holds WHEP server statistics
 type WHEPStats struct {
-	TotalRequests     int64
-	ActiveViewers     int64
-	SuccessfulOffers  int64
-	FailedOffers      int64
-	TotalBytesOut     int64
-	mutex             sync.RWMutex
+	TotalRequests    int64
+	ActiveViewers    int64
+	SuccessfulOffers int64
+	FailedOffers     int64
+	TotalBytesOut    int64
+	mutex            sync.RWMutex
 }
 
 // WHEPSession represents an active WHEP viewer session
@@ -97,7 +96,7 @@ func (s *WHEPServer) Start() error {
 
 	s.running = true
 
-	logrus.WithField("port", s.config.WHEPPort).Info("WHEP server started")
+	logger.WithFields(map[string]interface{}{"port": s.config.WHEPPort}).Info("WHEP server started")
 
 	go func() {
 		var err error
@@ -107,7 +106,7 @@ func (s *WHEPServer) Start() error {
 			err = s.server.ListenAndServe()
 		}
 		if err != nil && err != http.ErrServerClosed {
-			logrus.WithError(err).Error("WHEP server error")
+			logger.WithError(err).Error("WHEP server error")
 		}
 	}()
 
@@ -215,7 +214,7 @@ func (s *WHEPServer) handleViewerOffer(w http.ResponseWriter, r *http.Request, s
 	s.stats.ActiveViewers++
 	s.stats.mutex.Unlock()
 
-	logrus.WithFields(logrus.Fields{
+	logger.WithFields(map[string]interface{}{
 		"stream_key":  streamKey,
 		"viewer_id":   viewerID,
 		"remote_addr": r.RemoteAddr,
@@ -290,7 +289,7 @@ func (s *WHEPServer) handleViewerLeave(w http.ResponseWriter, r *http.Request, s
 	s.stats.ActiveViewers--
 	s.stats.mutex.Unlock()
 
-	logrus.WithField("stream_key", streamKey).Info("WHEP viewer disconnected")
+	logger.WithFields(map[string]interface{}{"stream_key": streamKey}).Info("WHEP viewer disconnected")
 
 	w.WriteHeader(http.StatusOK)
 }
@@ -376,7 +375,7 @@ func (s *WHEPServer) RegisterStream(streamKey string, codec string, resolution s
 		StartedAt:   time.Now(),
 	}
 
-	logrus.WithField("stream_key", streamKey).Info("Stream registered for WHEP playback")
+	logger.WithFields(map[string]interface{}{"stream_key": streamKey}).Info("Stream registered for WHEP playback")
 }
 
 // UnregisterStream removes a stream from playback
@@ -399,7 +398,7 @@ func (s *WHEPServer) UnregisterStream(streamKey string) {
 		}
 	}
 
-	logrus.WithField("stream_key", streamKey).Info("Stream unregistered from WHEP")
+	logger.WithFields(map[string]interface{}{"stream_key": streamKey}).Info("Stream unregistered from WHEP")
 }
 
 // Stop stops the WHEP server

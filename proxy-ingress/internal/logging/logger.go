@@ -2,12 +2,10 @@ package logging
 
 import (
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/penguintechinc/penguin-libs/packages/go-common/logging"
+	"go.uber.org/zap"
 )
 
 type Logger struct {
@@ -87,256 +85,202 @@ type HealthLogEntry struct {
 }
 
 func NewLogger(config LogConfig) (*Logger, error) {
-	logger := logging.NewSanitizedLogger("marchproxy")
-
-	level, err := parseLogLevel(config.Level)
+	logger, err := logging.NewSanitizedLogger("marchproxy")
 	if err != nil {
-		level = logrus.InfoLevel
-	}
-	logger.SetLevel(level)
-
-	if config.Structured {
-		logger.SetFormatter(&logrus.JSONFormatter{
-			TimestampFormat: time.RFC3339Nano,
-		})
-	} else {
-		logger.SetFormatter(&logrus.TextFormatter{
-			FullTimestamp:   true,
-			TimestampFormat: time.RFC3339,
-		})
+		return nil, fmt.Errorf("failed to create logger: %w", err)
 	}
 
-	if config.File != "" {
-		if err := os.MkdirAll(filepath.Dir(config.File), 0755); err != nil {
-			return nil, fmt.Errorf("failed to create log directory: %w", err)
-		}
-
-		file, err := os.OpenFile(config.File, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-		if err != nil {
-			return nil, fmt.Errorf("failed to open log file: %w", err)
-		}
-
-		if config.Output == "both" {
-			logger.SetOutput(io.MultiWriter(os.Stdout, file))
-		} else {
-			logger.SetOutput(file)
-		}
-	} else {
-		logger.SetOutput(os.Stdout)
-	}
+	// Note: File output configuration via SanitizedLogger is handled internally.
+	// Log level and other configuration can be set via environment variables.
 
 	l := &Logger{
-		Logger: logger,
-		config: config,
-	}
-
-	if len(config.Fields) > 0 {
-		l.Logger = l.Logger.WithFields(config.Fields).Logger
+		SanitizedLogger: logger,
+		config:          config,
 	}
 
 	return l, nil
 }
 
 func (l *Logger) LogMTLSAuth(entry MTLSLogEntry) {
-	fields := logrus.Fields{
-		"component":       "mtls_auth",
-		"client_cn":       entry.ClientCN,
-		"client_ou":       entry.ClientOU,
-		"client_serial":   entry.ClientSerial,
-		"server_name":     entry.ServerName,
-		"tls_version":     entry.TLSVersion,
-		"cipher_suite":    entry.CipherSuite,
-		"result":          entry.Result,
-		"virtual_host":    entry.VirtualHost,
-		"backend":         entry.Backend,
-		"request_id":      entry.RequestID,
-		"remote_addr":     entry.RemoteAddr,
+	fields := []zap.Field{
+		zap.String("component", "mtls_auth"),
+		zap.String("client_cn", entry.ClientCN),
+		zap.String("client_ou", entry.ClientOU),
+		zap.String("client_serial", entry.ClientSerial),
+		zap.String("server_name", entry.ServerName),
+		zap.String("tls_version", entry.TLSVersion),
+		zap.String("cipher_suite", entry.CipherSuite),
+		zap.String("result", entry.Result),
+		zap.String("virtual_host", entry.VirtualHost),
+		zap.String("backend", entry.Backend),
+		zap.String("request_id", entry.RequestID),
+		zap.String("remote_addr", entry.RemoteAddr),
 	}
 
 	if entry.Error != "" {
-		fields["error"] = entry.Error
+		fields = append(fields, zap.String("error", entry.Error))
 	}
 
 	if entry.Result == "success" {
-		l.WithFields(fields).Info(entry.Message)
+		l.SanitizedLogger.Info(entry.Message, fields...)
 	} else {
-		l.WithFields(fields).Warn(entry.Message)
+		l.SanitizedLogger.Warn(entry.Message, fields...)
 	}
 }
 
 func (l *Logger) LogRequest(entry RequestLogEntry) {
-	fields := logrus.Fields{
-		"component":         "request",
-		"method":            entry.Method,
-		"url":               entry.URL,
-		"path":              entry.Path,
-		"status_code":       entry.StatusCode,
-		"response_time_ms":  entry.ResponseTime.Milliseconds(),
-		"request_size":      entry.RequestSize,
-		"response_size":     entry.ResponseSize,
-		"user_agent":        entry.UserAgent,
-		"referer":           entry.Referer,
-		"x_forwarded_for":   entry.XForwardedFor,
-		"virtual_host":      entry.VirtualHost,
-		"backend":           entry.Backend,
-		"backend_endpoint":  entry.BackendEndpoint,
-		"request_id":        entry.RequestID,
-		"remote_addr":       entry.RemoteAddr,
+	fields := []zap.Field{
+		zap.String("component", "request"),
+		zap.String("method", entry.Method),
+		zap.String("url", entry.URL),
+		zap.String("path", entry.Path),
+		zap.Int("status_code", entry.StatusCode),
+		zap.Int64("response_time_ms", entry.ResponseTime.Milliseconds()),
+		zap.Int64("request_size", entry.RequestSize),
+		zap.Int64("response_size", entry.ResponseSize),
+		zap.String("user_agent", entry.UserAgent),
+		zap.String("referer", entry.Referer),
+		zap.String("x_forwarded_for", entry.XForwardedFor),
+		zap.String("virtual_host", entry.VirtualHost),
+		zap.String("backend", entry.Backend),
+		zap.String("backend_endpoint", entry.BackendEndpoint),
+		zap.String("request_id", entry.RequestID),
+		zap.String("remote_addr", entry.RemoteAddr),
 	}
 
 	if entry.Error != "" {
-		fields["error"] = entry.Error
+		fields = append(fields, zap.String("error", entry.Error))
 	}
 
 	if len(entry.Headers) > 0 {
-		fields["headers"] = entry.Headers
+		fields = append(fields, zap.Any("headers", entry.Headers))
 	}
 
 	if entry.StatusCode >= 200 && entry.StatusCode < 400 {
-		l.WithFields(fields).Info(entry.Message)
+		l.SanitizedLogger.Info(entry.Message, fields...)
 	} else if entry.StatusCode >= 400 && entry.StatusCode < 500 {
-		l.WithFields(fields).Warn(entry.Message)
+		l.SanitizedLogger.Warn(entry.Message, fields...)
 	} else {
-		l.WithFields(fields).Error(entry.Message)
+		l.SanitizedLogger.Error(entry.Message, fields...)
 	}
 }
 
 func (l *Logger) LogHealth(entry HealthLogEntry) {
-	fields := logrus.Fields{
-		"component":         "health_check",
-		"check_type":        entry.CheckType,
-		"target":            entry.Target,
-		"status":            entry.Status,
-		"response_time_ms":  entry.ResponseTime.Milliseconds(),
-		"virtual_host":      entry.VirtualHost,
-		"backend":           entry.Backend,
-		"backend_endpoint":  entry.BackendEndpoint,
+	fields := []zap.Field{
+		zap.String("component", "health_check"),
+		zap.String("check_type", entry.CheckType),
+		zap.String("target", entry.Target),
+		zap.String("status", entry.Status),
+		zap.Int64("response_time_ms", entry.ResponseTime.Milliseconds()),
+		zap.String("virtual_host", entry.VirtualHost),
+		zap.String("backend", entry.Backend),
+		zap.String("backend_endpoint", entry.BackendEndpoint),
 	}
 
 	if entry.Error != "" {
-		fields["error"] = entry.Error
+		fields = append(fields, zap.String("error", entry.Error))
 	}
 
 	if entry.Metadata != nil {
-		fields["metadata"] = entry.Metadata
+		fields = append(fields, zap.Any("metadata", entry.Metadata))
 	}
 
 	switch entry.Status {
 	case "healthy":
-		l.WithFields(fields).Debug(entry.Message)
+		l.SanitizedLogger.Debug(entry.Message, fields...)
 	case "degraded":
-		l.WithFields(fields).Warn(entry.Message)
+		l.SanitizedLogger.Warn(entry.Message, fields...)
 	case "unhealthy":
-		l.WithFields(fields).Error(entry.Message)
+		l.SanitizedLogger.Error(entry.Message, fields...)
 	default:
-		l.WithFields(fields).Info(entry.Message)
+		l.SanitizedLogger.Info(entry.Message, fields...)
 	}
 }
 
 func (l *Logger) LogConfigUpdate(message string, fields map[string]interface{}) {
-	logFields := logrus.Fields{
-		"component": "config",
-	}
+	zapFields := []zap.Field{zap.String("component", "config")}
 
 	for k, v := range fields {
-		logFields[k] = v
+		zapFields = append(zapFields, zap.Any(k, v))
 	}
 
-	l.WithFields(logFields).Info(message)
+	l.SanitizedLogger.Info(message, zapFields...)
 }
 
 func (l *Logger) LogCertificateEvent(message string, certInfo map[string]interface{}) {
-	fields := logrus.Fields{
-		"component": "certificate",
-	}
+	zapFields := []zap.Field{zap.String("component", "certificate")}
 
 	for k, v := range certInfo {
-		fields[k] = v
+		zapFields = append(zapFields, zap.Any(k, v))
 	}
 
-	l.WithFields(fields).Info(message)
+	l.SanitizedLogger.Info(message, zapFields...)
 }
 
 func (l *Logger) LogLoadBalancer(message string, backend, algorithm, endpoint string) {
-	fields := logrus.Fields{
-		"component": "load_balancer",
-		"backend":   backend,
-		"algorithm": algorithm,
-		"endpoint":  endpoint,
+	fields := []zap.Field{
+		zap.String("component", "load_balancer"),
+		zap.String("backend", backend),
+		zap.String("algorithm", algorithm),
+		zap.String("endpoint", endpoint),
 	}
 
-	l.WithFields(fields).Info(message)
+	l.SanitizedLogger.Info(message, fields...)
 }
 
 func (l *Logger) LogCircuitBreaker(message string, backend, state string, errorRate float64) {
-	fields := logrus.Fields{
-		"component":  "circuit_breaker",
-		"backend":    backend,
-		"state":      state,
-		"error_rate": errorRate,
+	fields := []zap.Field{
+		zap.String("component", "circuit_breaker"),
+		zap.String("backend", backend),
+		zap.String("state", state),
+		zap.Float64("error_rate", errorRate),
 	}
 
-	l.WithFields(fields).Warn(message)
+	l.SanitizedLogger.Warn(message, fields...)
 }
 
 func (l *Logger) LogRateLimit(message string, clientIP, reason string, limit int) {
-	fields := logrus.Fields{
-		"component": "rate_limit",
-		"client_ip": clientIP,
-		"reason":    reason,
-		"limit":     limit,
+	fields := []zap.Field{
+		zap.String("component", "rate_limit"),
+		zap.String("client_ip", clientIP),
+		zap.String("reason", reason),
+		zap.Int("limit", limit),
 	}
 
-	l.WithFields(fields).Warn(message)
+	l.SanitizedLogger.Warn(message, fields...)
 }
 
 func (l *Logger) LogError(err error, context string, fields map[string]interface{}) {
-	logFields := logrus.Fields{
-		"component": context,
-		"error":     err.Error(),
+	zapFields := []zap.Field{
+		zap.String("component", context),
+		zap.String("error", err.Error()),
 	}
 
 	for k, v := range fields {
-		logFields[k] = v
+		zapFields = append(zapFields, zap.Any(k, v))
 	}
 
-	l.WithFields(logFields).Error("Error occurred")
+	l.SanitizedLogger.Error("Error occurred", zapFields...)
 }
 
 func (l *Logger) LogStartup(version, buildTime string) {
-	fields := logrus.Fields{
-		"component":  "startup",
-		"version":    version,
-		"build_time": buildTime,
-		"proxy_type": "ingress",
+	fields := []zap.Field{
+		zap.String("component", "startup"),
+		zap.String("version", version),
+		zap.String("build_time", buildTime),
+		zap.String("proxy_type", "ingress"),
 	}
 
-	l.WithFields(fields).Info("MarchProxy Ingress starting up")
+	l.SanitizedLogger.Info("MarchProxy Ingress starting up", fields...)
 }
 
 func (l *Logger) LogShutdown(reason string) {
-	fields := logrus.Fields{
-		"component": "shutdown",
-		"reason":    reason,
+	fields := []zap.Field{
+		zap.String("component", "shutdown"),
+		zap.String("reason", reason),
 	}
 
-	l.WithFields(fields).Info("MarchProxy Ingress shutting down")
-}
-
-func (l *Logger) WithRequestID(requestID string) *logrus.Entry {
-	return l.WithField("request_id", requestID)
-}
-
-func (l *Logger) WithVirtualHost(vhost string) *logrus.Entry {
-	return l.WithField("virtual_host", vhost)
-}
-
-func (l *Logger) WithBackend(backend string) *logrus.Entry {
-	return l.WithField("backend", backend)
-}
-
-func (l *Logger) WithComponent(component string) *logrus.Entry {
-	return l.WithField("component", component)
+	l.SanitizedLogger.Info("MarchProxy Ingress shutting down", fields...)
 }
 
 func DefaultLogConfig() LogConfig {

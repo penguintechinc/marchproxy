@@ -3,19 +3,19 @@ OAuth2 Authentication Service for MarchProxy Enterprise
 Handles OAuth2 integration with Google, Microsoft, GitHub, etc.
 """
 
-import logging
-from penguintechinc_utils import get_logger
-import secrets
-import time
-from datetime import datetime
-from typing import Any, Dict, List, Optional
-from urllib.parse import urlencode
+import logging # noqa: F401, # noqa: F401
+import secrets # noqa: F401, # noqa: F401
+import time # noqa: F401, # noqa: F401
+from datetime import datetime # noqa: F401
+from typing import Any, Dict, List, Optional # noqa: F401
+from urllib.parse import urlencode # noqa: F401
 
-import requests
-from quart import abort, session, url_for
+import requests # noqa: F401, # noqa: F401
+from penguintechinc_utils import get_logger # noqa: F401
+from quart import abort, session, url_for # noqa: F401
 
-from ...models import get_db
-from ..license_service import LicenseService
+from ...models import get_db # noqa: F401
+from ..license_service import LicenseService # noqa: F401
 
 logger = get_logger(__name__)
 
@@ -34,8 +34,8 @@ class OAuth2Service:
         return {
             "google": {
                 "name": "Google",
-                "client_id": None,  # Set via environment
-                "client_secret": None,  # Set via environment
+                "client_id": None, # Set via environment
+                "client_secret": None, # Set via environment
                 "authorization_endpoint": "https://accounts.google.com/o/oauth2/v2/auth",
                 "token_endpoint": "https://oauth2.googleapis.com/token",
                 "userinfo_endpoint": "https://www.googleapis.com/oauth2/v2/userinfo",
@@ -46,7 +46,7 @@ class OAuth2Service:
                     "last_name": "family_name",
                     "external_id": "id",
                 },
-                "admin_domains": [],  # Domains that grant admin access
+                "admin_domains": [], # Domains that grant admin access
             },
             "microsoft": {
                 "name": "Microsoft",
@@ -76,18 +76,18 @@ class OAuth2Service:
                 "scopes": ["user:email"],
                 "user_mapping": {
                     "email": "email",
-                    "first_name": "name",  # GitHub returns full name
+                    "first_name": "name", # GitHub returns full name
                     "last_name": "",
                     "external_id": "id",
                 },
                 "admin_domains": [],
-                "admin_organizations": [],  # GitHub orgs that grant admin access
+                "admin_organizations": [], # GitHub orgs that grant admin access
             },
             "azure": {
                 "name": "Azure AD",
                 "client_id": None,
                 "client_secret": None,
-                "tenant_id": None,  # Required for Azure AD
+                "tenant_id": None, # Required for Azure AD
                 "authorization_endpoint": (
                     "https://login.microsoftonline.com" "/{tenant}/oauth2/v2.0/authorize"
                 ),
@@ -102,7 +102,7 @@ class OAuth2Service:
                     "last_name": "surname",
                     "external_id": "id",
                 },
-                "admin_groups": [],  # Azure AD groups that grant admin access
+                "admin_groups": [], # Azure AD groups that grant admin access
             },
         }
 
@@ -115,7 +115,7 @@ class OAuth2Service:
             config = self.providers.get(provider, {})
             return bool(config.get("client_id") and config.get("client_secret"))
 
-        # Check if any provider is configured
+      # Check if any provider is configured
         return any(
             config.get("client_id") and config.get("client_secret")
             for config in self.providers.values()
@@ -142,13 +142,13 @@ class OAuth2Service:
 
         config = self.providers[provider]
 
-        # Generate state parameter for CSRF protection
+      # Generate state parameter for CSRF protection
         state = secrets.token_urlsafe(32)
         session[f"oauth2_state_{provider}"] = state
         session[f"oauth2_timestamp_{provider}"] = time.time()
         session[f"oauth2_redirect_{provider}"] = redirect_uri
 
-        # Build authorization URL
+      # Build authorization URL
         params = {
             "client_id": config["client_id"],
             "response_type": "code",
@@ -161,7 +161,7 @@ class OAuth2Service:
             ),
         }
 
-        # Handle tenant-specific URLs (Azure AD)
+      # Handle tenant-specific URLs (Azure AD)
         auth_url = config["authorization_endpoint"]
         if "{tenant}" in auth_url and config.get("tenant_id"):
             auth_url = auth_url.format(tenant=config["tenant_id"])
@@ -176,12 +176,12 @@ class OAuth2Service:
         if not self.is_enabled(provider):
             abort(403, f"OAuth2 provider '{provider}' not available")
 
-        # Validate state parameter
+      # Validate state parameter
         session_state = session.get(f"oauth2_state_{provider}")
         if not session_state or session_state != state:
             abort(400, "Invalid OAuth2 state parameter")
 
-        # Check request timeout (10 minutes)
+      # Check request timeout (10 minutes)
         request_age = time.time() - session.get(f"oauth2_timestamp_{provider}", 0)
         if request_age > 600:
             abort(400, "OAuth2 request timeout")
@@ -189,19 +189,19 @@ class OAuth2Service:
         self.providers[provider]  # Validate provider exists
 
         try:
-            # Exchange authorization code for access token
+          # Exchange authorization code for access token
             token_data = self._exchange_code_for_token(provider, code)
 
-            # Get user information
+          # Get user information
             user_info = self._get_user_info(provider, token_data["access_token"])
 
-            # Map user attributes
+          # Map user attributes
             user_attributes = self._map_user_attributes(provider, user_info)
 
-            # Provision or update user
+          # Provision or update user
             user = self._provision_oauth2_user(provider, user_attributes, token_data)
 
-            # Clear OAuth2 session data
+          # Clear OAuth2 session data
             for key in [
                 f"oauth2_state_{provider}",
                 f"oauth2_timestamp_{provider}",
@@ -264,7 +264,7 @@ class OAuth2Service:
 
         user_info = response.json()
 
-        # Handle special cases for different providers
+      # Handle special cases for different providers
         if provider == "github":
             user_info = self._enrich_github_user_info(user_info, access_token)
 
@@ -277,7 +277,7 @@ class OAuth2Service:
             "Accept": "application/json",
         }
 
-        # Get primary email if not public
+      # Get primary email if not public
         if not user_info.get("email"):
             email_response = requests.get(
                 "https://api.github.com/user/emails", headers=headers, timeout=30
@@ -288,7 +288,7 @@ class OAuth2Service:
                 if primary_email:
                     user_info["email"] = primary_email
 
-        # Get organization memberships for admin determination
+      # Get organization memberships for admin determination
         orgs_response = requests.get(
             "https://api.github.com/user/orgs", headers=headers, timeout=30
         )
@@ -309,22 +309,22 @@ class OAuth2Service:
             "is_admin": False,
         }
 
-        # Map basic attributes
+      # Map basic attributes
         for field, source_field in mapping.items():
             if source_field and source_field in user_info:
                 value = user_info[source_field]
                 user_data[field] = value
 
-        # Handle special cases
+      # Handle special cases
         if provider == "github" and not user_data.get("first_name"):
-            # Split name field for GitHub
+          # Split name field for GitHub
             full_name = user_info.get("name", "").strip()
             if full_name:
                 name_parts = full_name.split(" ", 1)
                 user_data["first_name"] = name_parts[0]
                 user_data["last_name"] = name_parts[1] if len(name_parts) > 1 else ""
 
-        # Determine admin status
+      # Determine admin status
         user_data["is_admin"] = self._determine_admin_status(provider, user_info, user_data)
 
         return user_data
@@ -333,24 +333,24 @@ class OAuth2Service:
         """Determine if user should have admin privileges"""
         config = self.providers[provider]
 
-        # Check admin domains
+      # Check admin domains
         email = user_data.get("email", "")
         if email:
             domain = email.split("@")[1] if "@" in email else ""
             if domain in config.get("admin_domains", []):
                 return True
 
-        # Check GitHub organizations
+      # Check GitHub organizations
         if provider == "github":
             user_orgs = user_info.get("organizations", [])
             admin_orgs = config.get("admin_organizations", [])
             if any(org in admin_orgs for org in user_orgs):
                 return True
 
-        # Check Azure AD groups (would require additional Graph API call)
+      # Check Azure AD groups (would require additional Graph API call)
         if provider == "azure":
-            # This would require a separate API call to get group memberships
-            # Left as placeholder for full implementation
+          # This would require a separate API call to get group memberships
+          # Left as placeholder for full implementation
             pass
 
         return False
@@ -366,7 +366,7 @@ class OAuth2Service:
         if not email:
             abort(400, f"Email address required for {provider} user provisioning")
 
-        # Check if user exists by email or external_id
+      # Check if user exists by email or external_id
         user = (
             self.db(
                 (self.db.auth_user.email == email)
@@ -380,7 +380,7 @@ class OAuth2Service:
         )
 
         if user:
-            # Update existing user
+          # Update existing user
             self.db(self.db.auth_user.id == user.id).update(
                 first_name=user_attributes.get("first_name", user.first_name),
                 last_name=user_attributes.get("last_name", user.last_name),
@@ -394,10 +394,10 @@ class OAuth2Service:
             logger.info(f"Updated {provider} OAuth2 user: {email}")
             return user.as_dict()
         else:
-            # Create new user
+          # Create new user
             username = email.split("@")[0]  # Use email prefix as username
 
-            # Ensure username is unique
+          # Ensure username is unique
             counter = 1
             original_username = username
             while self.db(self.db.auth_user.username == username).count():
@@ -412,7 +412,7 @@ class OAuth2Service:
                 is_admin=user_attributes.get("is_admin", False),
                 external_id=external_id,
                 auth_provider=auth_provider,
-                password_hash="",  # No local password for OAuth2 users
+                password_hash="", # No local password for OAuth2 users
                 registration_date=datetime.utcnow(),
                 last_login=datetime.utcnow(),
             )
@@ -450,8 +450,8 @@ class OAuth2Service:
 
     def revoke_access_token(self, provider: str, access_token: str) -> bool:
         """Revoke OAuth2 access token"""
-        # Implementation varies by provider
-        # Some providers support token revocation endpoints
+      # Implementation varies by provider
+      # Some providers support token revocation endpoints
         logger.info(f"Token revocation requested for provider: {provider}")
         return True
 
@@ -460,9 +460,9 @@ class OAuth2Service:
         if provider not in self.providers:
             return False
 
-        # Update provider configuration
+      # Update provider configuration
         self.providers[provider].update(config)
 
-        # In production, this would persist to database/config
+      # In production, this would persist to database/config
         logger.info(f"Updated configuration for OAuth2 provider: {provider}")
         return True

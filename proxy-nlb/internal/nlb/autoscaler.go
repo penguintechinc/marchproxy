@@ -6,9 +6,10 @@ import (
 	"sync"
 	"time"
 
+	"marchproxy-nlb/internal/logging"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"go.uber.org/zap"
 )
 
 var (
@@ -140,7 +141,7 @@ func (as *Autoscaler) SetPolicy(policy *ScalingPolicy) error {
 
 	as.policies[policy.Protocol] = policy
 
-	as.logger.WithFields(logrus.Fields{
+	as.logger.WithFields(logging.Fields{
 		"protocol":     policy.Protocol.String(),
 		"min_replicas": policy.MinReplicas,
 		"max_replicas": policy.MaxReplicas,
@@ -295,7 +296,7 @@ func (as *Autoscaler) evaluateProtocol(protocol Protocol) string {
 	if maxPressure >= policy.ScaleUpThreshold && currentCount < policy.MaxReplicas {
 		if timeSinceLastScale >= policy.ScaleUpCooldown {
 			scaleDecisions.WithLabelValues(protocol.String(), "scale_up").Inc()
-			as.logger.WithFields(logrus.Fields{
+			as.logger.WithFields(logging.Fields{
 				"protocol":      protocol.String(),
 				"current_count": currentCount,
 				"cpu_pressure":  cpuPressure,
@@ -310,7 +311,7 @@ func (as *Autoscaler) evaluateProtocol(protocol Protocol) string {
 	if maxPressure <= policy.ScaleDownThreshold && currentCount > policy.MinReplicas {
 		if timeSinceLastScale >= policy.ScaleDownCooldown {
 			scaleDecisions.WithLabelValues(protocol.String(), "scale_down").Inc()
-			as.logger.WithFields(logrus.Fields{
+			as.logger.WithFields(logging.Fields{
 				"protocol":      protocol.String(),
 				"current_count": currentCount,
 				"cpu_pressure":  cpuPressure,
@@ -356,7 +357,7 @@ func (as *Autoscaler) executeScaling(protocol Protocol, action string) {
 
 	currentReplicas.WithLabelValues(protocol.String()).Set(float64(targetCount))
 
-	as.logger.WithFields(logrus.Fields{
+	as.logger.WithFields(logging.Fields{
 		"protocol": protocol.String(),
 		"action":   action,
 		"from":     currentCount,

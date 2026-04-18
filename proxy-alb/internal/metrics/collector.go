@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"go.uber.org/zap"
+	"github.com/PenguinTech/MarchProxy/proxy-alb/internal/logging"
 )
 
 // Collector collects metrics from Envoy admin API
@@ -55,7 +55,11 @@ type RouteMetrics struct {
 // NewCollector creates a new metrics collector
 func NewCollector(adminAddr string, logger *logging.LogrusAdapter) *Collector {
 	if logger == nil {
-		logger = NewLogrusAdapter("marchproxy")
+		var err error
+		logger, err = logging.NewLogrusAdapter("marchproxy")
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	return &Collector{

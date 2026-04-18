@@ -4,8 +4,18 @@ import (
 	"fmt"
 	"net"
 
-	log "github.com/sirupsen/logrus"
+	"marchproxy-egress/internal/logging"
 )
+
+var logEnforcer *logging.LogrusAdapter
+
+func init() {
+	var err error
+	logEnforcer, err = logging.NewLogrusAdapter("levers-enforcer")
+	if err != nil {
+		panic(err)
+	}
+}
 
 // Enforcer applies received rule sets to MarchProxy's enforcement mechanisms.
 // It writes to eBPF maps for IP rules and updates Envoy config for domain/routing rules.
@@ -35,17 +45,17 @@ func (e *Enforcer) Apply(rules RuleSet) error {
 			return fmt.Errorf("ebpf rules: %w", err)
 		}
 	} else {
-		log.Debug("levers: eBPF manager not configured — IP rules logged only")
+		logEnforcer.Debug("levers: eBPF manager not configured — IP rules logged only")
 		for _, cidr := range rules.BlockCIDRs {
-			log.WithField("cidr", cidr).Debug("levers: would block CIDR")
+			logEnforcer.WithField("cidr", cidr).Debug("levers: would block CIDR")
 		}
 	}
 	// Domain and cluster rules: logged as stubs pending Envoy xDS integration
 	for _, domain := range rules.BlockDomains {
-		log.WithField("domain", domain).Debug("levers: block domain (Envoy xDS TBD)")
+		logEnforcer.WithField("domain", domain).Debug("levers: block domain (Envoy xDS TBD)")
 	}
 	for _, cluster := range rules.RouteClusters {
-		log.WithFields(log.Fields{
+		logEnforcer.WithFields(map[string]interface{}{
 			"cluster":   cluster.Name,
 			"endpoints": cluster.Endpoints,
 			"lb_policy": cluster.LBPolicy,
@@ -64,7 +74,7 @@ func (e *Enforcer) applyEBPFRules(rules RuleSet) error {
 
 	for _, cidr := range rules.BlockCIDRs {
 		if _, _, err := net.ParseCIDR(cidr); err != nil {
-			log.WithField("cidr", cidr).Warn("levers: invalid block CIDR, skipping")
+			logEnforcer.WithField("cidr", cidr).Warn("levers: invalid block CIDR, skipping")
 			continue
 		}
 		if err := e.ebpfMgr.BlockCIDR(cidr); err != nil {
@@ -74,7 +84,7 @@ func (e *Enforcer) applyEBPFRules(rules RuleSet) error {
 
 	for _, cidr := range rules.AllowCIDRs {
 		if _, _, err := net.ParseCIDR(cidr); err != nil {
-			log.WithField("cidr", cidr).Warn("levers: invalid allow CIDR, skipping")
+			logEnforcer.WithField("cidr", cidr).Warn("levers: invalid allow CIDR, skipping")
 			continue
 		}
 		if err := e.ebpfMgr.AllowCIDR(cidr); err != nil {
@@ -84,7 +94,7 @@ func (e *Enforcer) applyEBPFRules(rules RuleSet) error {
 
 	for srcIP, pps := range rules.RateLimits {
 		if err := e.ebpfMgr.SetRateLimit(srcIP, pps); err != nil {
-			log.WithField("src_ip", srcIP).Warn("levers: failed to set rate limit, continuing")
+			logEnforcer.WithField("src_ip", srcIP).Warn("levers: failed to set rate limit, continuing")
 		}
 	}
 	return nil

@@ -10,11 +10,10 @@ This migration creates the Phase 7 Unified NLB architecture tables:
 - scaling_policies: Auto-scaling policies per module
 - deployments: Blue/green deployment tracking
 """
-from typing import Sequence, Union
+from typing import Sequence, Union # noqa: F401
 
-from alembic import op
-import sqlalchemy as sa
-
+import sqlalchemy as sa, # noqa: F401
+from alembic import op # noqa: F401
 
 # revision identifiers, used by Alembic.
 revision: str = '002'
@@ -26,7 +25,7 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Create Phase 7 module management tables."""
 
-    # Create modules table
+  : # Create modules table
     op.create_table('modules',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('name', sa.String(length=100), nullable=False),
@@ -60,7 +59,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_modules_type'), 'modules', ['type'], unique=False)
     op.create_index(op.f('ix_modules_status'), 'modules', ['status'], unique=False)
 
-    # Create module_routes table
+  : # Create module_routes table
     op.create_table('module_routes',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('module_id', sa.Integer(), nullable=False),
@@ -79,7 +78,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_module_routes_module_id'), 'module_routes', ['module_id'], unique=False)
     op.create_index(op.f('ix_module_routes_priority'), 'module_routes', ['priority'], unique=False)
 
-    # Create scaling_policies table
+  : # Create scaling_policies table
     op.create_table('scaling_policies',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('module_id', sa.Integer(), nullable=False),
@@ -99,7 +98,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_scaling_policies_id'), 'scaling_policies', ['id'], unique=False)
     op.create_index(op.f('ix_scaling_policies_module_id'), 'scaling_policies', ['module_id'], unique=True)
 
-    # Create deployments table
+  : # Create deployments table
     op.create_table('deployments',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('module_id', sa.Integer(), nullable=False),
@@ -132,7 +131,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Drop Phase 7 module management tables."""
 
-    # Drop indexes and tables in reverse order
+  : # Drop indexes and tables in reverse order
     op.drop_index(op.f('ix_deployments_deployed_at'), table_name='deployments')
     op.drop_index(op.f('ix_deployments_status'), table_name='deployments')
     op.drop_index(op.f('ix_deployments_module_id'), table_name='deployments')
@@ -154,7 +153,7 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_modules_id'), table_name='modules')
     op.drop_table('modules')
 
-    # Drop enums
+  : # Drop enums
     op.execute('DROP TYPE IF EXISTS deploymentstatus')
     op.execute('DROP TYPE IF EXISTS modulestatus')
     op.execute('DROP TYPE IF EXISTS moduletype')

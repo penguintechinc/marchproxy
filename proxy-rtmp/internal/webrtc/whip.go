@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/config"
-	"go.uber.org/zap"
 )
 
 // WHIPServer handles WebRTC-HTTP ingestion protocol
@@ -28,12 +27,12 @@ type WHIPServer struct {
 
 // WHIPStats holds WHIP server statistics
 type WHIPStats struct {
-	TotalRequests     int64
-	ActiveSessions    int64
-	SuccessfulOffers  int64
-	FailedOffers      int64
-	TotalBytesIn      int64
-	mutex             sync.RWMutex
+	TotalRequests    int64
+	ActiveSessions   int64
+	SuccessfulOffers int64
+	FailedOffers     int64
+	TotalBytesIn     int64
+	mutex            sync.RWMutex
 }
 
 // WHIPSession represents an active WHIP session
@@ -84,7 +83,7 @@ func (s *WHIPServer) Start() error {
 
 	s.running = true
 
-	logrus.WithField("port", s.config.WHIPPort).Info("WHIP server started")
+	logger.WithFields(map[string]interface{}{"port": s.config.WHIPPort}).Info("WHIP server started")
 
 	go func() {
 		var err error
@@ -94,7 +93,7 @@ func (s *WHIPServer) Start() error {
 			err = s.server.ListenAndServe()
 		}
 		if err != nil && err != http.ErrServerClosed {
-			logrus.WithError(err).Error("WHIP server error")
+			logger.WithError(err).Error("WHIP server error")
 		}
 	}()
 
@@ -193,7 +192,7 @@ func (s *WHIPServer) handleOffer(w http.ResponseWriter, r *http.Request, streamK
 	s.stats.ActiveSessions++
 	s.stats.mutex.Unlock()
 
-	logrus.WithFields(logrus.Fields{
+	logger.WithFields(map[string]interface{}{
 		"stream_key":  streamKey,
 		"session_id":  sessionID,
 		"remote_addr": r.RemoteAddr,
@@ -243,7 +242,7 @@ func (s *WHIPServer) handleICECandidate(w http.ResponseWriter, r *http.Request, 
 	var candidate ICECandidate
 	if err := json.Unmarshal(body, &candidate); err != nil {
 		// Might be SDP fragment format
-		logrus.WithField("body", string(body)).Debug("Received ICE candidate")
+		logger.WithFields(map[string]interface{}{"body": string(body)}).Info("Received ICE candidate")
 	}
 
 	session.mutex.Lock()
@@ -270,7 +269,7 @@ func (s *WHIPServer) handleDelete(w http.ResponseWriter, r *http.Request, stream
 	s.stats.ActiveSessions--
 	s.stats.mutex.Unlock()
 
-	logrus.WithField("stream_key", streamKey).Info("WHIP stream disconnected")
+	logger.WithFields(map[string]interface{}{"stream_key": streamKey}).Info("WHIP stream disconnected")
 
 	_ = session // Could cleanup resources here
 
@@ -373,12 +372,12 @@ func (s *WHIPServer) GetStats() map[string]interface{} {
 	defer s.stats.mutex.RUnlock()
 
 	return map[string]interface{}{
-		"total_requests":     s.stats.TotalRequests,
-		"active_sessions":    s.stats.ActiveSessions,
-		"successful_offers":  s.stats.SuccessfulOffers,
-		"failed_offers":      s.stats.FailedOffers,
-		"total_bytes_in":     s.stats.TotalBytesIn,
-		"port":               s.config.WHIPPort,
+		"total_requests":    s.stats.TotalRequests,
+		"active_sessions":   s.stats.ActiveSessions,
+		"successful_offers": s.stats.SuccessfulOffers,
+		"failed_offers":     s.stats.FailedOffers,
+		"total_bytes_in":    s.stats.TotalBytesIn,
+		"port":              s.config.WHIPPort,
 	}
 }
 

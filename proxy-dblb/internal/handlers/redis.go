@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"marchproxy-dblb/internal/logging"
 	"bufio"
 	"context"
 	"fmt"
@@ -14,7 +15,6 @@ import (
 	"marchproxy-dblb/internal/pool"
 	"marchproxy-dblb/internal/security"
 
-	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
 
@@ -83,7 +83,7 @@ func (h *RedisHandler) Start(ctx context.Context) error {
 
 	go h.acceptConnections()
 
-	h.logger.WithFields(logrus.Fields{
+	h.logger.WithFields(logging.Fields{
 		"protocol": h.protocol,
 		"port":     h.port,
 	}).Info("Redis handler started")
@@ -249,7 +249,7 @@ func (h *RedisHandler) proxyClientToBackend(ctx context.Context, client net.Conn
 
 			// Check for blocked Redis commands
 			if h.isBlockedRedisCommand(cmd) {
-				h.logger.WithFields(logrus.Fields{
+				h.logger.WithFields(logging.Fields{
 					"user":     *username,
 					"database": *database,
 					"command":  cmd.Command,
@@ -263,7 +263,7 @@ func (h *RedisHandler) proxyClientToBackend(ctx context.Context, client net.Conn
 			if h.config.EnableSQLInjectionDetection {
 				commandStr := h.commandToString(cmd)
 				if suspicious, reason := h.securityChecker.CheckQuery(commandStr); suspicious {
-					h.logger.WithFields(logrus.Fields{
+					h.logger.WithFields(logging.Fields{
 						"user":     *username,
 						"database": *database,
 						"command":  cmd.Command,

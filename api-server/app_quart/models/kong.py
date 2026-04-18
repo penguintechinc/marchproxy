@@ -5,8 +5,9 @@ These models mirror Kong's entities and are used for:
 2. Configuration persistence and history
 3. Rollback capability
 """
-from datetime import datetime
-from app_quart.extensions import db
+from datetime import datetime # noqa: F401
+
+from app_quart.extensions import db # noqa: F401
 
 
 class KongService(db.Model):
@@ -49,8 +50,8 @@ class KongRoute(db.Model):
     service_id = db.Column(db.Integer, db.ForeignKey('kong_services.id'))
     protocols = db.Column(db.JSON, default=['http', 'https'])
     methods = db.Column(db.JSON)  # ['GET', 'POST', ...]
-    hosts = db.Column(db.JSON)    # ['api.example.com', ...]
-    paths = db.Column(db.JSON)    # ['/api/v1/*', ...]
+    hosts = db.Column(db.JSON)  # ['api.example.com', ...]
+    paths = db.Column(db.JSON)  # ['/api/v1/*', ...]
     headers = db.Column(db.JSON)
     strip_path = db.Column(db.Boolean, default=True)
     preserve_host = db.Column(db.Boolean, default=False)

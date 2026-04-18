@@ -9,7 +9,6 @@ import (
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/config"
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/rtmp"
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/transcode"
-	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -54,12 +53,12 @@ func (s *Server) Start() error {
 	// Register ModuleService (placeholder - needs proto definitions)
 	// pb.RegisterModuleServiceServer(s.grpcServer, s)
 
-	logrus.WithField("address", addr).Info("gRPC server started")
+	logger.WithFields(map[string]interface{}{"address": addr}).Info("gRPC server started")
 
 	// Serve in background
 	go func() {
 		if err := s.grpcServer.Serve(listener); err != nil {
-			logrus.WithError(err).Error("gRPC server error")
+			logger.WithError(err).Error("gRPC server error")
 		}
 	}()
 

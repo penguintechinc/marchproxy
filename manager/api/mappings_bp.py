@@ -5,20 +5,20 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import logging
-from penguintechinc_utils import get_logger
-from datetime import datetime
+import logging # noqa: F401, # noqa: F401
+from datetime import datetime # noqa: F401
 
-from middleware.auth import require_auth
-from models.mapping import (
+from middleware.auth import require_auth # noqa: F401
+from models.mapping import ( # noqa: F401
     CreateMappingRequest,
     MappingModel,
     MappingResponse,
     ResolvedMappingResponse,
     UpdateMappingRequest,
 )
-from pydantic import ValidationError
-from quart import Blueprint, current_app, jsonify, request
+from penguintechinc_utils import get_logger # noqa: F401
+from pydantic import ValidationError # noqa: F401
+from quart import Blueprint, current_app, jsonify, request # noqa: F401
 
 logger = get_logger(__name__)
 
@@ -26,7 +26,7 @@ mappings_bp = Blueprint("mappings", __name__, url_prefix="/api/v1/mappings")
 
 
 @mappings_bp.route("", methods=["GET", "POST"])
-async def mappings_list():  # noqa: C901
+async def mappings_list(): # noqa: C901
     """List all mappings or create new mapping"""
     db = current_app.db
 
@@ -61,7 +61,7 @@ async def mappings_list():  # noqa: C901
 
             return jsonify({"mappings": result}), 200
 
-        return await get_mappings(user_data={})
+        return await get_mappings()
 
     elif request.method == "POST":
 
@@ -113,11 +113,11 @@ async def mappings_list():  # noqa: C901
                     500,
                 )
 
-        return await create_mapping_handler(user_data={})
+        return await create_mapping_handler()
 
 
 @mappings_bp.route("/<int:mapping_id>", methods=["GET", "PUT", "DELETE"])
-async def mapping_detail(mapping_id):  # noqa: C901
+async def mapping_detail(mapping_id): # noqa: C901
     """Get, update or delete a mapping"""
     db = current_app.db
 
@@ -144,7 +144,7 @@ async def mapping_detail(mapping_id):  # noqa: C901
             return jsonify(response.dict()), 200
 
         elif request.method == "PUT":
-            # Admin only
+          # Admin only
             user = db.auth_user[user_data["user_id"]]
             if not user.is_admin:
                 return jsonify({"error": "Admin access required"}), 403
@@ -205,7 +205,7 @@ async def mapping_detail(mapping_id):  # noqa: C901
             return jsonify(response.dict()), 200
 
         elif request.method == "DELETE":
-            # Admin only
+          # Admin only
             user = db.auth_user[user_data["user_id"]]
             if not user.is_admin:
                 return jsonify({"error": "Admin access required"}), 403
@@ -213,7 +213,7 @@ async def mapping_detail(mapping_id):  # noqa: C901
             mapping.update_record(is_active=False)
             return jsonify({"message": "Mapping deleted"}), 204
 
-    return await handler(user_data={})
+    return await handler()
 
 
 @mappings_bp.route("/<int:mapping_id>/resolve", methods=["GET"])

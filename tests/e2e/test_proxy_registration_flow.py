@@ -1,9 +1,10 @@
 """
 End-to-end test for proxy registration flow: Proxy → API → xDS → Envoy.
 """
-import pytest
-import requests
-import time
+import time # noqa: F401, # noqa: F401
+
+import pytest # noqa: F401, # noqa: F401
+import requests # noqa: F401, # noqa: F401
 
 
 @pytest.mark.e2e
@@ -12,7 +13,7 @@ class TestProxyRegistrationFlow:
 
     def test_create_cluster_via_api(self, docker_services, api_base_url, admin_credentials):
         """Test creating a cluster via API."""
-        # Login
+      : # Login
         login_response = requests.post(
             f"{api_base_url}/api/v1/auth/login",
             data=admin_credentials
@@ -22,7 +23,7 @@ class TestProxyRegistrationFlow:
 
         headers = {"Authorization": f"Bearer {token}"}
 
-        # Create cluster
+      : # Create cluster
         cluster_data = {
             "name": f"e2e-cluster-{int(time.time())}",
             "description": "E2E test cluster",
@@ -44,11 +45,11 @@ class TestProxyRegistrationFlow:
 
     def test_register_proxy_to_cluster(self, docker_services, api_base_url, admin_credentials):
         """Test registering a proxy to a cluster."""
-        # Create cluster first
+      : # Create cluster first
         cluster = self.test_create_cluster_via_api(docker_services, api_base_url, admin_credentials)
         api_key = cluster["api_key"]
 
-        # Register proxy
+      : # Register proxy
         proxy_data = {
             "hostname": f"test-proxy-{int(time.time())}",
             "ip_address": "192.168.1.100",
@@ -73,7 +74,7 @@ class TestProxyRegistrationFlow:
         """Test proxy heartbeat updates."""
         proxy, cluster = self.test_register_proxy_to_cluster(docker_services, api_base_url, admin_credentials)
 
-        # Send heartbeat
+      : # Send heartbeat
         heartbeat_data = {
             "cpu_usage": 45.5,
             "memory_usage": 60.2,
@@ -93,7 +94,7 @@ class TestProxyRegistrationFlow:
 
     def test_create_service_for_proxy(self, docker_services, api_base_url, admin_credentials):
         """Test creating a service that proxies will use."""
-        # Login
+      : # Login
         login_response = requests.post(
             f"{api_base_url}/api/v1/auth/login",
             data=admin_credentials
@@ -101,7 +102,7 @@ class TestProxyRegistrationFlow:
         token = login_response.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
 
-        # Create cluster
+      : # Create cluster
         cluster_response = requests.post(
             f"{api_base_url}/api/v1/clusters",
             headers=headers,
@@ -112,7 +113,7 @@ class TestProxyRegistrationFlow:
         )
         cluster = cluster_response.json()
 
-        # Create service
+      : # Create service
         service_data = {
             "name": f"e2e-service-{int(time.time())}",
             "cluster_id": cluster["id"],
@@ -140,7 +141,7 @@ class TestProxyRegistrationFlow:
         """Test xDS configuration is generated after service creation."""
         service, cluster = self.test_create_service_for_proxy(docker_services, api_base_url, admin_credentials)
 
-        # Login
+      : # Login
         login_response = requests.post(
             f"{api_base_url}/api/v1/auth/login",
             data=admin_credentials
@@ -148,7 +149,7 @@ class TestProxyRegistrationFlow:
         token = login_response.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
 
-        # Get xDS configuration
+      : # Get xDS configuration
         response = requests.get(
             f"{api_base_url}/api/v1/xds/clusters/{cluster['id']}/config",
             headers=headers
@@ -157,15 +158,15 @@ class TestProxyRegistrationFlow:
         assert response.status_code == 200
         xds_config = response.json()
 
-        # Should contain configuration
+      : # Should contain configuration
         assert isinstance(xds_config, dict)
 
     def test_xds_snapshot_versioning(self, docker_services, api_base_url, admin_credentials):
         """Test xDS snapshot version changes on updates."""
-        # Create service
+      : # Create service
         service, cluster = self.test_create_service_for_proxy(docker_services, api_base_url, admin_credentials)
 
-        # Login
+      : # Login
         login_response = requests.post(
             f"{api_base_url}/api/v1/auth/login",
             data=admin_credentials
@@ -173,7 +174,7 @@ class TestProxyRegistrationFlow:
         token = login_response.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
 
-        # Get initial snapshot
+      : # Get initial snapshot
         response1 = requests.get(
             f"{api_base_url}/api/v1/xds/clusters/{cluster['id']}/snapshot",
             headers=headers
@@ -181,7 +182,7 @@ class TestProxyRegistrationFlow:
         assert response1.status_code == 200
         version1 = response1.json().get("version")
 
-        # Update service
+      : # Update service
         time.sleep(1)
         update_response = requests.put(
             f"{api_base_url}/api/v1/services/{service['id']}",
@@ -190,7 +191,7 @@ class TestProxyRegistrationFlow:
         )
         assert update_response.status_code == 200
 
-        # Get updated snapshot
+      : # Get updated snapshot
         response2 = requests.get(
             f"{api_base_url}/api/v1/xds/clusters/{cluster['id']}/snapshot",
             headers=headers
@@ -198,7 +199,7 @@ class TestProxyRegistrationFlow:
         assert response2.status_code == 200
         version2 = response2.json().get("version")
 
-        # Versions should be different
+      : # Versions should be different
         if version1 and version2:
             assert version1 != version2
 
@@ -206,18 +207,18 @@ class TestProxyRegistrationFlow:
         """Test proxy can discover xDS configuration."""
         proxy, cluster = self.test_register_proxy_to_cluster(docker_services, api_base_url, admin_credentials)
 
-        # Proxy requests xDS discovery
+      : # Proxy requests xDS discovery
         response = requests.get(
             f"{xds_base_url}/xds/discovery",
             headers={"X-Cluster-API-Key": cluster["api_key"]}
         )
 
-        # Should return discovery response or 404 if not implemented yet
+      : # Should return discovery response or 404 if not implemented yet
         assert response.status_code in [200, 404]
 
     def test_full_flow_cluster_to_proxy(self, docker_services, api_base_url, admin_credentials):
         """Test complete flow from cluster creation to proxy registration."""
-        # 1. Create cluster
+      : # 1. Create cluster
         login_response = requests.post(
             f"{api_base_url}/api/v1/auth/login",
             data=admin_credentials
@@ -236,7 +237,7 @@ class TestProxyRegistrationFlow:
         assert cluster_response.status_code == 201
         cluster = cluster_response.json()
 
-        # 2. Create service
+      : # 2. Create service
         service_response = requests.post(
             f"{api_base_url}/api/v1/services",
             headers=headers,
@@ -251,7 +252,7 @@ class TestProxyRegistrationFlow:
         )
         assert service_response.status_code == 201
 
-        # 3. Register proxy
+      : # 3. Register proxy
         proxy_response = requests.post(
             f"{api_base_url}/api/v1/proxies/register",
             headers={"X-Cluster-API-Key": cluster["api_key"]},
@@ -263,7 +264,7 @@ class TestProxyRegistrationFlow:
         )
         assert proxy_response.status_code == 201
 
-        # 4. Send heartbeat
+      : # 4. Send heartbeat
         proxy = proxy_response.json()
         heartbeat_response = requests.post(
             f"{api_base_url}/api/v1/proxies/{proxy['id']}/heartbeat",
@@ -276,7 +277,7 @@ class TestProxyRegistrationFlow:
         )
         assert heartbeat_response.status_code == 200
 
-        # 5. Verify proxy is listed
+      : # 5. Verify proxy is listed
         proxies_response = requests.get(
             f"{api_base_url}/api/v1/proxies?cluster_id={cluster['id']}",
             headers=headers

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"marchproxy-dblb/internal/logging"
 	"context"
 	"encoding/binary"
 	"encoding/json"
@@ -17,7 +18,6 @@ import (
 	"marchproxy-dblb/internal/pool"
 	"marchproxy-dblb/internal/security"
 
-	"go.uber.org/zap"
 )
 
 // MongoDBHandler implements the Handler interface for MongoDB protocol
@@ -83,7 +83,7 @@ func (h *MongoDBHandler) Start(ctx context.Context) error {
 
 	go h.acceptConnections()
 
-	h.logger.WithFields(logrus.Fields{
+	h.logger.WithFields(logging.Fields{
 		"protocol": h.protocol,
 		"port":     h.port,
 	}).Info("MongoDB handler started")
@@ -171,7 +171,7 @@ func (h *MongoDBHandler) handleConnection(clientConn net.Conn) {
 		return
 	}
 
-	h.logger.WithFields(logrus.Fields{
+	h.logger.WithFields(logging.Fields{
 		"username": username,
 		"database": database,
 	}).Debug("MongoDB handshake completed")
@@ -221,7 +221,7 @@ func (h *MongoDBHandler) performHandshake(conn net.Conn) (string, string, error)
 	messageLength := int(binary.LittleEndian.Uint32(buf[0:4]))
 	opcode := int(binary.LittleEndian.Uint32(buf[12:16]))
 
-	h.logger.WithFields(logrus.Fields{
+	h.logger.WithFields(logging.Fields{
 		"message_length": messageLength,
 		"opcode":         opcode,
 		"bytes_read":     n,
@@ -385,7 +385,7 @@ func (h *MongoDBHandler) proxyClientToBackend(
 
 			// Security check for blocked operations
 			if h.config.BlockSuspiciousQueries && h.isBlockedMongoOperation(cmd) {
-				h.logger.WithFields(logrus.Fields{
+				h.logger.WithFields(logging.Fields{
 					"username":   username,
 					"database":   database,
 					"operation":  cmd.Operation,
@@ -400,7 +400,7 @@ func (h *MongoDBHandler) proxyClientToBackend(
 			// Check for suspicious patterns using security checker
 			if h.config.EnableSQLInjectionDetection {
 				if blocked, reason := h.securityChecker.CheckData(buf[:n]); blocked {
-					h.logger.WithFields(logrus.Fields{
+					h.logger.WithFields(logging.Fields{
 						"username": username,
 						"database": database,
 						"reason":   reason,

@@ -10,17 +10,19 @@ by the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 """
 
-import unittest
-import requests
-import docker
-import time
-import socket
-import subprocess
-import os
-import signal
-import json
-import threading
-from contextlib import contextmanager
+import json # noqa: F401, # noqa: F401
+import os # noqa: F401, # noqa: F401
+import signal # noqa: F401, # noqa: F401
+import socket # noqa: F401, # noqa: F401
+import subprocess # noqa: F401, # noqa: F401
+import threading # noqa: F401, # noqa: F401
+import time # noqa: F401, # noqa: F401
+import unittest # noqa: F401, # noqa: F401
+from contextlib import contextmanager # noqa: F401
+
+import docker # noqa: F401, # noqa: F401
+import requests # noqa: F401, # noqa: F401
+
 
 class MarchProxyIntegrationTest(unittest.TestCase):
     """Integration tests for complete MarchProxy system"""
@@ -32,19 +34,19 @@ class MarchProxyIntegrationTest(unittest.TestCase):
         cls.containers = {}
         cls.base_dir = os.path.join(os.path.dirname(__file__), '../..')
 
-        # Start PostgreSQL
+      : # Start PostgreSQL
         cls._start_postgresql()
 
-        # Start Redis
+      : # Start Redis
         cls._start_redis()
 
-        # Start Manager
+      : # Start Manager
         cls._start_manager()
 
-        # Start Proxy
+      : # Start Proxy
         cls._start_proxy()
 
-        # Wait for services to be ready
+      : # Wait for services to be ready
         cls._wait_for_services()
 
     @classmethod
@@ -87,7 +89,7 @@ class MarchProxyIntegrationTest(unittest.TestCase):
     @classmethod
     def _start_manager(cls):
         """Start Manager container"""
-        # Build manager image if needed
+      : # Build manager image if needed
         manager_dockerfile = os.path.join(cls.base_dir, 'manager', 'Dockerfile')
         if os.path.exists(manager_dockerfile):
             cls.docker_client.images.build(
@@ -113,7 +115,7 @@ class MarchProxyIntegrationTest(unittest.TestCase):
     @classmethod
     def _start_proxy(cls):
         """Start Proxy container"""
-        # Build proxy image if needed
+      : # Build proxy image if needed
         proxy_dockerfile = os.path.join(cls.base_dir, 'proxy', 'Dockerfile')
         if os.path.exists(proxy_dockerfile):
             cls.docker_client.images.build(
@@ -130,7 +132,7 @@ class MarchProxyIntegrationTest(unittest.TestCase):
             },
             ports={'8080/tcp': 8080, '8888/tcp': 8888},
             network_mode='host',
-            privileged=True,  # Required for eBPF
+            privileged=True,: # Required for eBPF
             detach=True,
             remove=True,
             name='marchproxy-test-proxy'
@@ -139,16 +141,16 @@ class MarchProxyIntegrationTest(unittest.TestCase):
     @classmethod
     def _wait_for_services(cls):
         """Wait for all services to be healthy"""
-        # Wait for PostgreSQL
+      : # Wait for PostgreSQL
         cls._wait_for_port('localhost', 5432, timeout=30)
 
-        # Wait for Redis
+      : # Wait for Redis
         cls._wait_for_port('localhost', 6379, timeout=30)
 
-        # Wait for Manager
+      : # Wait for Manager
         cls._wait_for_http('http://localhost:8000/healthz', timeout=60)
 
-        # Wait for Proxy
+      : # Wait for Proxy
         cls._wait_for_http('http://localhost:8888/healthz', timeout=60)
 
     @classmethod
@@ -209,7 +211,7 @@ class MarchProxyIntegrationTest(unittest.TestCase):
 
     def test_proxy_registration(self):
         """Test proxy registration with manager"""
-        # Check that proxy has registered
+      : # Check that proxy has registered
         response = requests.get('http://localhost:8000/api/proxy/status')
         self.assertEqual(response.status_code, 200)
 
@@ -218,19 +220,19 @@ class MarchProxyIntegrationTest(unittest.TestCase):
 
     def test_cluster_api_key_validation(self):
         """Test cluster API key validation"""
-        # Test valid API key
+      : # Test valid API key
         headers = {'X-Cluster-API-Key': 'test-cluster-api-key'}
         response = requests.get('http://localhost:8000/api/config/1', headers=headers)
         self.assertEqual(response.status_code, 200)
 
-        # Test invalid API key
+      : # Test invalid API key
         headers = {'X-Cluster-API-Key': 'invalid-api-key'}
         response = requests.get('http://localhost:8000/api/config/1', headers=headers)
         self.assertEqual(response.status_code, 401)
 
     def test_service_creation_and_configuration(self):
         """Test service creation and configuration retrieval"""
-        # Create a test service
+      : # Create a test service
         service_data = {
             'name': 'test-service',
             'ip_fqdn': 'test.example.com',
@@ -248,7 +250,7 @@ class MarchProxyIntegrationTest(unittest.TestCase):
 
         service_id = response.json()['service_id']
 
-        # Retrieve configuration
+      : # Retrieve configuration
         response = requests.get(
             'http://localhost:8000/api/config/1',
             headers={'X-Cluster-API-Key': 'test-cluster-api-key'}
@@ -258,7 +260,7 @@ class MarchProxyIntegrationTest(unittest.TestCase):
         config = response.json()
         self.assertIn('services', config)
 
-        # Find our test service
+      : # Find our test service
         test_service = None
         for service in config['services']:
             if service['id'] == service_id:
@@ -270,7 +272,7 @@ class MarchProxyIntegrationTest(unittest.TestCase):
 
     def test_mapping_creation_and_retrieval(self):
         """Test mapping creation and retrieval"""
-        # First create services
+      : # First create services
         service1_data = {
             'name': 'source-service',
             'ip_fqdn': 'source.example.com',
@@ -301,7 +303,7 @@ class MarchProxyIntegrationTest(unittest.TestCase):
         )
         dest_service_id = response.json()['service_id']
 
-        # Create mapping
+      : # Create mapping
         mapping_data = {
             'source_services': [source_service_id],
             'dest_services': [dest_service_id],
@@ -318,7 +320,7 @@ class MarchProxyIntegrationTest(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 201)
 
-        # Retrieve configuration with mapping
+      : # Retrieve configuration with mapping
         response = requests.get(
             'http://localhost:8000/api/config/1',
             headers={'X-Cluster-API-Key': 'test-cluster-api-key'}
@@ -342,16 +344,16 @@ class MarchProxyIntegrationTest(unittest.TestCase):
             headers={'X-Cluster-API-Key': 'test-cluster-api-key'}
         )
 
-        # Should handle license validation gracefully
-        self.assertIn(response.status_code, [200, 503])  # 503 if license server unavailable
+      : # Should handle license validation gracefully
+        self.assertIn(response.status_code, [200, 503]): # 503 if license server unavailable
 
     def test_tcp_proxy_functionality(self):
         """Test basic TCP proxy functionality"""
-        # Start a simple echo server for testing
+      : # Start a simple echo server for testing
         echo_server = self._start_echo_server(9999)
 
         try:
-            # Configure proxy to forward to echo server
+          : # Configure proxy to forward to echo server
             service_data = {
                 'name': 'echo-service',
                 'ip_fqdn': 'localhost:9999',
@@ -367,7 +369,7 @@ class MarchProxyIntegrationTest(unittest.TestCase):
             )
             service_id = response.json()['service_id']
 
-            # Create mapping
+          : # Create mapping
             mapping_data = {
                 'source_services': ['any'],
                 'dest_services': [service_id],
@@ -383,10 +385,10 @@ class MarchProxyIntegrationTest(unittest.TestCase):
                 headers={'X-Cluster-API-Key': 'test-cluster-api-key'}
             )
 
-            # Wait for configuration to propagate
+          : # Wait for configuration to propagate
             time.sleep(5)
 
-            # Test proxy connection
+          : # Test proxy connection
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             try:
                 sock.connect(('localhost', 8080))
@@ -403,7 +405,7 @@ class MarchProxyIntegrationTest(unittest.TestCase):
 
     def test_configuration_hot_reload(self):
         """Test configuration hot reload functionality"""
-        # Get initial configuration
+      : # Get initial configuration
         response = requests.get(
             'http://localhost:8000/api/config/1',
             headers={'X-Cluster-API-Key': 'test-cluster-api-key'}
@@ -411,7 +413,7 @@ class MarchProxyIntegrationTest(unittest.TestCase):
         initial_config = response.json()
         initial_service_count = len(initial_config.get('services', []))
 
-        # Add new service
+      : # Add new service
         service_data = {
             'name': 'reload-test-service',
             'ip_fqdn': 'reload.example.com',
@@ -427,10 +429,10 @@ class MarchProxyIntegrationTest(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 201)
 
-        # Wait for configuration to reload
-        time.sleep(65)  # Config refresh interval is 60 seconds
+      : # Wait for configuration to reload
+        time.sleep(65): # Config refresh interval is 60 seconds
 
-        # Check updated configuration
+      : # Check updated configuration
         response = requests.get(
             'http://localhost:8000/api/config/1',
             headers={'X-Cluster-API-Key': 'test-cluster-api-key'}
@@ -442,29 +444,29 @@ class MarchProxyIntegrationTest(unittest.TestCase):
 
     def test_metrics_collection(self):
         """Test metrics collection from both manager and proxy"""
-        # Generate some traffic
+      : # Generate some traffic
         for _ in range(5):
             requests.get('http://localhost:8000/healthz')
             requests.get('http://localhost:8888/healthz')
 
-        # Check manager metrics
+      : # Check manager metrics
         response = requests.get('http://localhost:9090/metrics')
         manager_metrics = response.text
         self.assertIn('marchproxy_manager_requests_total', manager_metrics)
 
-        # Check proxy metrics (if available)
+      : # Check proxy metrics (if available)
         try:
             response = requests.get('http://localhost:8888/metrics')
             proxy_metrics = response.text
             self.assertIn('marchproxy_proxy', proxy_metrics)
         except:
-            pass  # Proxy metrics endpoint might not be implemented yet
+            pass: # Proxy metrics endpoint might not be implemented yet
 
     def test_error_handling_and_recovery(self):
         """Test error handling and recovery scenarios"""
-        # Test invalid service creation
+      : # Test invalid service creation
         invalid_service_data = {
-            'name': '',  # Invalid: empty name
+            'name': '',: # Invalid: empty name
             'ip_fqdn': 'invalid',
             'cluster_id': 1
         }
@@ -476,15 +478,15 @@ class MarchProxyIntegrationTest(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 400)
 
-        # Test unauthorized access
+      : # Test unauthorized access
         response = requests.get('http://localhost:8000/api/config/1')
         self.assertEqual(response.status_code, 401)
 
     def _start_echo_server(self, port):
         """Start a simple echo server for testing"""
         server_code = f"""
-import socket
-import threading
+import socket # noqa: F401, # noqa: F401
+import threading # noqa: F401, # noqa: F401
 
 def handle_client(conn, addr):
     try:
@@ -517,7 +519,7 @@ while True:
             'python3', '-c', server_code
         ])
 
-        # Wait for server to start
+      : # Wait for server to start
         self._wait_for_port('localhost', port, timeout=10)
 
         return process

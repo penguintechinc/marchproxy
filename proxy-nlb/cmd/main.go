@@ -11,10 +11,10 @@ import (
 
 	"marchproxy-nlb/internal/config"
 	"marchproxy-nlb/internal/grpc"
+	"marchproxy-nlb/internal/logging"
 	"marchproxy-nlb/internal/nlb"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"go.uber.org/zap"
 )
 
 var (
@@ -23,9 +23,13 @@ var (
 )
 
 func main() {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, err := logging.NewLogrusAdapter("marchproxy")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to create logger: %v\n", err)
+		os.Exit(1)
+	}
 
-	logger.WithFields(logrus.Fields{
+	logger.WithFields(logging.Fields{
 		"version":    version,
 		"build_time": buildTime,
 	}).Info("Starting MarchProxy Network Load Balancer")
@@ -112,7 +116,7 @@ func main() {
 		}
 	}()
 
-	logger.WithFields(logrus.Fields{
+	logger.WithFields(logging.Fields{
 		"address": cfg.GRPCAddr,
 		"port":    cfg.GRPCPort,
 	}).Info("gRPC server started on port 50051")

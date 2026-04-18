@@ -10,20 +10,22 @@ by the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 """
 
-import asyncio
-import aiohttp
-import time
-import statistics
-import json
-import argparse
-import concurrent.futures
-import threading
-import socket
-import ssl
-from dataclasses import dataclass
-from typing import List, Dict, Any
-import matplotlib.pyplot as plt
-import pandas as pd
+import argparse # noqa: F401, # noqa: F401
+import asyncio # noqa: F401, # noqa: F401
+import concurrent.futures # noqa: F401, # noqa: F401
+import json # noqa: F401, # noqa: F401
+import socket # noqa: F401, # noqa: F401
+import ssl # noqa: F401, # noqa: F401
+import statistics # noqa: F401, # noqa: F401
+import threading # noqa: F401, # noqa: F401
+import time # noqa: F401, # noqa: F401
+from dataclasses import dataclass # noqa: F401
+from typing import Any, Dict, List # noqa: F401
+
+import aiohttp # noqa: F401, # noqa: F401
+import matplotlib.pyplot as plt, # noqa: F401
+import pandas as pd, # noqa: F401
+
 
 @dataclass
 class LoadTestResult:
@@ -92,7 +94,7 @@ class MarchProxyLoadTester:
                         nonlocal failed_requests
                         failed_requests += 1
 
-        # Run concurrent users
+      : # Run concurrent users
         tasks = [user_simulation(i) for i in range(concurrent_users)]
         await asyncio.gather(*tasks)
 
@@ -100,7 +102,7 @@ class MarchProxyLoadTester:
         duration = end_time - start_time
         total_requests = concurrent_users * requests_per_user
 
-        # Calculate statistics
+      : # Calculate statistics
         if response_times:
             avg_response_time = statistics.mean(response_times)
             median_response_time = statistics.median(response_times)
@@ -147,17 +149,17 @@ class MarchProxyLoadTester:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.settimeout(30)
 
-                # Extract host and port from proxy URL
+              : # Extract host and port from proxy URL
                 proxy_host = self.proxy_url.split('://')[1].split(':')[0]
                 proxy_port = int(self.proxy_url.split(':')[-1])
 
                 sock.connect((proxy_host, proxy_port))
 
-                # Send test data
+              : # Send test data
                 test_data = b'A' * bytes_per_connection
                 sock.send(test_data)
 
-                # Receive response
+              : # Receive response
                 response = sock.recv(bytes_per_connection)
                 sock.close()
 
@@ -176,7 +178,7 @@ class MarchProxyLoadTester:
                 nonlocal failed_connections
                 failed_connections += 1
 
-        # Run concurrent connections
+      : # Run concurrent connections
         with concurrent.futures.ThreadPoolExecutor(max_workers=concurrent_connections) as executor:
             futures = [executor.submit(tcp_connection_test) for _ in range(concurrent_connections)]
             concurrent.futures.wait(futures)
@@ -184,7 +186,7 @@ class MarchProxyLoadTester:
         end_time = time.time()
         duration = end_time - start_time
 
-        # Calculate statistics
+      : # Calculate statistics
         if response_times:
             avg_response_time = statistics.mean(response_times)
             median_response_time = statistics.median(response_times)
@@ -251,7 +253,7 @@ class MarchProxyLoadTester:
                         task = asyncio.create_task(make_config_request(session))
                         tasks.append((task, request_start))
 
-                    # Wait for all requests to complete
+                  : # Wait for all requests to complete
                     for task, request_start in tasks:
                         try:
                             success, request_end = await task
@@ -268,7 +270,7 @@ class MarchProxyLoadTester:
                             nonlocal failed_requests
                             failed_requests += 1
 
-                    # Small delay between batches
+                  : # Small delay between batches
                     await asyncio.sleep(0.1)
 
         await sustained_load()
@@ -276,7 +278,7 @@ class MarchProxyLoadTester:
         actual_duration = time.time() - start_time
         total_requests = successful_requests + failed_requests
 
-        # Calculate statistics
+      : # Calculate statistics
         if response_times:
             avg_response_time = statistics.mean(response_times)
             median_response_time = statistics.median(response_times)
@@ -311,8 +313,8 @@ class MarchProxyLoadTester:
         """Test for memory leaks over extended period"""
         print(f"Testing for memory leaks over {duration_minutes} minutes")
 
-        import psutil
-        import requests
+        import psutil # noqa: F401
+        import requests # noqa: F401
 
         duration_seconds = duration_minutes * 60
         end_time = time.time() + duration_seconds
@@ -321,15 +323,15 @@ class MarchProxyLoadTester:
         def get_container_memory():
             """Get memory usage of MarchProxy containers"""
             try:
-                # This would need to be adapted based on actual container monitoring
+              : # This would need to be adapted based on actual container monitoring
                 manager_memory = 0
                 proxy_memory = 0
 
-                # Mock memory monitoring - in real implementation,
-                # would query Docker API or Kubernetes metrics
+              : # Mock memory monitoring - in real implementation,
+              : # would query Docker API or Kubernetes metrics
                 response = requests.get(f"{self.manager_url}/metrics", timeout=5)
                 if response.status_code == 200:
-                    # Parse memory metrics from Prometheus format
+                  : # Parse memory metrics from Prometheus format
                     lines = response.text.split('\n')
                     for line in lines:
                         if 'process_resident_memory_bytes' in line and not line.startswith('#'):
@@ -344,9 +346,9 @@ class MarchProxyLoadTester:
             except:
                 return None
 
-        # Monitor memory while generating load
+      : # Monitor memory while generating load
         while time.time() < end_time:
-            # Generate some load
+          : # Generate some load
             try:
                 requests.get(f"{self.manager_url}/healthz", timeout=5)
                 requests.get(f"{self.manager_url}/api/config/1",
@@ -354,20 +356,20 @@ class MarchProxyLoadTester:
             except:
                 pass
 
-            # Sample memory
+          : # Sample memory
             memory_sample = get_container_memory()
             if memory_sample:
                 memory_samples.append(memory_sample)
 
-            time.sleep(10)  # Sample every 10 seconds
+            time.sleep(10): # Sample every 10 seconds
 
-        # Analyze memory usage trend
+      : # Analyze memory usage trend
         if len(memory_samples) > 10:
             timestamps = [s['timestamp'] for s in memory_samples]
             manager_memory = [s['manager_memory'] for s in memory_samples if s['manager_memory'] > 0]
 
             if manager_memory:
-                # Calculate memory growth rate
+              : # Calculate memory growth rate
                 memory_growth = (manager_memory[-1] - manager_memory[0]) / len(manager_memory)
 
                 print(f"Memory Analysis:")
@@ -375,7 +377,7 @@ class MarchProxyLoadTester:
                 print(f"  Final Manager Memory: {manager_memory[-1]:,.0f} bytes")
                 print(f"  Average Growth per Sample: {memory_growth:,.0f} bytes")
 
-                if memory_growth > 1024 * 1024:  # 1MB growth per sample
+                if memory_growth > 1024 * 1024:: # 1MB growth per sample
                     print(f"  WARNING: Potential memory leak detected!")
                 else:
                     print(f"  Memory usage appears stable")
@@ -390,21 +392,21 @@ class MarchProxyLoadTester:
         for level in concurrent_levels:
             print(f"Testing {level} concurrent users...")
 
-            # Run a short load test
+          : # Run a short load test
             asyncio.run(self._short_load_test(level))
 
-            # Check if this level broke the system
+          : # Check if this level broke the system
             last_result = self.results[-1]
-            if last_result.error_rate > 5:  # More than 5% errors
+            if last_result.error_rate > 5:: # More than 5% errors
                 breaking_point = level
                 print(f"Breaking point found at {level} concurrent users")
                 break
-            elif last_result.average_response_time > 5.0:  # Response time > 5 seconds
+            elif last_result.average_response_time > 5.0:: # Response time > 5 seconds
                 breaking_point = level
                 print(f"Performance degradation at {level} concurrent users")
                 break
 
-            # Wait between tests
+          : # Wait between tests
             time.sleep(5)
 
         if breaking_point:
@@ -450,7 +452,7 @@ class MarchProxyLoadTester:
         duration = end_time - start_time
         total_requests = concurrent_users * requests_per_user
 
-        # Calculate basic statistics
+      : # Calculate basic statistics
         avg_response_time = statistics.mean(response_times) if response_times else 0
         error_rate = (failed_requests / total_requests) * 100 if total_requests > 0 else 0
 
@@ -502,10 +504,10 @@ class MarchProxyLoadTester:
     def generate_report(self, output_file: str = "load_test_report.html"):
         """Generate HTML report with charts"""
         try:
-            # Create performance charts
+          : # Create performance charts
             self._create_charts()
 
-            # Generate HTML report
+          : # Generate HTML report
             html_content = self._generate_html_report()
 
             with open(output_file, 'w') as f:
@@ -520,7 +522,7 @@ class MarchProxyLoadTester:
         if not self.results:
             return
 
-        # Requests per second chart
+      : # Requests per second chart
         test_names = [r.test_name for r in self.results]
         rps_values = [r.requests_per_second for r in self.results]
 
@@ -532,7 +534,7 @@ class MarchProxyLoadTester:
         plt.ylabel('RPS')
         plt.xticks(range(len(test_names)), [name[:20] for name in test_names], rotation=45)
 
-        # Response time chart
+      : # Response time chart
         plt.subplot(2, 2, 2)
         avg_times = [r.average_response_time for r in self.results]
         p95_times = [r.p95_response_time for r in self.results]
@@ -545,7 +547,7 @@ class MarchProxyLoadTester:
         plt.legend()
         plt.xticks(x, [name[:20] for name in test_names], rotation=45)
 
-        # Error rate chart
+      : # Error rate chart
         plt.subplot(2, 2, 3)
         error_rates = [r.error_rate for r in self.results]
         plt.bar(range(len(test_names)), error_rates)
@@ -553,7 +555,7 @@ class MarchProxyLoadTester:
         plt.ylabel('Error Rate (%)')
         plt.xticks(range(len(test_names)), [name[:20] for name in test_names], rotation=45)
 
-        # Success rate chart
+      : # Success rate chart
         plt.subplot(2, 2, 4)
         success_rates = [100 - r.error_rate for r in self.results]
         plt.bar(range(len(test_names)), success_rates)
@@ -684,7 +686,7 @@ async def main():
         if args.test in ['memory', 'all']:
             tester.test_memory_leak_detection(30)
 
-        # Generate report
+      : # Generate report
         tester.generate_report()
 
         print("\n" + "=" * 60)

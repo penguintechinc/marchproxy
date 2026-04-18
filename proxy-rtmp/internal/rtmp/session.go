@@ -10,7 +10,6 @@ import (
 
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/config"
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/transcode"
-	"go.uber.org/zap"
 )
 
 // SessionStatus represents session status
@@ -67,7 +66,7 @@ func (s *Session) Start(ctx context.Context) error {
 	s.Status = SessionConnecting
 	s.mutex.Unlock()
 
-	logrus.WithFields(logrus.Fields{
+	logger.WithFields(map[string]interface{}{
 		"session_id": s.ID,
 		"stream_key": s.StreamKey,
 		"client":     s.ClientAddr,
@@ -93,7 +92,7 @@ func (s *Session) Start(ctx context.Context) error {
 	s.Status = SessionActive
 	s.mutex.Unlock()
 
-	logrus.WithField("session_id", s.ID).Info("Session active, streaming started")
+	logger.WithFields(map[string]interface{}{"session_id": s.ID}).Info("Session active, streaming started")
 
 	// Handle stream data
 	if err := s.handleStream(ctx); err != nil {
@@ -133,7 +132,7 @@ func (s *Session) handleStream(ctx context.Context) error {
 			n, err := s.Conn.Read(buf)
 			if err != nil {
 				if err == io.EOF {
-					logrus.WithField("session_id", s.ID).Info("Client disconnected")
+					logger.WithFields(map[string]interface{}{"session_id": s.ID}).Info("Client disconnected")
 					return nil
 				}
 				if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
@@ -162,14 +161,14 @@ func (s *Session) updateStats() {
 	duration := time.Since(s.StartTime)
 	bitrateIn := float64(s.BytesIn*8) / duration.Seconds() / 1000000 // Mbps
 
-	logrus.WithFields(logrus.Fields{
+	logger.WithFields(map[string]interface{}{
 		"session_id": s.ID,
 		"stream_key": s.StreamKey,
 		"bytes_in":   s.BytesIn,
 		"bytes_out":  s.BytesOut,
 		"bitrate_in": fmt.Sprintf("%.2f Mbps", bitrateIn),
 		"duration":   duration.String(),
-	}).Debug("Session stats")
+	}).Info("Session stats")
 }
 
 // Stop stops the session
@@ -183,7 +182,7 @@ func (s *Session) Stop() error {
 	s.Status = SessionStopping
 	s.mutex.Unlock()
 
-	logrus.WithField("session_id", s.ID).Info("Stopping session")
+	logger.WithFields(map[string]interface{}{"session_id": s.ID}).Info("Stopping session")
 
 	// Signal stop
 	close(s.stopChan)
@@ -191,7 +190,7 @@ func (s *Session) Stop() error {
 	// Stop FFmpeg process
 	if s.ffmpegProc != nil {
 		if err := s.ffmpegManager.StopTranscode(s.StreamKey); err != nil {
-			logrus.WithError(err).Warn("Failed to stop FFmpeg process")
+			logger.WithError(err).Warn("Failed to stop FFmpeg process")
 		}
 	}
 

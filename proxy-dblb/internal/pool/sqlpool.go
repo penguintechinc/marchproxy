@@ -7,8 +7,9 @@ import (
 	"sync"
 	"time"
 
+	"marchproxy-dblb/internal/logging"
+
 	_ "github.com/go-sql-driver/mysql"
-	"go.uber.org/zap"
 )
 
 // SQLPool manages database/sql connections for database protocols
@@ -61,7 +62,7 @@ func NewSQLPool(protocol, dsn string, maxConns int, logger *logging.LogrusAdapte
 		logger:      logger,
 	}
 
-	logger.WithFields(logrus.Fields{
+	logger.WithFields(logging.Fields{
 		"protocol":  protocol,
 		"max_conns": maxConns,
 		"max_idle":  pool.maxIdle,

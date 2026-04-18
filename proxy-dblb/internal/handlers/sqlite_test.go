@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"marchproxy-dblb/internal/logging"
 	"context"
 	"fmt"
 	"os"
@@ -13,12 +14,11 @@ import (
 	"marchproxy-dblb/internal/pool"
 	"marchproxy-dblb/internal/security"
 
-	"go.uber.org/zap"
 )
 
 // TestNewSQLiteHandler tests SQLiteHandler creation
 func TestNewSQLiteHandler(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 
 	cfg := &config.Config{
 		MaxConnectionsPerRoute: 100,
@@ -166,7 +166,7 @@ func TestSQLiteConfigValidation(t *testing.T) {
 
 // TestBuildDSN tests DSN building for various configurations
 func TestBuildDSN(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 
 	cfg := &config.Config{
 		MaxConnectionsPerRoute: 100,
@@ -234,7 +234,7 @@ func TestBuildDSN(t *testing.T) {
 
 // TestGetStatsBeforeStart tests GetStats before handler is started
 func TestGetStatsBeforeStart(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 
 	cfg := &config.Config{
 		MaxConnectionsPerRoute: 100,
@@ -301,7 +301,7 @@ func TestGetStatsBeforeStart(t *testing.T) {
 
 // TestSQLiteIsWriteQuery tests write query detection
 func TestSQLiteIsWriteQuery(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 
 	cfg := &config.Config{
 		MaxConnectionsPerRoute: 100,
@@ -431,7 +431,7 @@ func TestSQLiteTruncateQuery(t *testing.T) {
 
 // TestGetSQLiteConfigs tests configuration retrieval from environment
 func TestGetSQLiteConfigs(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 
 	cfg := &config.Config{
 		MaxConnectionsPerRoute: 100,
@@ -497,7 +497,7 @@ func TestGetSQLiteConfigs(t *testing.T) {
 
 // TestStartStopCycle tests handler start and stop lifecycle
 func TestStartStopCycle(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 
 	cfg := &config.Config{
 		MaxConnectionsPerRoute: 100,
@@ -551,7 +551,7 @@ func TestStartStopCycle(t *testing.T) {
 
 // TestDoubleStart tests that starting handler twice returns error
 func TestDoubleStart(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 
 	cfg := &config.Config{
 		MaxConnectionsPerRoute: 100,
@@ -593,7 +593,7 @@ func TestDoubleStart(t *testing.T) {
 
 // TestStopWithoutStart tests stopping a handler that was never started
 func TestStopWithoutStart(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 
 	cfg := &config.Config{
 		MaxConnectionsPerRoute: 100,
@@ -614,7 +614,7 @@ func TestStopWithoutStart(t *testing.T) {
 
 // TestConcurrentStats tests concurrent access to statistics
 func TestConcurrentStats(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 
 	cfg := &config.Config{
 		MaxConnectionsPerRoute: 100,
@@ -650,7 +650,7 @@ func TestConcurrentStats(t *testing.T) {
 
 // TestDatabaseStats tests database statistics
 func TestDatabaseStats(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 
 	cfg := &config.Config{
 		MaxConnectionsPerRoute: 100,
@@ -709,7 +709,7 @@ func TestDatabaseStats(t *testing.T) {
 
 // TestSQLiteConfigWithDefaults tests config with default values
 func TestSQLiteConfigWithDefaults(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 
 	cfg := &config.Config{
 		MaxConnectionsPerRoute: 100,
@@ -756,7 +756,7 @@ func stringContains(s, substr string) bool {
 
 // TestBusyTimeoutDefault tests that default busy timeout is applied
 func TestBusyTimeoutDefault(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 
 	cfg := &config.Config{
 		MaxConnectionsPerRoute: 100,
@@ -784,7 +784,7 @@ func TestBusyTimeoutDefault(t *testing.T) {
 
 // TestCustomBusyTimeout tests custom busy timeout
 func TestCustomBusyTimeout(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 
 	cfg := &config.Config{
 		MaxConnectionsPerRoute: 100,
@@ -811,7 +811,7 @@ func TestCustomBusyTimeout(t *testing.T) {
 
 // TestMemoryDatabasePath tests memory database detection
 func TestMemoryDatabasePath(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 
 	cfg := &config.Config{
 		MaxConnectionsPerRoute: 100,
@@ -842,7 +842,7 @@ func TestMemoryDatabasePath(t *testing.T) {
 
 // TestReadOnlyPath tests read-only database path
 func TestReadOnlyPath(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 
 	cfg := &config.Config{
 		MaxConnectionsPerRoute: 100,
@@ -869,7 +869,7 @@ func TestReadOnlyPath(t *testing.T) {
 
 // TestReadWritePath tests read-write database path
 func TestReadWritePath(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 
 	cfg := &config.Config{
 		MaxConnectionsPerRoute: 100,
@@ -896,7 +896,7 @@ func TestReadWritePath(t *testing.T) {
 
 // TestAbsolutePathHandling tests absolute path handling in DSN
 func TestAbsolutePathHandling(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 
 	cfg := &config.Config{
 		MaxConnectionsPerRoute: 100,
@@ -933,7 +933,7 @@ func TestAbsolutePathHandling(t *testing.T) {
 
 // TestGetDatabaseStatus tests database status retrieval
 func TestGetDatabaseStatus(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 
 	cfg := &config.Config{
 		MaxConnectionsPerRoute: 100,
@@ -1002,7 +1002,7 @@ func TestGetDatabaseStatus(t *testing.T) {
 
 // TestDirectoryCreation tests that database directories are created
 func TestDirectoryCreation(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 
 	tmpDir := filepath.Join(os.TempDir(), "marchproxy_test_"+fmt.Sprintf("%d", time.Now().UnixNano()))
 	dbPath := filepath.Join(tmpDir, "subdir", "test.db")

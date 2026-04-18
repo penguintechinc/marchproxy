@@ -199,8 +199,8 @@ class TestProxyRegistrationSuccess:
         mock_db.return_value.select.return_value.first.return_value = None
 
         with (
-            patch("models.proxy.ClusterModel.validate_api_key", return_value=cluster_info),
-            patch("models.proxy.ClusterModel.check_proxy_limit", return_value=True),
+            patch("models.cluster.ClusterModel.validate_api_key", return_value=cluster_info),
+            patch("models.cluster.ClusterModel.check_proxy_limit", return_value=True),
             patch("models.proxy.socket.gethostbyname", return_value="192.168.1.10"),
         ):
             result = ProxyServerModel.register_proxy(
@@ -220,8 +220,8 @@ class TestProxyRegistrationSuccess:
         mock_db.return_value.select.return_value.first.return_value = None
 
         with (
-            patch("models.proxy.ClusterModel.validate_api_key", return_value=cluster_info),
-            patch("models.proxy.ClusterModel.check_proxy_limit", return_value=True),
+            patch("models.cluster.ClusterModel.validate_api_key", return_value=cluster_info),
+            patch("models.cluster.ClusterModel.check_proxy_limit", return_value=True),
             patch("models.proxy.socket.gethostbyname") as mock_resolve,
         ):
             result = ProxyServerModel.register_proxy(
@@ -243,8 +243,8 @@ class TestProxyRegistrationSuccess:
         mock_db.return_value.select.return_value.first.return_value = existing_proxy
 
         with (
-            patch("models.proxy.ClusterModel.validate_api_key", return_value=cluster_info),
-            patch("models.proxy.ClusterModel.check_proxy_limit", return_value=True),
+            patch("models.cluster.ClusterModel.validate_api_key", return_value=cluster_info),
+            patch("models.cluster.ClusterModel.check_proxy_limit", return_value=True),
             patch("models.proxy.socket.gethostbyname", return_value="10.1.2.3"),
         ):
             result = ProxyServerModel.register_proxy(
@@ -265,7 +265,7 @@ class TestProxyRegistrationSuccess:
 
 class TestProxyRegistrationFailure:
     def test_invalid_cluster_key_returns_none(self, mock_db):
-        with patch("models.proxy.ClusterModel.validate_api_key", return_value=None):
+        with patch("models.cluster.ClusterModel.validate_api_key", return_value=None):
             result = ProxyServerModel.register_proxy(
                 db=mock_db,
                 name="my-proxy",
@@ -277,8 +277,8 @@ class TestProxyRegistrationFailure:
     def test_proxy_limit_exceeded_returns_none(self, mock_db):
         cluster_info = {"cluster_id": 2}
         with (
-            patch("models.proxy.ClusterModel.validate_api_key", return_value=cluster_info),
-            patch("models.proxy.ClusterModel.check_proxy_limit", return_value=False),
+            patch("models.cluster.ClusterModel.validate_api_key", return_value=cluster_info),
+            patch("models.cluster.ClusterModel.check_proxy_limit", return_value=False),
         ):
             result = ProxyServerModel.register_proxy(
                 db=mock_db,
@@ -293,8 +293,8 @@ class TestProxyRegistrationFailure:
 
         cluster_info = {"cluster_id": 1}
         with (
-            patch("models.proxy.ClusterModel.validate_api_key", return_value=cluster_info),
-            patch("models.proxy.ClusterModel.check_proxy_limit", return_value=True),
+            patch("models.cluster.ClusterModel.validate_api_key", return_value=cluster_info),
+            patch("models.cluster.ClusterModel.check_proxy_limit", return_value=True),
             patch("models.proxy.socket.gethostbyname", side_effect=_socket.gaierror),
         ):
             result = ProxyServerModel.register_proxy(
@@ -317,7 +317,7 @@ class TestUpdateHeartbeat:
         proxy = MagicMock()
         mock_db.return_value.select.return_value.first.return_value = proxy
 
-        with patch("models.proxy.ClusterModel.validate_api_key", return_value=cluster_info):
+        with patch("models.cluster.ClusterModel.validate_api_key", return_value=cluster_info):
             result = ProxyServerModel.update_heartbeat(
                 db=mock_db,
                 proxy_name="my-proxy",
@@ -329,7 +329,7 @@ class TestUpdateHeartbeat:
         proxy.update_record.assert_called_once()
 
     def test_invalid_cluster_key_returns_false(self, mock_db):
-        with patch("models.proxy.ClusterModel.validate_api_key", return_value=None):
+        with patch("models.cluster.ClusterModel.validate_api_key", return_value=None):
             result = ProxyServerModel.update_heartbeat(
                 db=mock_db,
                 proxy_name="my-proxy",
@@ -341,7 +341,7 @@ class TestUpdateHeartbeat:
         cluster_info = {"cluster_id": 1}
         mock_db.return_value.select.return_value.first.return_value = None
 
-        with patch("models.proxy.ClusterModel.validate_api_key", return_value=cluster_info):
+        with patch("models.cluster.ClusterModel.validate_api_key", return_value=cluster_info):
             result = ProxyServerModel.update_heartbeat(
                 db=mock_db,
                 proxy_name="ghost-proxy",
@@ -354,7 +354,7 @@ class TestUpdateHeartbeat:
         proxy = MagicMock()
         mock_db.return_value.select.return_value.first.return_value = proxy
 
-        with patch("models.proxy.ClusterModel.validate_api_key", return_value=cluster_info):
+        with patch("models.cluster.ClusterModel.validate_api_key", return_value=cluster_info):
             ProxyServerModel.update_heartbeat(
                 db=mock_db,
                 proxy_name="my-proxy",
@@ -453,8 +453,10 @@ class TestGetProxyStats:
             assert key in result
 
     def test_returns_integer_values(self, mock_db):
+        # total: db.proxy_servers.count()
         mock_db.proxy_servers.count = MagicMock(return_value=4)
-        mock_db.return_value.count.return_value = 2
+        # active/inactive/pending: db.proxy_servers(condition).count()
+        mock_db.proxy_servers.return_value.count.return_value = 2
 
         result = ProxyServerModel.get_proxy_stats(db=mock_db)
 

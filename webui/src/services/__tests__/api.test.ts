@@ -166,8 +166,6 @@ describe('API Service - response interceptor', () => {
 
   afterEach(() => {
     localStorage.clear();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    delete (window as any).location;
   });
 
   it('response interceptor passes through successful responses', async () => {
@@ -198,10 +196,16 @@ describe('API Service - response interceptor', () => {
   it('response interceptor clears token and redirects on 401', async () => {
     localStorage.setItem('auth_token', 'old-token');
 
-    // Mock window.location
+    // Mock window.location with jsdom-compatible approach
+    const originalLocation = window.location;
     Object.defineProperty(window, 'location', {
-      writable: true,
-      value: { href: '' },
+      configurable: true,
+      value: {
+        ...originalLocation,
+        href: '',
+        assign: vi.fn(),
+        replace: vi.fn(),
+      },
     });
 
     const mockedAxios = axios as any;
@@ -229,6 +233,12 @@ describe('API Service - response interceptor', () => {
       expect(localStorage.getItem('auth_token')).toBeNull();
       expect(window.location.href).toBe('/login');
     }
+
+    // Restore original location
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: originalLocation,
+    });
   });
 
   it('response interceptor logs warning on 403 with feature detail', async () => {

@@ -108,8 +108,8 @@ apply_manifests() {
 
 # Wait for deployment rollout
 wait_for_rollout() {
-    local deployment=$1
-    local namespace=$2
+    local deployment; deployment; deployment; deployment; deployment; deployment; deployment; deployment=""$1""
+    local namespace; namespace; namespace; namespace; namespace; namespace; namespace; namespace=""$2""
 
     log_info "Waiting for deployment '$deployment' to rollout (timeout: $DEPLOY_TIMEOUT)..."
 
@@ -131,7 +131,7 @@ wait_for_rollout() {
 check_deployment_health() {
     log_info "Checking deployment health..."
 
-    local deployments=("manager-deployment-beta" "proxy-deployment-beta")
+    local deployments; deployments; deployments; deployments; deployments; deployments; deployments; deployments=""("manager-deployment-beta" "proxy-deployment-beta")""
 
     for deployment in "${deployments[@]}"; do
         if kubectl get deployment "$deployment" -n "$NAMESPACE" &> /dev/null; then
@@ -196,7 +196,7 @@ verify_endpoints() {
 rollback_deployment() {
     log_warning "Rolling back deployment..."
 
-    local deployments=("manager-deployment-beta" "proxy-deployment-beta")
+    local deployments; deployments; deployments; deployments; deployments; deployments; deployments; deployments=""("manager-deployment-beta" "proxy-deployment-beta")""
 
     for deployment in "${deployments[@]}"; do
         if kubectl get deployment "$deployment" -n "$NAMESPACE" &> /dev/null; then
@@ -221,7 +221,7 @@ main() {
     apply_manifests
     check_deployment_health
 
-    if [ $? -ne 0 ]; then
+    if ! command -v mycmd >/dev/null 2>if [ $? -ne 0 ]; then1; then
         log_error "Deployment failed"
         rollback_deployment
         exit 1

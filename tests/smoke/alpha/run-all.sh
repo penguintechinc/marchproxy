@@ -29,8 +29,8 @@ FAILED_TESTS=0
 
 # Function to run a test
 run_test() {
-    local test_script=$1
-    local test_name=$2
+    local test_script; test_script; test_script; test_script; test_script; test_script; test_script; test_script=""$1""
+    local test_name; test_name; test_name; test_name; test_name; test_name; test_name; test_name=""$2""
 
     TOTAL_TESTS=$((TOTAL_TESTS + 1))
 
@@ -39,7 +39,7 @@ run_test() {
     echo "==========================================  " | tee -a "$SUMMARY_LOG"
     echo ""
 
-    local test_log="$LOG_DIR/$(basename $test_script .sh).log"
+    local test_log; test_log; test_log; test_log; test_log; test_log; test_log; test_log="""$LOG_DIR/$(basename $test_script .sh).log"""
 
     if bash "$test_script" 2>&1 | tee "$test_log"; then
         echo "" | tee -a "$SUMMARY_LOG"

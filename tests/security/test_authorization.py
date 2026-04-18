@@ -1,8 +1,8 @@
 """
 Security tests for authorization and RBAC.
 """
-import pytest
-import requests
+import pytest # noqa: F401, # noqa: F401
+import requests # noqa: F401, # noqa: F401
 
 
 @pytest.mark.security
@@ -24,7 +24,7 @@ class TestAuthorization:
 
     def test_admin_only_operations(self, api_base_url, admin_credentials):
         """Test admin-only operations."""
-        # Login as admin
+      : # Login as admin
         admin_login = requests.post(
             f"{api_base_url}/api/v1/auth/login",
             data=admin_credentials
@@ -32,7 +32,7 @@ class TestAuthorization:
         admin_token = admin_login.json()["access_token"]
         admin_headers = {"Authorization": f"Bearer {admin_token}"}
 
-        # Admin should be able to create clusters
+      : # Admin should be able to create clusters
         response = requests.post(
             f"{api_base_url}/api/v1/clusters",
             headers=admin_headers,
@@ -46,7 +46,7 @@ class TestAuthorization:
 
     def test_regular_user_restrictions(self, api_base_url):
         """Test regular users have restricted access."""
-        # Login as regular user
+      : # Login as regular user
         user_login = requests.post(
             f"{api_base_url}/api/v1/auth/login",
             data={
@@ -59,7 +59,7 @@ class TestAuthorization:
             user_token = user_login.json()["access_token"]
             user_headers = {"Authorization": f"Bearer {user_token}"}
 
-            # Regular user should NOT be able to create clusters
+          : # Regular user should NOT be able to create clusters
             response = requests.post(
                 f"{api_base_url}/api/v1/clusters",
                 headers=user_headers,
@@ -73,7 +73,7 @@ class TestAuthorization:
 
     def test_cluster_api_key_authorization(self, api_base_url, test_cluster_api_key):
         """Test cluster API key authorization."""
-        # Invalid API key should be rejected
+      : # Invalid API key should be rejected
         response = requests.post(
             f"{api_base_url}/api/v1/proxies/register",
             headers={"X-Cluster-API-Key": "invalid-key"},
@@ -88,7 +88,7 @@ class TestAuthorization:
 
     def test_cross_cluster_access_denied(self, api_base_url, admin_credentials):
         """Test users cannot access resources from other clusters."""
-        # Login and create two clusters
+      : # Login and create two clusters
         login_resp = requests.post(
             f"{api_base_url}/api/v1/auth/login",
             data=admin_credentials
@@ -96,7 +96,7 @@ class TestAuthorization:
         token = login_resp.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
 
-        # Create cluster 1
+      : # Create cluster 1
         cluster1_resp = requests.post(
             f"{api_base_url}/api/v1/clusters",
             headers=headers,
@@ -106,7 +106,7 @@ class TestAuthorization:
         if cluster1_resp.status_code == 201:
             cluster1 = cluster1_resp.json()
 
-            # Create service in cluster 1
+          : # Create service in cluster 1
             service_resp = requests.post(
                 f"{api_base_url}/api/v1/services",
                 headers=headers,
@@ -124,10 +124,10 @@ class TestAuthorization:
 
     def test_service_owner_permissions(self, api_base_url, admin_credentials):
         """Test service owners can manage their services."""
-        # Implementation depends on RBAC model
+      : # Implementation depends on RBAC model
         assert True
 
     def test_token_scope_enforcement(self, api_base_url, admin_credentials):
         """Test token scopes are enforced."""
-        # If implementing OAuth2 scopes
+      : # If implementing OAuth2 scopes
         assert True

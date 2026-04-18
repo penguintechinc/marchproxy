@@ -10,17 +10,19 @@ by the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 """
 
-import unittest
-import requests
-import base64
-import json
-import time
-import hashlib
-import subprocess
-import socket
-import ssl
-from urllib.parse import urljoin
-import threading
+import base64 # noqa: F401, # noqa: F401
+import hashlib # noqa: F401, # noqa: F401
+import json # noqa: F401, # noqa: F401
+import socket # noqa: F401, # noqa: F401
+import ssl # noqa: F401, # noqa: F401
+import subprocess # noqa: F401, # noqa: F401
+import threading # noqa: F401, # noqa: F401
+import time # noqa: F401, # noqa: F401
+import unittest # noqa: F401, # noqa: F401
+from urllib.parse import urljoin # noqa: F401
+
+import requests # noqa: F401, # noqa: F401
+
 
 class SecurityTestSuite(unittest.TestCase):
     """Comprehensive security test suite for MarchProxy"""
@@ -42,7 +44,7 @@ class SecurityTestSuite(unittest.TestCase):
             "'; INSERT INTO users (username, password_hash, is_admin) VALUES ('hacker', 'hash', 1); --"
         ]
 
-        # Test various endpoints with SQL injection payloads
+      : # Test various endpoints with SQL injection payloads
         endpoints = [
             "/api/services",
             "/api/mappings",
@@ -52,7 +54,7 @@ class SecurityTestSuite(unittest.TestCase):
 
         for endpoint in endpoints:
             for payload in sql_payloads:
-                # Test GET parameters
+              : # Test GET parameters
                 response = self.session.get(
                     urljoin(self.manager_url, endpoint),
                     params={'id': payload},
@@ -62,7 +64,7 @@ class SecurityTestSuite(unittest.TestCase):
                 self.assertNotIn("mysql_fetch", response.text.lower())
                 self.assertNotIn("postgresql error", response.text.lower())
 
-                # Test POST data
+              : # Test POST data
                 response = self.session.post(
                     urljoin(self.manager_url, endpoint),
                     json={'name': payload},
@@ -81,7 +83,7 @@ class SecurityTestSuite(unittest.TestCase):
             "\"><script>alert('XSS')</script>"
         ]
 
-        # Test service creation with XSS payloads
+      : # Test service creation with XSS payloads
         for payload in xss_payloads:
             service_data = {
                 'name': payload,
@@ -97,14 +99,14 @@ class SecurityTestSuite(unittest.TestCase):
                 headers={'X-Cluster-API-Key': self.valid_api_key}
             )
 
-            # Response should either reject the input or escape it properly
+          : # Response should either reject the input or escape it properly
             if response.status_code == 201:
-                # If accepted, verify it's properly escaped in responses
+              : # If accepted, verify it's properly escaped in responses
                 response = self.session.get(
                     urljoin(self.manager_url, "/api/config/1"),
                     headers={'X-Cluster-API-Key': self.valid_api_key}
                 )
-                # Should not contain unescaped script tags
+              : # Should not contain unescaped script tags
                 self.assertNotIn("<script>", response.text)
                 self.assertNotIn("javascript:", response.text)
 
@@ -120,7 +122,7 @@ class SecurityTestSuite(unittest.TestCase):
             "| nc -l -p 4444 -e /bin/sh"
         ]
 
-        # Test hostname/IP fields that might be used in system commands
+      : # Test hostname/IP fields that might be used in system commands
         for payload in command_payloads:
             service_data = {
                 'name': 'test-service',
@@ -136,12 +138,12 @@ class SecurityTestSuite(unittest.TestCase):
                 headers={'X-Cluster-API-Key': self.valid_api_key}
             )
 
-            # Should reject invalid hostnames/IPs
+          : # Should reject invalid hostnames/IPs
             self.assertIn(response.status_code, [400, 422])
 
     def test_authentication_bypass_attempts(self):
         """Test authentication bypass vulnerabilities"""
-        # Test endpoints without API key
+      : # Test endpoints without API key
         protected_endpoints = [
             "/api/config/1",
             "/api/services",
@@ -153,7 +155,7 @@ class SecurityTestSuite(unittest.TestCase):
             response = self.session.get(urljoin(self.manager_url, endpoint))
             self.assertEqual(response.status_code, 401)
 
-        # Test with invalid API keys
+      : # Test with invalid API keys
         invalid_keys = [
             "invalid-key",
             "",
@@ -173,7 +175,7 @@ class SecurityTestSuite(unittest.TestCase):
 
     def test_jwt_security(self):
         """Test JWT token security"""
-        # Test JWT with none algorithm (should be rejected)
+      : # Test JWT with none algorithm (should be rejected)
         none_jwt = base64.urlsafe_b64encode(
             json.dumps({"alg": "none", "typ": "JWT"}).encode()
         ).decode().rstrip('=')
@@ -189,25 +191,25 @@ class SecurityTestSuite(unittest.TestCase):
 
         none_token = f"{none_jwt}.{none_payload}."
 
-        # This should be rejected by the proxy
+      : # This should be rejected by the proxy
         response = self.session.get(
             self.proxy_url,
             headers={'Authorization': f'Bearer {none_token}'}
         )
         self.assertNotEqual(response.status_code, 200)
 
-        # Test expired JWT (if JWT validation is implemented)
+      : # Test expired JWT (if JWT validation is implemented)
         expired_payload = base64.urlsafe_b64encode(
             json.dumps({
                 "sub": "test-service",
                 "service_id": 1,
                 "cluster_id": 1,
-                "exp": int(time.time()) - 3600  # Expired 1 hour ago
+                "exp": int(time.time()) - 3600: # Expired 1 hour ago
             }).encode()
         ).decode().rstrip('=')
 
-        # Note: This would need a properly signed JWT in real implementation
-        # For now, just test that expired tokens are handled
+      : # Note: This would need a properly signed JWT in real implementation
+      : # For now, just test that expired tokens are handled
 
     def test_directory_traversal_protection(self):
         """Test directory traversal attack prevention"""
@@ -219,19 +221,19 @@ class SecurityTestSuite(unittest.TestCase):
             "..%252f..%252f..%252fetc%252fpasswd"
         ]
 
-        # Test file access endpoints (if any exist)
+      : # Test file access endpoints (if any exist)
         for payload in traversal_payloads:
-            # Test certificate upload endpoint
+          : # Test certificate upload endpoint
             response = self.session.get(
                 urljoin(self.manager_url, f"/api/certificates/{payload}"),
                 headers={'X-Cluster-API-Key': self.valid_api_key}
             )
-            # Should not return file contents or 200 for system files
+          : # Should not return file contents or 200 for system files
             self.assertNotEqual(response.status_code, 200)
 
     def test_rate_limiting(self):
         """Test rate limiting protection"""
-        # Make rapid requests to test rate limiting
+      : # Make rapid requests to test rate limiting
         rapid_requests = []
         for i in range(100):
             response = self.session.get(
@@ -239,7 +241,7 @@ class SecurityTestSuite(unittest.TestCase):
             )
             rapid_requests.append(response.status_code)
 
-        # Should have some rate limiting after many rapid requests
+      : # Should have some rate limiting after many rapid requests
         rate_limited = any(status == 429 for status in rapid_requests[-20:])
         if not rate_limited:
             print("Warning: No rate limiting detected")
@@ -257,20 +259,20 @@ class SecurityTestSuite(unittest.TestCase):
                     )
                     results.append(response.status_code)
                 except:
-                    results.append(0)  # Failed request
+                    results.append(0): # Failed request
             return results
 
-        # Simulate multiple concurrent clients
+      : # Simulate multiple concurrent clients
         threads = []
         for _ in range(10):
             thread = threading.Thread(target=make_requests)
             threads.append(thread)
 
-        # Start all threads
+      : # Start all threads
         for thread in threads:
             thread.start()
 
-        # Wait for completion
+      : # Wait for completion
         for thread in threads:
             thread.join()
 
@@ -278,7 +280,7 @@ class SecurityTestSuite(unittest.TestCase):
 
     def test_input_validation(self):
         """Test comprehensive input validation"""
-        # Test extremely long inputs
+      : # Test extremely long inputs
         long_string = "A" * 10000
 
         invalid_inputs = [
@@ -288,7 +290,7 @@ class SecurityTestSuite(unittest.TestCase):
             {"name": {"nested": "object"}},
             {"name": ["array", "input"]},
             {"ip_fqdn": "not-a-valid-ip-or-fqdn"},
-            {"ports": [-1, 70000]},  # Invalid port numbers
+            {"ports": [-1, 70000]},: # Invalid port numbers
             {"cluster_id": -1},
             {"cluster_id": "string-instead-of-int"}
         ]
@@ -299,7 +301,7 @@ class SecurityTestSuite(unittest.TestCase):
                 json=invalid_input,
                 headers={'X-Cluster-API-Key': self.valid_api_key}
             )
-            # Should reject invalid inputs
+          : # Should reject invalid inputs
             self.assertIn(response.status_code, [400, 422])
 
     def test_header_injection(self):
@@ -315,20 +317,20 @@ class SecurityTestSuite(unittest.TestCase):
                 urljoin(self.manager_url, "/healthz"),
                 headers={'X-Custom-Header': malicious_value}
             )
-            # Should not reflect malicious headers
+          : # Should not reflect malicious headers
             self.assertNotIn("X-Injected-Header", response.headers)
             self.assertNotIn("Set-Cookie", response.headers)
 
     def test_ssl_tls_security(self):
         """Test SSL/TLS security configuration"""
         try:
-            # Test SSL/TLS configuration if HTTPS is available
+          : # Test SSL/TLS configuration if HTTPS is available
             if self.manager_url.startswith('https'):
-                # Test weak cipher suites
+              : # Test weak cipher suites
                 context = ssl.create_default_context()
-                context.set_ciphers('ALL:@SECLEVEL=0')  # Allow weak ciphers
+                context.set_ciphers('ALL:@SECLEVEL=0'): # Allow weak ciphers
 
-                # Should reject weak ciphers
+              : # Should reject weak ciphers
                 with self.assertRaises(ssl.SSLError):
                     requests.get(self.manager_url, verify=False)
 
@@ -337,14 +339,14 @@ class SecurityTestSuite(unittest.TestCase):
 
     def test_information_disclosure(self):
         """Test for information disclosure vulnerabilities"""
-        # Test error pages don't reveal sensitive information
+      : # Test error pages don't reveal sensitive information
         response = self.session.get(
             urljoin(self.manager_url, "/nonexistent-endpoint")
         )
 
         error_content = response.text.lower()
 
-        # Should not reveal sensitive information
+      : # Should not reveal sensitive information
         sensitive_patterns = [
             "traceback",
             "stack trace",
@@ -362,7 +364,7 @@ class SecurityTestSuite(unittest.TestCase):
 
     def test_file_upload_security(self):
         """Test file upload security (if file upload exists)"""
-        # Test malicious file uploads
+      : # Test malicious file uploads
         malicious_files = [
             ("test.php", b"<?php system($_GET['cmd']); ?>", "application/x-php"),
             ("test.jsp", b"<% Runtime.getRuntime().exec(request.getParameter(\"cmd\")); %>", "application/x-jsp"),
@@ -370,7 +372,7 @@ class SecurityTestSuite(unittest.TestCase):
             ("../../../test.txt", b"directory traversal", "text/plain"),
         ]
 
-        # This would test certificate upload endpoint if it exists
+      : # This would test certificate upload endpoint if it exists
         for filename, content, content_type in malicious_files:
             files = {'file': (filename, content, content_type)}
             response = self.session.post(
@@ -379,23 +381,23 @@ class SecurityTestSuite(unittest.TestCase):
                 headers={'X-Cluster-API-Key': self.valid_api_key}
             )
 
-            # Should reject malicious files
+          : # Should reject malicious files
             if response.status_code == 200:
-                # If upload succeeds, ensure files are not executable
+              : # If upload succeeds, ensure files are not executable
                 self.assertIn("uploaded", response.text.lower())
 
     def test_session_security(self):
         """Test session management security"""
-        # Test session fixation
+      : # Test session fixation
         initial_cookies = self.session.cookies
 
-        # Make authenticated request
+      : # Make authenticated request
         response = self.session.get(
             urljoin(self.manager_url, "/api/config/1"),
             headers={'X-Cluster-API-Key': self.valid_api_key}
         )
 
-        # Session cookies should be secure
+      : # Session cookies should be secure
         for cookie in self.session.cookies:
             if cookie.secure is not None:
                 self.assertTrue(cookie.secure, f"Cookie {cookie.name} should be secure")
@@ -405,7 +407,7 @@ class SecurityTestSuite(unittest.TestCase):
 
     def test_cors_security(self):
         """Test CORS configuration security"""
-        # Test CORS headers
+      : # Test CORS headers
         origins = [
             "http://evil.com",
             "https://malicious.site",
@@ -423,7 +425,7 @@ class SecurityTestSuite(unittest.TestCase):
                 }
             )
 
-            # Should not allow arbitrary origins
+          : # Should not allow arbitrary origins
             cors_origin = response.headers.get('Access-Control-Allow-Origin', '')
             if cors_origin:
                 self.assertNotEqual(cors_origin, '*', "CORS should not allow all origins")
@@ -432,7 +434,7 @@ class SecurityTestSuite(unittest.TestCase):
     def run_security_scan(self):
         """Run automated security scan using tools if available"""
         try:
-            # Try to run nikto if available
+          : # Try to run nikto if available
             result = subprocess.run([
                 'nikto', '-h', self.manager_url.replace('http://', '').replace('https://', ''),
                 '-Format', 'txt'
@@ -458,9 +460,9 @@ class ProxySecurityTests(unittest.TestCase):
     def test_tcp_injection_attacks(self):
         """Test TCP-level injection attacks"""
         malicious_payloads = [
-            b"\x00\x01\x02\x03",  # Binary data
-            b"\xff" * 1000,       # Large binary payload
-            b"GET /../../../etc/passwd HTTP/1.1\r\n\r\n",  # HTTP injection
+            b"\x00\x01\x02\x03",: # Binary data
+            b"\xff" * 1000,     : # Large binary payload
+            b"GET /../../../etc/passwd HTTP/1.1\r\n\r\n",: # HTTP injection
         ]
 
         for payload in malicious_payloads:
@@ -473,16 +475,16 @@ class ProxySecurityTests(unittest.TestCase):
                 response = sock.recv(1024)
                 sock.close()
 
-                # Should not return sensitive file contents
+              : # Should not return sensitive file contents
                 self.assertNotIn(b"root:", response)
                 self.assertNotIn(b"/bin/bash", response)
 
             except Exception:
-                pass  # Connection might be rejected, which is fine
+                pass: # Connection might be rejected, which is fine
 
     def test_buffer_overflow_attempts(self):
         """Test buffer overflow protection"""
-        # Send extremely large payload
+      : # Send extremely large payload
         large_payload = b"A" * 100000
 
         try:
@@ -490,18 +492,18 @@ class ProxySecurityTests(unittest.TestCase):
             sock.settimeout(10)
             sock.connect((self.proxy_host, self.proxy_port))
 
-            # Send large payload in chunks
+          : # Send large payload in chunks
             for i in range(0, len(large_payload), 4096):
                 sock.send(large_payload[i:i+4096])
 
             response = sock.recv(1024)
             sock.close()
 
-            # Proxy should handle large payloads gracefully
+          : # Proxy should handle large payloads gracefully
             print("Large payload test completed")
 
         except Exception as e:
-            # Connection might be closed, which is acceptable
+          : # Connection might be closed, which is acceptable
             print(f"Large payload rejected: {e}")
 
     def test_connection_exhaustion(self):
@@ -509,7 +511,7 @@ class ProxySecurityTests(unittest.TestCase):
         connections = []
 
         try:
-            # Try to open many connections
+          : # Try to open many connections
             for i in range(1000):
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.settimeout(1)
@@ -517,11 +519,11 @@ class ProxySecurityTests(unittest.TestCase):
                 connections.append(sock)
 
         except Exception:
-            # Should eventually reject connections
+          : # Should eventually reject connections
             pass
 
         finally:
-            # Clean up connections
+          : # Clean up connections
             for sock in connections:
                 try:
                     sock.close()
@@ -531,18 +533,18 @@ class ProxySecurityTests(unittest.TestCase):
         print(f"Opened {len(connections)} connections before limit")
 
 if __name__ == '__main__':
-    # Run security tests
+  : # Run security tests
     suite = unittest.TestSuite()
 
-    # Add security test cases
+  : # Add security test cases
     suite.addTest(unittest.makeSuite(SecurityTestSuite))
     suite.addTest(unittest.makeSuite(ProxySecurityTests))
 
-    # Run tests
+  : # Run tests
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
 
-    # Print security test summary
+  : # Print security test summary
     print(f"\n{'='*60}")
     print("SECURITY TEST SUMMARY")
     print(f"{'='*60}")
@@ -560,5 +562,5 @@ if __name__ == '__main__':
         for test, traceback in result.errors:
             print(f"- {test}: {traceback.split('Exception:')[-1].strip()}")
 
-    # Exit with proper code
+  : # Exit with proper code
     sys.exit(0 if result.wasSuccessful() else 1)

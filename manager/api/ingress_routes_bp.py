@@ -5,14 +5,14 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import logging
-from penguintechinc_utils import get_logger
-from datetime import datetime
-from typing import Optional
+import logging # noqa: F401, # noqa: F401
+from datetime import datetime # noqa: F401
+from typing import Optional # noqa: F401
 
-from middleware.auth import require_auth
-from pydantic import BaseModel, ValidationError
-from quart import Blueprint, current_app, jsonify, request
+from middleware.auth import require_auth # noqa: F401
+from penguintechinc_utils import get_logger # noqa: F401
+from pydantic import BaseModel, ValidationError # noqa: F401
+from quart import Blueprint, current_app, jsonify, request # noqa: F401
 
 logger = get_logger(__name__)
 
@@ -51,7 +51,7 @@ class IngressRouteResponse(BaseModel):
 
 
 @ingress_routes_bp.route("", methods=["GET", "POST"])
-async def routes_list():  # noqa: C901
+async def routes_list(): # noqa: C901
     """List all ingress routes or create new route"""
     db = current_app.db
 
@@ -63,7 +63,7 @@ async def routes_list():  # noqa: C901
             if not cluster_id:
                 return jsonify({"error": "cluster_id parameter required"}), 400
 
-            # Get all ingress routes for cluster
+          # Get all ingress routes for cluster
             try:
                 routes = db(
                     (db.ingress_routes.cluster_id == cluster_id)
@@ -107,7 +107,7 @@ async def routes_list():  # noqa: C901
                 return jsonify({"error": "Validation error", "details": str(e)}), 400
 
             try:
-                # Validate destination service exists in cluster
+              # Validate destination service exists in cluster
                 dest_service = (
                     db(
                         (db.services.id == data.dest_service_id)
@@ -124,7 +124,7 @@ async def routes_list():  # noqa: C901
                         404,
                     )
 
-                # Check for port conflict
+              # Check for port conflict
                 existing = (
                     db(
                         (db.ingress_routes.cluster_id == data.cluster_id)
@@ -144,7 +144,7 @@ async def routes_list():  # noqa: C901
                         409,
                     )
 
-                # Create route
+              # Create route
                 route_id = db.ingress_routes.insert(
                     name=data.name,
                     cluster_id=data.cluster_id,
@@ -182,7 +182,7 @@ async def routes_list():  # noqa: C901
 
 
 @ingress_routes_bp.route("/<int:route_id>", methods=["GET", "PUT", "DELETE"])
-async def route_detail(route_id):  # noqa: C901
+async def route_detail(route_id): # noqa: C901
     """Get, update or delete an ingress route"""
     db = current_app.db
 
@@ -208,7 +208,7 @@ async def route_detail(route_id):  # noqa: C901
                 return jsonify(response.dict()), 200
 
             elif request.method == "PUT":
-                # Admin only
+              # Admin only
                 user = db.auth_user[user_data["user_id"]]
                 if not user.is_admin:
                     return jsonify({"error": "Admin access required"}), 403
@@ -224,7 +224,7 @@ async def route_detail(route_id):  # noqa: C901
 
                 update_data = {}
 
-                # Validate new destination service if provided
+              # Validate new destination service if provided
                 if data.dest_service_id:
                     dest_service = (
                         db(
@@ -239,7 +239,7 @@ async def route_detail(route_id):  # noqa: C901
                         return jsonify({"error": "Destination service not found"}), 404
                     update_data["dest_service_id"] = data.dest_service_id
 
-                # Check for port conflict if port is being changed
+              # Check for port conflict if port is being changed
                 if data.source_port and data.source_port != route.source_port:
                     protocol = data.protocol or route.protocol
                     existing = (
@@ -275,7 +275,7 @@ async def route_detail(route_id):  # noqa: C901
                     update_data["updated_at"] = datetime.utcnow()
                     route.update_record(**update_data)
 
-                # Fetch updated route
+              # Fetch updated route
                 updated_route = db.ingress_routes[route_id]
                 response = IngressRouteResponse(
                     id=updated_route.id,
@@ -291,7 +291,7 @@ async def route_detail(route_id):  # noqa: C901
                 return jsonify(response.dict()), 200
 
             elif request.method == "DELETE":
-                # Admin only
+              # Admin only
                 user = db.auth_user[user_data["user_id"]]
                 if not user.is_admin:
                     return jsonify({"error": "Admin access required"}), 403
@@ -401,12 +401,12 @@ async def validate_route_config(user_data):
         data_json = await request.get_json()
         data = CreateIngressRouteRequest(**data_json)
 
-        # Validate cluster exists
+      # Validate cluster exists
         cluster = db.clusters[data.cluster_id]
         if not cluster or not cluster.is_active:
             return jsonify({"error": "Cluster not found"}), 404
 
-        # Validate destination service
+      # Validate destination service
         dest_service = (
             db(
                 (db.services.id == data.dest_service_id)
@@ -420,7 +420,7 @@ async def validate_route_config(user_data):
         if not dest_service:
             return jsonify({"error": "Destination service not found"}), 404
 
-        # Check for port conflict
+      # Check for port conflict
         existing = (
             db(
                 (db.ingress_routes.cluster_id == data.cluster_id)

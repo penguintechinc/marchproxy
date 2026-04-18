@@ -5,8 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-
-	"go.uber.org/zap"
 )
 
 // GPUType represents the detected GPU type
@@ -51,9 +49,9 @@ func (d *Detector) detect() {
 		d.vramGB = d.detectNVIDIAVRAM()
 		d.gpuModel = d.detectNVIDIAModel()
 		d.av1Capable = d.detectNVIDAV1Support()
-		logrus.WithFields(logrus.Fields{
-			"model":      d.gpuModel,
-			"vram_gb":    d.vramGB,
+		logger.WithFields(map[string]interface{}{
+			"model":       d.gpuModel,
+			"vram_gb":     d.vramGB,
 			"av1_capable": d.av1Capable,
 		}).Info("NVIDIA GPU detected")
 		return
@@ -66,9 +64,9 @@ func (d *Detector) detect() {
 		d.vramGB = d.detectAMDVRAM()
 		d.gpuModel = d.detectAMDModel()
 		d.av1Capable = d.detectAMDAV1Support()
-		logrus.WithFields(logrus.Fields{
-			"model":      d.gpuModel,
-			"vram_gb":    d.vramGB,
+		logger.WithFields(map[string]interface{}{
+			"model":       d.gpuModel,
+			"vram_gb":     d.vramGB,
 			"av1_capable": d.av1Capable,
 		}).Info("AMD GPU detected")
 		return
@@ -81,7 +79,7 @@ func (d *Detector) detect() {
 func (d *Detector) detectNVIDIA() bool {
 	// Check nvidia-smi existence
 	if _, err := os.Stat(d.nvidiaSMIPath); err != nil {
-		logrus.Debug("nvidia-smi not found")
+		logger.WithFields(map[string]interface{}{}).Info("nvidia-smi not found")
 		return false
 	}
 
@@ -89,19 +87,19 @@ func (d *Detector) detectNVIDIA() bool {
 	cmd := exec.Command(d.nvidiaSMIPath, "-L")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		logrus.WithError(err).Debug("nvidia-smi execution failed")
+		logger.WithError(err).Info("nvidia-smi execution failed")
 		return false
 	}
 
 	outputStr := string(output)
 	if strings.Contains(outputStr, "GPU") {
-		logrus.WithField("gpus", outputStr).Debug("NVIDIA GPUs found")
+		logger.WithFields(map[string]interface{}{"gpus": outputStr}).Info("NVIDIA GPUs found")
 		return true
 	}
 
 	// Check environment variable (Docker runtime)
 	if os.Getenv("NVIDIA_VISIBLE_DEVICES") != "" {
-		logrus.Debug("NVIDIA_VISIBLE_DEVICES set")
+		logger.WithFields(map[string]interface{}{}).Info("NVIDIA_VISIBLE_DEVICES set")
 		return true
 	}
 
@@ -112,7 +110,7 @@ func (d *Detector) detectNVIDIA() bool {
 func (d *Detector) detectAMD() bool {
 	// Check rocm-smi existence
 	if _, err := os.Stat(d.rocmSMIPath); err != nil {
-		logrus.Debug("rocm-smi not found")
+		logger.WithFields(map[string]interface{}{}).Info("rocm-smi not found")
 		return false
 	}
 
@@ -120,19 +118,19 @@ func (d *Detector) detectAMD() bool {
 	cmd := exec.Command(d.rocmSMIPath, "--showproductname")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		logrus.WithError(err).Debug("rocm-smi execution failed")
+		logger.WithError(err).Info("rocm-smi execution failed")
 		return false
 	}
 
 	outputStr := string(output)
 	if strings.Contains(outputStr, "GPU") || strings.Contains(outputStr, "Radeon") {
-		logrus.WithField("gpus", outputStr).Debug("AMD GPUs found")
+		logger.WithFields(map[string]interface{}{"gpus": outputStr}).Info("AMD GPUs found")
 		return true
 	}
 
 	// Check /dev/kfd (AMD kernel device)
 	if _, err := os.Stat("/dev/kfd"); err == nil {
-		logrus.Debug("/dev/kfd exists (AMD GPU)")
+		logger.WithFields(map[string]interface{}{}).Info("/dev/kfd exists (AMD GPU)")
 		return true
 	}
 
@@ -144,7 +142,7 @@ func (d *Detector) detectNVIDIAVRAM() int {
 	cmd := exec.Command(d.nvidiaSMIPath, "--query-gpu=memory.total", "--format=csv,noheader,nounits")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		logrus.WithError(err).Debug("Failed to query NVIDIA VRAM")
+		logger.WithError(err).Info("Failed to query NVIDIA VRAM")
 		return 0
 	}
 
@@ -152,7 +150,7 @@ func (d *Detector) detectNVIDIAVRAM() int {
 	var vramMiB int
 	_, err = fmt.Sscanf(strings.TrimSpace(string(output)), "%d", &vramMiB)
 	if err != nil {
-		logrus.WithError(err).Debug("Failed to parse NVIDIA VRAM")
+		logger.WithError(err).Info("Failed to parse NVIDIA VRAM")
 		return 0
 	}
 
@@ -164,7 +162,7 @@ func (d *Detector) detectNVIDIAModel() string {
 	cmd := exec.Command(d.nvidiaSMIPath, "--query-gpu=name", "--format=csv,noheader")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		logrus.WithError(err).Debug("Failed to query NVIDIA model")
+		logger.WithError(err).Info("Failed to query NVIDIA model")
 		return "Unknown NVIDIA GPU"
 	}
 	return strings.TrimSpace(string(output))
@@ -194,7 +192,7 @@ func (d *Detector) detectAMDVRAM() int {
 		cmd = exec.Command(d.rocmSMIPath, "--showmeminfo", "vram")
 		output, err = cmd.CombinedOutput()
 		if err != nil {
-			logrus.WithError(err).Debug("Failed to query AMD VRAM")
+			logger.WithError(err).Info("Failed to query AMD VRAM")
 			return 0
 		}
 	}
@@ -221,7 +219,7 @@ func (d *Detector) detectAMDModel() string {
 	cmd := exec.Command(d.rocmSMIPath, "--showproductname")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		logrus.WithError(err).Debug("Failed to query AMD model")
+		logger.WithError(err).Info("Failed to query AMD model")
 		return "Unknown AMD GPU"
 	}
 

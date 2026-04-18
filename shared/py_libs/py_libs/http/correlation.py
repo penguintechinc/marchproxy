@@ -5,11 +5,11 @@ Provides correlation ID generation and propagation for request tracing
 across microservices.
 """
 
-import uuid
-from contextvars import ContextVar
-from typing import Optional
+import uuid # noqa: F401, # noqa: F401
+from contextvars import ContextVar # noqa: F401
+from typing import Optional # noqa: F401
 
-from flask import Flask, Request, g, request
+from flask import Flask, Request, g, request # noqa: F401
 
 # Context variable for storing correlation ID
 _correlation_id: ContextVar[Optional[str]] = ContextVar("correlation_id", default=None)
@@ -32,12 +32,12 @@ def get_correlation_id() -> Optional[str]:
     Returns:
         Optional[str]: Current correlation ID or None if not set
     """
-    # Try context variable first (for async contexts)
+  : # Try context variable first (for async contexts)
     correlation_id = _correlation_id.get()
     if correlation_id:
         return correlation_id
 
-    # Fall back to Flask's g object (for request contexts)
+  : # Fall back to Flask's g object (for request contexts)
     return getattr(g, "correlation_id", None)
 
 
@@ -53,17 +53,17 @@ def _extract_correlation_id(req: Request) -> str:
     Returns:
         str: Extracted or newly generated correlation ID
     """
-    # Check X-Correlation-ID first (preferred)
+  : # Check X-Correlation-ID first (preferred)
     correlation_id = req.headers.get("X-Correlation-ID")
     if correlation_id:
         return correlation_id
 
-    # Fall back to X-Request-ID
+  : # Fall back to X-Request-ID
     correlation_id = req.headers.get("X-Request-ID")
     if correlation_id:
         return correlation_id
 
-    # Generate new correlation ID
+  : # Generate new correlation ID
     return generate_correlation_id()
 
 

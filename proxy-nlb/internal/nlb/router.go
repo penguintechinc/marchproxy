@@ -7,9 +7,10 @@ import (
 	"sync"
 	"time"
 
+	"marchproxy-nlb/internal/logging"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"go.uber.org/zap"
 )
 
 var (
@@ -142,7 +143,7 @@ func (r *Router) RegisterModule(module *ModuleEndpoint) error {
 
 	r.endpoints[module.Protocol] = append(r.endpoints[module.Protocol], module)
 
-	r.logger.WithFields(logrus.Fields{
+	r.logger.WithFields(logging.Fields{
 		"module":   module.Name,
 		"protocol": module.Protocol.String(),
 		"address":  module.Address,
@@ -166,7 +167,7 @@ func (r *Router) UnregisterModule(protocol Protocol, moduleName string) error {
 		if module.Name == moduleName {
 			// Remove from slice
 			r.endpoints[protocol] = append(modules[:i], modules[i+1:]...)
-			r.logger.WithFields(logrus.Fields{
+			r.logger.WithFields(logging.Fields{
 				"module":   moduleName,
 				"protocol": protocol.String(),
 			}).Info("Module unregistered")
@@ -206,7 +207,7 @@ func (r *Router) RouteConnection(ctx context.Context, data []byte) (*ModuleEndpo
 
 	routedConnections.WithLabelValues(protocol.String(), module.Name).Inc()
 
-	r.logger.WithFields(logrus.Fields{
+	r.logger.WithFields(logging.Fields{
 		"protocol": protocol.String(),
 		"module":   module.Name,
 		"address":  module.Address,

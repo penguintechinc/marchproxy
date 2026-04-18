@@ -15,10 +15,10 @@ if ! command -v grpcurl &>/dev/null; then
 fi
 
 test_rpc() {
-    local name="$1"
-    local service="$2"
-    local method="$3"
-    local data="$4"
+    local name; name; name; name; name; name; name; name="""$1"""
+    local service; service; service; service; service; service; service; service="""$2"""
+    local method; method; method; method; method; method; method; method="""$3"""
+    local data; data; data; data; data; data; data; data="""$4"""
 
     if grpcurl -plaintext -d "$data" "$WADDLEAI_GRPC" "$service/$method" &>/dev/null; then
         echo "  ✓ $name"

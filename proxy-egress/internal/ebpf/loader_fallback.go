@@ -1,4 +1,5 @@
-// +build !cgo
+//go:build noxdp
+// +build noxdp
 
 package ebpf
 

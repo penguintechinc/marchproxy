@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"go.uber.org/zap"
+	"github.com/penguintechinc/penguin-libs/packages/go-common/logging"
 	"github.com/spf13/viper"
 )
 
@@ -89,6 +89,8 @@ type RoutingRule struct {
 }
 
 func LoadConfig() (*Config, error) {
+	logger, _ := logging.NewSanitizedLogger("config")
+
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath("/app/configs")
@@ -141,16 +143,16 @@ func setDefaults() {
 	viper.SetDefault("enable_sriov", false)
 	viper.SetDefault("hardware_offload", false)
 
-	viper.SetDefault("mtls_enabled", getEnvBool("MTLS_ENABLED", true))
+	viper.SetDefault("mtls_enabled", true)
 	viper.SetDefault("mtls_require_client_cert", true)
-	viper.SetDefault("mtls_server_cert_path", getEnv("MTLS_SERVER_CERT_PATH", "/app/certs/ingress-server.crt"))
-	viper.SetDefault("mtls_server_key_path", getEnv("MTLS_SERVER_KEY_PATH", "/app/certs/ingress-server.key"))
-	viper.SetDefault("mtls_client_ca_path", getEnv("MTLS_CLIENT_CA_PATH", "/app/certs/client-ca-bundle.crt"))
+	viper.SetDefault("mtls_server_cert_path", "/app/certs/ingress-server.crt")
+	viper.SetDefault("mtls_server_key_path", "/app/certs/ingress-server.key")
+	viper.SetDefault("mtls_client_ca_path", "/app/certs/client-ca-bundle.crt")
 
-	viper.SetDefault("manager.url", getEnv("MANAGER_URL", "http://manager:8000"))
-	viper.SetDefault("manager.api_key", getEnv("CLUSTER_API_KEY", ""))
-	viper.SetDefault("manager.proxy_id", getEnv("PROXY_ID", ""))
-	viper.SetDefault("manager.cluster_id", getEnv("CLUSTER_ID", "default"))
+	viper.SetDefault("manager.url", "http://manager:8000")
+	viper.SetDefault("manager.api_key", "")
+	viper.SetDefault("manager.proxy_id", "")
+	viper.SetDefault("manager.cluster_id", "default")
 	viper.SetDefault("manager.retry_count", 3)
 	viper.SetDefault("manager.timeout", 30)
 
@@ -190,7 +192,11 @@ func validateConfig(config *Config) error {
 		return fmt.Errorf("invalid health port: %d", config.HealthPort)
 	}
 
-	if _, err := logrus.ParseLevel(config.LogLevel); err != nil {
+	// Validate log level is valid
+	validLevels := map[string]bool{
+		"debug": true, "info": true, "warn": true, "error": true, "fatal": true, "panic": true,
+	}
+	if !validLevels[strings.ToLower(config.LogLevel)] {
 		return fmt.Errorf("invalid log level: %s", config.LogLevel)
 	}
 

@@ -1,18 +1,18 @@
 package handlers
 
 import (
+	"marchproxy-dblb/internal/logging"
 	"testing"
 	"time"
 
 	"marchproxy-dblb/internal/config"
 	"marchproxy-dblb/internal/security"
 
-	"go.uber.org/zap"
 )
 
 // TestGaleraHandlerImplementsInterface verifies GaleraHandler implements Handler interface
 func TestGaleraHandlerImplementsInterface(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 
 	cfg := &config.Config{
 		MaxConnectionsPerRoute: 100,
@@ -176,7 +176,7 @@ func TestGaleraNodeHealth(t *testing.T) {
 
 // TestIsWriteQuery tests write query detection
 func TestIsWriteQuery(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 
 	cfg := &config.Config{
 		MaxConnectionsPerRoute: 100,
@@ -217,7 +217,7 @@ func TestIsWriteQuery(t *testing.T) {
 
 // TestGaleraBackendSelection tests backend selection logic
 func TestGaleraBackendSelection(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 
 	cfg := &config.Config{
 		MaxConnectionsPerRoute: 100,
@@ -287,7 +287,7 @@ func TestGaleraBackendSelection(t *testing.T) {
 
 // TestGaleraHandlerLifecycle tests Start and Stop methods
 func TestGaleraHandlerLifecycle(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 
 	cfg := &config.Config{
 		MaxConnectionsPerRoute: 100,

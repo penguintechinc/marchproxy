@@ -8,13 +8,13 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import logging
-from penguintechinc_utils import get_logger
+import logging # noqa: F401, # noqa: F401
 
-from middleware.auth import require_auth
-from models.media_settings import MediaSettingsModel, UpdateMediaSettingsRequest
-from pydantic import ValidationError
-from quart import Blueprint, current_app, jsonify, request
+from middleware.auth import require_auth # noqa: F401
+from models.media_settings import MediaSettingsModel, UpdateMediaSettingsRequest # noqa: F401
+from penguintechinc_utils import get_logger # noqa: F401
+from pydantic import ValidationError # noqa: F401
+from quart import Blueprint, current_app, jsonify, request # noqa: F401
 
 logger = get_logger(__name__)
 
@@ -32,19 +32,19 @@ async def admin_media_settings(user_data):
     """
     db = current_app.db
 
-    # Verify super admin (not just cluster admin)
+  # Verify super admin (not just cluster admin)
     if not user_data.get("is_admin", False):
         return jsonify({"error": "Super admin access required"}), 403
 
     if request.method == "GET":
-        # Get current settings
+      # Get current settings
         settings = MediaSettingsModel.get_settings(db)
 
-        # Get hardware capabilities (from cache or gRPC)
-        # TODO: Implement actual gRPC call to proxy-rtmp
+      # Get hardware capabilities (from cache or gRPC)
+      # TODO: Implement actual gRPC call to proxy-rtmp
         hardware_caps = await get_hardware_capabilities()
 
-        # Calculate effective max
+      # Calculate effective max
         admin_max = settings.get("admin_max_resolution") if settings else None
         hardware_max = hardware_caps.get("hardware_max_resolution", 1440)
         effective_max = min(admin_max, hardware_max) if admin_max else hardware_max
@@ -88,7 +88,7 @@ async def admin_media_settings(user_data):
             return jsonify({"error": "Validation error", "details": str(e)}), 400
 
         try:
-            # Update settings
+          # Update settings
             settings = MediaSettingsModel.update_settings(
                 db,
                 updated_by=user_data["user_id"],
@@ -99,7 +99,7 @@ async def admin_media_settings(user_data):
                 transcode_ladder_resolutions=data.transcode_ladder_resolutions,
             )
 
-            # Notify proxy-rtmp of config change via gRPC
+          # Notify proxy-rtmp of config change via gRPC
             await notify_rtmp_config_change(settings)
 
             logger.info(f"Media settings updated by admin {user_data['user_id']}")
@@ -136,7 +136,7 @@ async def reset_admin_override(user_data):
     try:
         settings = MediaSettingsModel.clear_admin_override(db, updated_by=user_data["user_id"])
 
-        # Notify proxy-rtmp
+      # Notify proxy-rtmp
         await notify_rtmp_config_change(settings)
 
         logger.info(f"Media settings reset to hardware default by admin {user_data['user_id']}")
@@ -170,7 +170,7 @@ async def admin_capabilities(user_data):
 
     hardware_caps = await get_hardware_capabilities()
 
-    # Add detailed resolution support info
+  # Add detailed resolution support info
     resolutions = []
     for height in [360, 480, 540, 720, 1080, 1440, 2160, 4320]:
         hw_max = hardware_caps.get("hardware_max_resolution", 1440)
@@ -181,7 +181,7 @@ async def admin_capabilities(user_data):
             "requires_gpu": height > 1440,
         }
 
-        # Add reason if not supported
+      # Add reason if not supported
         if not res_info["supported"]:
             if hardware_caps.get("gpu_type") == "none":
                 res_info["disabled_reason"] = "Requires GPU hardware acceleration"
@@ -209,12 +209,12 @@ async def get_hardware_capabilities() -> dict:
     TODO: Implement actual gRPC call
     For now, returns mock data
     """
-    # Mock response - replace with actual gRPC call
+  # Mock response - replace with actual gRPC call
     return {
         "gpu_type": "nvidia",
         "gpu_model": "NVIDIA GeForce RTX 4080",
         "vram_gb": 16,
-        "hardware_max_resolution": 4320,  # 8K capable
+        "hardware_max_resolution": 4320, # 8K capable
         "av1_supported": True,
         "supports_8k": True,
         "supports_4k": True,
@@ -228,7 +228,7 @@ async def notify_rtmp_config_change(settings: dict):
     TODO: Implement actual gRPC call to UpdatePolicy
     """
     logger.info(f"Notifying proxy-rtmp of config change: {settings}")
-    # Placeholder for gRPC call
+  # Placeholder for gRPC call
 
 
 def get_resolution_label(height: int) -> str:

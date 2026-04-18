@@ -82,8 +82,10 @@ func generateTestCA(t *testing.T) (certPath, keyPath string, cleanup func()) {
 }
 
 func TestNewInterceptManager_Disabled(t *testing.T) {
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
+	logger, err := logging.NewLogrusAdapter("test")
+	if err != nil {
+		t.Fatalf("Failed to create logger: %v", err)
+	}
 
 	cfg := InterceptConfig{
 		Enabled: false,
@@ -107,8 +109,10 @@ func TestNewInterceptManager_MITM(t *testing.T) {
 	certPath, keyPath, cleanup := generateTestCA(t)
 	defer cleanup()
 
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
+	logger, err := logging.NewLogrusAdapter("test")
+	if err != nil {
+		t.Fatalf("Failed to create logger: %v", err)
+	}
 
 	cfg := InterceptConfig{
 		Enabled:       true,
@@ -133,8 +137,10 @@ func TestNewInterceptManager_MITM(t *testing.T) {
 }
 
 func TestNewInterceptManager_InvalidCAPath(t *testing.T) {
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
+	logger, err := logging.NewLogrusAdapter("test")
+	if err != nil {
+		t.Fatalf("Failed to create logger: %v", err)
+	}
 
 	cfg := InterceptConfig{
 		Enabled:    true,
@@ -143,15 +149,17 @@ func TestNewInterceptManager_InvalidCAPath(t *testing.T) {
 		CAKeyPath:  "/nonexistent/ca.key",
 	}
 
-	_, err := NewInterceptManager(cfg, logger)
+	_, err = NewInterceptManager(cfg, logger)
 	if err == nil {
 		t.Error("Expected error for invalid CA path")
 	}
 }
 
 func TestInterceptManager_ShouldIntercept_Disabled(t *testing.T) {
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
+	logger, err := logging.NewLogrusAdapter("test")
+	if err != nil {
+		t.Fatalf("Failed to create logger: %v", err)
+	}
 
 	cfg := InterceptConfig{
 		Enabled: false,
@@ -168,8 +176,10 @@ func TestInterceptManager_ShouldIntercept_DefaultEnabled(t *testing.T) {
 	certPath, keyPath, cleanup := generateTestCA(t)
 	defer cleanup()
 
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
+	logger, err := logging.NewLogrusAdapter("test")
+	if err != nil {
+		t.Fatalf("Failed to create logger: %v", err)
+	}
 
 	cfg := InterceptConfig{
 		Enabled:    true,
@@ -190,8 +200,10 @@ func TestInterceptManager_ShouldIntercept_DomainConfig(t *testing.T) {
 	certPath, keyPath, cleanup := generateTestCA(t)
 	defer cleanup()
 
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
+	logger, err := logging.NewLogrusAdapter("test")
+	if err != nil {
+		t.Fatalf("Failed to create logger: %v", err)
+	}
 
 	cfg := InterceptConfig{
 		Enabled:    true,
@@ -227,8 +239,10 @@ func TestInterceptManager_ShouldIntercept_IPConfig(t *testing.T) {
 	certPath, keyPath, cleanup := generateTestCA(t)
 	defer cleanup()
 
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
+	logger, err := logging.NewLogrusAdapter("test")
+	if err != nil {
+		t.Fatalf("Failed to create logger: %v", err)
+	}
 
 	cfg := InterceptConfig{
 		Enabled:    true,
@@ -264,8 +278,10 @@ func TestInterceptManager_GetCertificate_MITM(t *testing.T) {
 	certPath, keyPath, cleanup := generateTestCA(t)
 	defer cleanup()
 
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
+	logger, err := logging.NewLogrusAdapter("test")
+	if err != nil {
+		t.Fatalf("Failed to create logger: %v", err)
+	}
 
 	cfg := InterceptConfig{
 		Enabled:       true,
@@ -300,8 +316,10 @@ func TestInterceptManager_GetCertificate_Cached(t *testing.T) {
 	certPath, keyPath, cleanup := generateTestCA(t)
 	defer cleanup()
 
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
+	logger, err := logging.NewLogrusAdapter("test")
+	if err != nil {
+		t.Fatalf("Failed to create logger: %v", err)
+	}
 
 	cfg := InterceptConfig{
 		Enabled:       true,
@@ -334,8 +352,10 @@ func TestInterceptManager_GetCertificate_IPAddress(t *testing.T) {
 	certPath, keyPath, cleanup := generateTestCA(t)
 	defer cleanup()
 
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
+	logger, err := logging.NewLogrusAdapter("test")
+	if err != nil {
+		t.Fatalf("Failed to create logger: %v", err)
+	}
 
 	cfg := InterceptConfig{
 		Enabled:       true,
@@ -363,8 +383,10 @@ func TestInterceptManager_GetCertificate_IPAddress(t *testing.T) {
 }
 
 func TestInterceptManager_GetCertificate_Preconfigured_NotFound(t *testing.T) {
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
+	logger, err := logging.NewLogrusAdapter("test")
+	if err != nil {
+		t.Fatalf("Failed to create logger: %v", err)
+	}
 
 	cfg := InterceptConfig{
 		Enabled: true,
@@ -373,8 +395,8 @@ func TestInterceptManager_GetCertificate_Preconfigured_NotFound(t *testing.T) {
 
 	manager, _ := NewInterceptManager(cfg, logger)
 
-	_, err := manager.GetCertificate("example.com")
-	if err == nil {
+	_, certErr := manager.GetCertificate("example.com")
+	if certErr == nil {
 		t.Error("Expected error when no preconfigured cert available")
 	}
 }
@@ -383,8 +405,10 @@ func TestInterceptManager_SetDomainIntercept(t *testing.T) {
 	certPath, keyPath, cleanup := generateTestCA(t)
 	defer cleanup()
 
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
+	logger, err := logging.NewLogrusAdapter("test")
+	if err != nil {
+		t.Fatalf("Failed to create logger: %v", err)
+	}
 
 	cfg := InterceptConfig{
 		Enabled:    true,
@@ -419,8 +443,10 @@ func TestInterceptManager_SetIPIntercept(t *testing.T) {
 	certPath, keyPath, cleanup := generateTestCA(t)
 	defer cleanup()
 
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
+	logger, err := logging.NewLogrusAdapter("test")
+	if err != nil {
+		t.Fatalf("Failed to create logger: %v", err)
+	}
 
 	cfg := InterceptConfig{
 		Enabled:    true,
@@ -448,8 +474,10 @@ func TestInterceptManager_Enable_Disable(t *testing.T) {
 	certPath, keyPath, cleanup := generateTestCA(t)
 	defer cleanup()
 
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
+	logger, err := logging.NewLogrusAdapter("test")
+	if err != nil {
+		t.Fatalf("Failed to create logger: %v", err)
+	}
 
 	cfg := InterceptConfig{
 		Enabled:    true,
@@ -485,8 +513,10 @@ func TestInterceptManager_ClearCache(t *testing.T) {
 	certPath, keyPath, cleanup := generateTestCA(t)
 	defer cleanup()
 
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
+	logger, err := logging.NewLogrusAdapter("test")
+	if err != nil {
+		t.Fatalf("Failed to create logger: %v", err)
+	}
 
 	cfg := InterceptConfig{
 		Enabled:       true,
@@ -516,8 +546,10 @@ func TestInterceptManager_GetDomainConfig(t *testing.T) {
 	certPath, keyPath, cleanup := generateTestCA(t)
 	defer cleanup()
 
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
+	logger, err := logging.NewLogrusAdapter("test")
+	if err != nil {
+		t.Fatalf("Failed to create logger: %v", err)
+	}
 
 	cfg := InterceptConfig{
 		Enabled:    true,
@@ -550,8 +582,10 @@ func TestInterceptManager_GetIPConfig(t *testing.T) {
 	certPath, keyPath, cleanup := generateTestCA(t)
 	defer cleanup()
 
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
+	logger, err := logging.NewLogrusAdapter("test")
+	if err != nil {
+		t.Fatalf("Failed to create logger: %v", err)
+	}
 
 	cfg := InterceptConfig{
 		Enabled:    true,
@@ -576,8 +610,10 @@ func TestInterceptManager_GetTLSConfig(t *testing.T) {
 	certPath, keyPath, cleanup := generateTestCA(t)
 	defer cleanup()
 
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
+	logger, err := logging.NewLogrusAdapter("test")
+	if err != nil {
+		t.Fatalf("Failed to create logger: %v", err)
+	}
 
 	cfg := InterceptConfig{
 		Enabled:    true,
@@ -602,8 +638,10 @@ func TestInterceptManager_RecordStats(t *testing.T) {
 	certPath, keyPath, cleanup := generateTestCA(t)
 	defer cleanup()
 
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
+	logger, err := logging.NewLogrusAdapter("test")
+	if err != nil {
+		t.Fatalf("Failed to create logger: %v", err)
+	}
 
 	cfg := InterceptConfig{
 		Enabled:    true,

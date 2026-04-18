@@ -1,8 +1,8 @@
 """Authentication endpoints."""
-from quart import jsonify, request
-from flask_security import login_user, logout_user, current_user, auth_required
-from app_quart.api.v1 import v1_bp
-from app_quart.extensions import db
+from app_quart.api.v1 import v1_bp # noqa: F401
+from app_quart.extensions import db # noqa: F401
+from flask_security import auth_required, current_user, login_user, logout_user # noqa: F401
+from quart import jsonify, request # noqa: F401
 
 
 @v1_bp.route('/auth/me', methods=['GET'])

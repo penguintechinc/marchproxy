@@ -7,7 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"go.uber.org/zap"
+	"marchproxy-nlb/internal/logging"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
@@ -77,7 +78,7 @@ func (mc *ModuleClient) Connect(ctx context.Context) error {
 
 	conn, err := grpc.DialContext(dialCtx, target, opts...)
 	if err != nil {
-		mc.logger.WithError(err).WithFields(logrus.Fields{
+		mc.logger.WithError(err).WithFields(logging.Fields{
 			"module": mc.name,
 			"target": target,
 		}).Error("Failed to connect to module")
@@ -88,7 +89,7 @@ func (mc *ModuleClient) Connect(ctx context.Context) error {
 	mc.state = conn.GetState()
 	mc.lastUsed = time.Now()
 
-	mc.logger.WithFields(logrus.Fields{
+	mc.logger.WithFields(logging.Fields{
 		"module": mc.name,
 		"target": target,
 		"state":  mc.state.String(),
@@ -206,7 +207,7 @@ func (cp *ClientPool) AddClient(name, address string, port int) error {
 
 	cp.clients[name] = client
 
-	cp.logger.WithFields(logrus.Fields{
+	cp.logger.WithFields(logging.Fields{
 		"name":    name,
 		"address": address,
 		"port":    port,
@@ -286,7 +287,7 @@ func (cp *ClientPool) checkAndReconnect() {
 
 	for _, client := range clients {
 		if !client.IsHealthy() {
-			cp.logger.WithFields(logrus.Fields{
+			cp.logger.WithFields(logging.Fields{
 				"module": client.name,
 				"state":  client.GetState().String(),
 			}).Warn("Unhealthy client detected, attempting reconnect")

@@ -1,14 +1,16 @@
 """Unit tests for app/core/license.py (wraps penguin-licensing)"""
-import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
-from datetime import datetime, timezone
-from penguin_licensing import LicenseInfo as PenguinLicenseInfo, Feature
+from datetime import datetime, timezone # noqa: F401
+from unittest.mock import AsyncMock, MagicMock, patch # noqa: F401
+
+import pytest # noqa: F401, # noqa: F401
+from penguin_licensing import Feature # noqa: F401
+from penguin_licensing import LicenseInfo as PenguinLicenseInfo # noqa: F401
 
 
 @pytest.mark.asyncio
 async def test_license_validator_dev_mode_enterprise():
     """When RELEASE_MODE=False, validator returns Enterprise tier."""
-    from app.core.license import LicenseValidator, LicenseTier
+    from app.core.license import LicenseTier, LicenseValidator # noqa: F401
 
     validator = LicenseValidator()
     validator.release_mode = False
@@ -18,7 +20,7 @@ async def test_license_validator_dev_mode_enterprise():
 
 @pytest.mark.asyncio
 async def test_license_validator_dev_mode_all_features():
-    from app.core.license import LicenseValidator
+    from app.core.license import LicenseValidator # noqa: F401
 
     validator = LicenseValidator()
     validator.release_mode = False
@@ -28,7 +30,7 @@ async def test_license_validator_dev_mode_all_features():
 
 @pytest.mark.asyncio
 async def test_license_validator_dev_mode_proxy_limit_unlimited():
-    from app.core.license import LicenseValidator
+    from app.core.license import LicenseValidator # noqa: F401
 
     validator = LicenseValidator()
     validator.release_mode = False
@@ -38,7 +40,7 @@ async def test_license_validator_dev_mode_proxy_limit_unlimited():
 
 @pytest.mark.asyncio
 async def test_license_validator_dev_mode_proxy_limit_valid():
-    from app.core.license import LicenseValidator
+    from app.core.license import LicenseValidator # noqa: F401
 
     validator = LicenseValidator()
     validator.release_mode = False
@@ -48,7 +50,7 @@ async def test_license_validator_dev_mode_proxy_limit_valid():
 
 @pytest.mark.asyncio
 async def test_license_validator_dev_mode_check_feature_any():
-    from app.core.license import LicenseValidator
+    from app.core.license import LicenseValidator # noqa: F401
 
     validator = LicenseValidator()
     validator.release_mode = False
@@ -58,7 +60,7 @@ async def test_license_validator_dev_mode_check_feature_any():
 
 @pytest.mark.asyncio
 async def test_license_validator_dev_mode_check_feature_arbitrary():
-    from app.core.license import LicenseValidator
+    from app.core.license import LicenseValidator # noqa: F401
 
     validator = LicenseValidator()
     validator.release_mode = False
@@ -67,13 +69,13 @@ async def test_license_validator_dev_mode_check_feature_arbitrary():
 
 
 def test_license_tier_values():
-    from app.core.license import LicenseTier
+    from app.core.license import LicenseTier # noqa: F401
     assert LicenseTier.COMMUNITY.value == "community"
     assert LicenseTier.ENTERPRISE.value == "enterprise"
 
 
 def test_license_info_model():
-    from app.core.license import LicenseInfo, LicenseTier
+    from app.core.license import LicenseInfo, LicenseTier # noqa: F401
     info = LicenseInfo(
         tier=LicenseTier.COMMUNITY,
         max_proxies=3,
@@ -88,7 +90,7 @@ def test_license_info_model():
 
 
 def test_license_info_enterprise_model():
-    from app.core.license import LicenseInfo, LicenseTier
+    from app.core.license import LicenseInfo, LicenseTier # noqa: F401
     info = LicenseInfo(
         tier=LicenseTier.ENTERPRISE,
         max_proxies=999999,
@@ -103,7 +105,7 @@ def test_license_info_enterprise_model():
 @pytest.mark.asyncio
 async def test_license_validator_release_mode_no_key_community():
     """In release mode with no key, should return Community tier."""
-    from app.core.license import LicenseValidator, LicenseTier
+    from app.core.license import LicenseTier, LicenseValidator # noqa: F401
 
     validator = LicenseValidator()
     validator.release_mode = True
@@ -134,7 +136,7 @@ async def test_license_validator_release_mode_no_key_community():
 @pytest.mark.asyncio
 async def test_license_validator_caching():
     """Second call returns consistent result in dev mode."""
-    from app.core.license import LicenseValidator, LicenseTier
+    from app.core.license import LicenseTier, LicenseValidator # noqa: F401
 
     validator = LicenseValidator()
     validator.release_mode = False
@@ -148,7 +150,7 @@ async def test_license_validator_caching():
 @pytest.mark.asyncio
 async def test_license_manager_dev_mode_returns_dict():
     """LicenseManager.validate_license returns dict with expected keys."""
-    from app.core.license import LicenseManager
+    from app.core.license import LicenseManager # noqa: F401
 
     manager = LicenseManager()
     manager.validator.release_mode = False

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package marchproxy;
 
-option go_package = "github.com/penguintech/marchproxy/proto/marchproxy;marchproxy";
+option go_package = "github.com/PenguinTech/MarchProxy/proto/marchproxy;marchproxy";
 
 import "marchproxy/types.proto";
 import "google/protobuf/timestamp.proto";

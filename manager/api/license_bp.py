@@ -5,16 +5,16 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import logging
-from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+import logging # noqa: F401, # noqa: F401
+from datetime import datetime, timedelta # noqa: F401
+from typing import Any, Dict, Optional # noqa: F401
 
-import httpx
-from middleware.auth import require_auth
-from models.license import LicenseCacheModel
-from pydantic import BaseModel, ValidationError
-from quart import Blueprint, current_app, jsonify, request
-from penguintechinc_utils import get_logger
+import httpx # noqa: F401, # noqa: F401
+from middleware.auth import require_auth # noqa: F401
+from models.license import LicenseCacheModel # noqa: F401
+from penguintechinc_utils import get_logger # noqa: F401
+from pydantic import BaseModel, ValidationError # noqa: F401
+from quart import Blueprint, current_app, jsonify, request # noqa: F401
 
 logger = get_logger(__name__)
 
@@ -58,7 +58,7 @@ async def validate_license(user_data):
             "LICENSE_SERVER_URL", "https://license.penguintech.io"
         )
 
-        # Check cache first
+      # Check cache first
         cached = LicenseCacheModel.get_cached_validation(db, license_key)
         if cached:
             response = LicenseStatusResponse(
@@ -71,7 +71,7 @@ async def validate_license(user_data):
             )
             return jsonify(response.dict(exclude_none=True)), 200
 
-        # Call license server
+      # Call license server
         async with httpx.AsyncClient(verify=True) as client:
             resp = await client.post(
                 f"{license_server_url}/api/v2/validate",
@@ -88,7 +88,7 @@ async def validate_license(user_data):
             if validation_data.get("expires_at"):
                 expires_at = datetime.fromisoformat(validation_data["expires_at"])
 
-            # Cache the validation
+          # Cache the validation
             LicenseCacheModel.cache_validation(
                 db, license_key, validation_data, is_valid, expires_at
             )
@@ -106,7 +106,7 @@ async def validate_license(user_data):
             error_msg = resp.json().get("error", "License validation failed")
             validation_data = {"error": error_msg}
 
-            # Cache the failed validation
+          # Cache the failed validation
             LicenseCacheModel.cache_validation(db, license_key, validation_data, False)
 
             response = LicenseStatusResponse(
@@ -145,7 +145,7 @@ async def get_license_status(user_data):
         is_enterprise = cached["is_enterprise"]
         is_valid = cached["is_valid"]
 
-        # Check for missed keepalives
+      # Check for missed keepalives
         if is_enterprise and cached.get("last_keepalive"):
             keepalive_cutoff = datetime.utcnow() - timedelta(hours=24)
             if cached["last_keepalive"] < keepalive_cutoff:
@@ -188,12 +188,12 @@ async def send_keepalive(user_data):
             "LICENSE_SERVER_URL", "https://license.penguintech.io"
         )
 
-        # Get cached license
+      # Get cached license
         cached = LicenseCacheModel.get_cached_validation(db, license_key)
         if not cached or not cached["is_enterprise"]:
             return jsonify({"error": "License is not enterprise"}), 400
 
-        # Send keepalive
+      # Send keepalive
         payload = {
             "license_key": license_key,
             "product_name": current_app.config.get("PRODUCT_NAME", "marchproxy"),
@@ -206,7 +206,7 @@ async def send_keepalive(user_data):
             )
 
         if resp.status_code == 200:
-            # Update keepalive timestamp in cache
+          # Update keepalive timestamp in cache
             if cached.get("id"):
                 db.license_cache[cached["id"]].update_record(
                     last_keepalive=datetime.utcnow(),

@@ -13,8 +13,9 @@ import (
 	"sync"
 	"time"
 
+	"marchproxy-dblb/internal/logging"
+
 	"github.com/go-redis/redis/v8"
-	"go.uber.org/zap"
 )
 
 // User represents a database user
@@ -110,7 +111,7 @@ func (m *Manager) AuthenticateWithIP(ctx context.Context, username, database, db
 
 	user, ok := m.GetUser(username)
 	if !ok || !user.Enabled {
-		m.logger.WithFields(logrus.Fields{
+		m.logger.WithFields(logging.Fields{
 			"username": username,
 		}).Warn("Authentication failed: user not found or disabled")
 		m.cacheAuthResult(ctx, cacheKey, false)
@@ -119,7 +120,7 @@ func (m *Manager) AuthenticateWithIP(ctx context.Context, username, database, db
 
 	// Check account expiration
 	if user.ExpiresAt != nil && time.Now().After(*user.ExpiresAt) {
-		m.logger.WithFields(logrus.Fields{
+		m.logger.WithFields(logging.Fields{
 			"username": username,
 		}).Warn("Authentication failed: user account expired")
 		m.cacheAuthResult(ctx, cacheKey, false)
@@ -129,7 +130,7 @@ func (m *Manager) AuthenticateWithIP(ctx context.Context, username, database, db
 	// Check IP whitelist if configured
 	if len(user.AllowedIPs) > 0 && clientIP != "" {
 		if !m.isIPAllowed(clientIP, user.AllowedIPs) {
-			m.logger.WithFields(logrus.Fields{
+			m.logger.WithFields(logging.Fields{
 				"username": username,
 				"ip":       clientIP,
 			}).Warn("Authentication failed: IP not in whitelist")
@@ -140,7 +141,7 @@ func (m *Manager) AuthenticateWithIP(ctx context.Context, username, database, db
 
 	perm, ok := m.GetPermission(username)
 	if !ok {
-		m.logger.WithFields(logrus.Fields{
+		m.logger.WithFields(logging.Fields{
 			"username": username,
 		}).Warn("Authentication failed: no permissions found")
 		m.cacheAuthResult(ctx, cacheKey, false)
@@ -149,7 +150,7 @@ func (m *Manager) AuthenticateWithIP(ctx context.Context, username, database, db
 
 	// Check database access
 	if perm.Database != "*" && perm.Database != database {
-		m.logger.WithFields(logrus.Fields{
+		m.logger.WithFields(logging.Fields{
 			"username": username,
 			"database": database,
 		}).Warn("Authentication failed: database access denied")
@@ -159,7 +160,7 @@ func (m *Manager) AuthenticateWithIP(ctx context.Context, username, database, db
 
 	// Check permission expiration
 	if perm.TimeLimit != nil && time.Now().After(*perm.TimeLimit) {
-		m.logger.WithFields(logrus.Fields{
+		m.logger.WithFields(logging.Fields{
 			"username": username,
 			"database": database,
 		}).Warn("Authentication failed: database access expired")
@@ -258,7 +259,7 @@ func (m *Manager) ValidateAPIKey(ctx context.Context, apiKey, database, dbType s
 		if user.APIKey == apiKey && user.Enabled {
 			// Check if user can access this database
 			if m.AuthenticateWithIP(ctx, username, database, dbType, "") {
-				m.logger.WithFields(logrus.Fields{
+				m.logger.WithFields(logging.Fields{
 					"username": username,
 				}).Info("API key authentication successful")
 				return username, true
@@ -267,7 +268,7 @@ func (m *Manager) ValidateAPIKey(ctx context.Context, apiKey, database, dbType s
 	}
 
 	if len(apiKey) > 8 {
-		m.logger.WithFields(logrus.Fields{
+		m.logger.WithFields(logging.Fields{
 			"key_prefix": apiKey[:8] + "...",
 		}).Warn("API key authentication failed")
 	}
@@ -340,7 +341,7 @@ func (m *Manager) CheckRateLimit(ctx context.Context, username string) bool {
 	}
 
 	if current >= user.RateLimit {
-		m.logger.WithFields(logrus.Fields{
+		m.logger.WithFields(logging.Fields{
 			"username": username,
 			"limit":    user.RateLimit,
 			"current":  current,

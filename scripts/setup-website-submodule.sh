@@ -82,7 +82,7 @@ fi
 
 # Check what directories are present
 print_status "Website submodule contents:"
-ls -la website/ | while read line; do
+find . -ls website/ | while read -r line; do
     echo "  $line"
 done
 

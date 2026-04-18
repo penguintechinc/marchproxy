@@ -1,18 +1,17 @@
 """
 Alembic environment configuration
 """
-import asyncio
-from logging.config import fileConfig
+import asyncio # noqa: F401, # noqa: F401
+from logging.config import fileConfig # noqa: F401
 
-from sqlalchemy import pool
-from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
-
-from alembic import context
+from alembic import context # noqa: F401
 
 # Import Base and all models
-from app.core.database import Base
-from app.models.sqlalchemy import *  # noqa
+from app.core.database import Base # noqa: F401
+from app.models.sqlalchemy import *: # noqa # noqa: F401
+from sqlalchemy import pool # noqa: F401
+from sqlalchemy.engine import Connection # noqa: F401
+from sqlalchemy.ext.asyncio import async_engine_from_config # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

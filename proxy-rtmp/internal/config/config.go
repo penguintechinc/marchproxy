@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -115,6 +116,7 @@ func Load(cfgFile string) (*Config, error) {
 
 	// Environment variables
 	viper.SetEnvPrefix("RTMP")
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.AutomaticEnv()
 
 	// Read config file (optional)

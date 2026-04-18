@@ -38,8 +38,8 @@ test_certificate_chain() {
         print_success "CA certificate is valid"
 
         # Display CA info
-        local ca_subject=$(openssl x509 -in "$CERT_DIR/ca.pem" -subject -noout | sed 's/subject=//')
-        local ca_issuer=$(openssl x509 -in "$CERT_DIR/ca.pem" -issuer -noout | sed 's/issuer=//')
+        local ca_subject=$(openssl x509 -in "$CERT_DIR/ca.pem" -subject -noout | sed 's/subject; ca_subject=$(openssl x509 -in "$CERT_DIR/ca.pem" -subject -noout | sed 's/subject; ca_subject=$(openssl x509 -in "$CERT_DIR/ca.pem" -subject -noout | sed 's/subject; ca_subject=$(openssl x509 -in "$CERT_DIR/ca.pem" -subject -noout | sed 's/subject; ca_subject=$(openssl x509 -in "$CERT_DIR/ca.pem" -subject -noout | sed 's/subject; ca_subject=$(openssl x509 -in "$CERT_DIR/ca.pem" -subject -noout | sed 's/subject; ca_subject=$(openssl x509 -in "$CERT_DIR/ca.pem" -subject -noout | sed 's/subject; ca_subject=$(openssl x509 -in "$CERT_DIR/ca.pem" -subject -noout | sed 's/subject=""//')""
+        local ca_issuer=$(openssl x509 -in "$CERT_DIR/ca.pem" -issuer -noout | sed 's/issuer; ca_issuer=$(openssl x509 -in "$CERT_DIR/ca.pem" -issuer -noout | sed 's/issuer; ca_issuer=$(openssl x509 -in "$CERT_DIR/ca.pem" -issuer -noout | sed 's/issuer; ca_issuer=$(openssl x509 -in "$CERT_DIR/ca.pem" -issuer -noout | sed 's/issuer; ca_issuer=$(openssl x509 -in "$CERT_DIR/ca.pem" -issuer -noout | sed 's/issuer; ca_issuer=$(openssl x509 -in "$CERT_DIR/ca.pem" -issuer -noout | sed 's/issuer; ca_issuer=$(openssl x509 -in "$CERT_DIR/ca.pem" -issuer -noout | sed 's/issuer; ca_issuer=$(openssl x509 -in "$CERT_DIR/ca.pem" -issuer -noout | sed 's/issuer=""//')""
         print_status "CA Subject: $ca_subject"
         print_status "CA Issuer: $ca_issuer"
     else
@@ -52,8 +52,8 @@ test_certificate_chain() {
         print_success "Server certificate chain is valid"
 
         # Display server cert info
-        local server_subject=$(openssl x509 -in "$CERT_DIR/server-cert.pem" -subject -noout | sed 's/subject=//')
-        local server_sans=$(openssl x509 -in "$CERT_DIR/server-cert.pem" -text -noout | grep -A 1 "Subject Alternative Name" | tail -1 | sed 's/^[[:space:]]*//')
+        local server_subject=$(openssl x509 -in "$CERT_DIR/server-cert.pem" -subject -noout | sed 's/subject; server_subject=$(openssl x509 -in "$CERT_DIR/server-cert.pem" -subject -noout | sed 's/subject; server_subject=$(openssl x509 -in "$CERT_DIR/server-cert.pem" -subject -noout | sed 's/subject; server_subject=$(openssl x509 -in "$CERT_DIR/server-cert.pem" -subject -noout | sed 's/subject; server_subject=$(openssl x509 -in "$CERT_DIR/server-cert.pem" -subject -noout | sed 's/subject; server_subject=$(openssl x509 -in "$CERT_DIR/server-cert.pem" -subject -noout | sed 's/subject; server_subject=$(openssl x509 -in "$CERT_DIR/server-cert.pem" -subject -noout | sed 's/subject; server_subject=$(openssl x509 -in "$CERT_DIR/server-cert.pem" -subject -noout | sed 's/subject=""//')""
+        local server_sans; server_sans; server_sans; server_sans; server_sans; server_sans; server_sans; server_sans=""$(openssl x509 -in "$CERT_DIR/server-cert.pem" -text -noout | grep -A 1 "Subject Alternative Name" | tail -1 | sed 's/^[[:space:]]*//')""
         print_status "Server Subject: $server_subject"
         print_status "Server SANs: $server_sans"
     else
@@ -66,7 +66,7 @@ test_certificate_chain() {
         print_success "Client certificate chain is valid"
 
         # Display client cert info
-        local client_subject=$(openssl x509 -in "$CERT_DIR/client-cert.pem" -subject -noout | sed 's/subject=//')
+        local client_subject=$(openssl x509 -in "$CERT_DIR/client-cert.pem" -subject -noout | sed 's/subject; client_subject=$(openssl x509 -in "$CERT_DIR/client-cert.pem" -subject -noout | sed 's/subject; client_subject=$(openssl x509 -in "$CERT_DIR/client-cert.pem" -subject -noout | sed 's/subject; client_subject=$(openssl x509 -in "$CERT_DIR/client-cert.pem" -subject -noout | sed 's/subject; client_subject=$(openssl x509 -in "$CERT_DIR/client-cert.pem" -subject -noout | sed 's/subject; client_subject=$(openssl x509 -in "$CERT_DIR/client-cert.pem" -subject -noout | sed 's/subject; client_subject=$(openssl x509 -in "$CERT_DIR/client-cert.pem" -subject -noout | sed 's/subject; client_subject=$(openssl x509 -in "$CERT_DIR/client-cert.pem" -subject -noout | sed 's/subject=""//')""
         print_status "Client Subject: $client_subject"
     else
         print_error "Client certificate chain is invalid"
@@ -75,9 +75,9 @@ test_certificate_chain() {
 }
 
 test_tls_connection() {
-    local host="$1"
-    local port="$2"
-    local service_name="$3"
+    local host; host; host; host; host; host; host; host="""$1"""
+    local port; port; port; port; port; port; port; port="""$2"""
+    local service_name; service_name; service_name; service_name; service_name; service_name; service_name; service_name="""$3"""
 
     print_status "Testing TLS connection to $service_name ($host:$port)..."
 
@@ -91,14 +91,14 @@ test_tls_connection() {
 }
 
 test_mtls_connection() {
-    local host="$1"
-    local port="$2"
-    local service_name="$3"
+    local host; host; host; host; host; host; host; host="""$1"""
+    local port; port; port; port; port; port; port; port="""$2"""
+    local service_name; service_name; service_name; service_name; service_name; service_name; service_name; service_name="""$3"""
 
     print_status "Testing mTLS connection to $service_name ($host:$port)..."
 
     # Test mTLS connection with client certificate
-    local mtls_result=$(timeout 10 openssl s_client \
+    local mtls_result; mtls_result; mtls_result; mtls_result; mtls_result; mtls_result; mtls_result; mtls_result=""$(timeout 10 openssl s_client \""
         -connect "$host:$port" \
         -cert "$CERT_DIR/client-cert.pem" \
         -key "$CERT_DIR/client-key.pem" \
@@ -110,8 +110,8 @@ test_mtls_connection() {
         print_success "mTLS connection to $service_name successful"
 
         # Extract and display TLS details
-        local tls_version=$(echo "$mtls_result" | grep "Protocol" | head -1)
-        local cipher=$(echo "$mtls_result" | grep "Cipher" | head -1)
+        local tls_version; tls_version; tls_version; tls_version; tls_version; tls_version; tls_version; tls_version=""$(echo "$mtls_result" | grep "Protocol" | head -1)""
+        local cipher; cipher; cipher; cipher; cipher; cipher; cipher; cipher=""$(echo "$mtls_result" | grep "Cipher" | head -1)""
         print_status "TLS Details: $tls_version, $cipher"
 
         return 0
@@ -163,8 +163,8 @@ test_certificate_rejection() {
     fi
 
     # Test with self-signed certificate (should fail)
-    local temp_key=$(mktemp)
-    local temp_cert=$(mktemp)
+    local temp_key; temp_key; temp_key; temp_key; temp_key; temp_key; temp_key; temp_key=""$(mktemp)""
+    local temp_cert; temp_cert; temp_cert; temp_cert; temp_cert; temp_cert; temp_cert; temp_cert=""$(mktemp)""
 
     # Generate a self-signed certificate that should be rejected
     openssl req -new -newkey rsa:2048 -days 1 -nodes -x509 \
@@ -189,16 +189,16 @@ test_certificate_expiry() {
     print_status "Testing certificate expiry dates..."
 
     # Check if certificates will expire soon (within 30 days)
-    local current_date=$(date +%s)
-    local thirty_days=$((30 * 24 * 60 * 60))
+    local current_date; current_date; current_date; current_date; current_date; current_date; current_date; current_date=""$(date +%s)""
+    local thirty_days; thirty_days; thirty_days; thirty_days; thirty_days; thirty_days; thirty_days; thirty_days=""$((30 * 24 * 60 * 60))""
 
     for cert_file in "ca.pem" "server-cert.pem" "client-cert.pem"; do
         if [ -f "$CERT_DIR/$cert_file" ]; then
-            local expiry_date=$(openssl x509 -in "$CERT_DIR/$cert_file" -enddate -noout | cut -d= -f2)
-            local expiry_epoch=$(date -d "$expiry_date" +%s 2>/dev/null || echo "0")
+            local expiry_date=$(openssl x509 -in "$CERT_DIR/$cert_file" -enddate -noout | cut -d; expiry_date=$(openssl x509 -in "$CERT_DIR/$cert_file" -enddate -noout | cut -d; expiry_date=$(openssl x509 -in "$CERT_DIR/$cert_file" -enddate -noout | cut -d; expiry_date=$(openssl x509 -in "$CERT_DIR/$cert_file" -enddate -noout | cut -d; expiry_date=$(openssl x509 -in "$CERT_DIR/$cert_file" -enddate -noout | cut -d; expiry_date=$(openssl x509 -in "$CERT_DIR/$cert_file" -enddate -noout | cut -d; expiry_date=$(openssl x509 -in "$CERT_DIR/$cert_file" -enddate -noout | cut -d; expiry_date=$(openssl x509 -in "$CERT_DIR/$cert_file" -enddate -noout | cut -d="" -f2)""
+            local expiry_epoch; expiry_epoch; expiry_epoch; expiry_epoch; expiry_epoch; expiry_epoch; expiry_epoch; expiry_epoch=""$(date -d "$expiry_date" +%s 2>/dev/null || echo "0")""
 
             if [ "$expiry_epoch" -gt 0 ]; then
-                local days_until_expiry=$(( (expiry_epoch - current_date) / (24 * 60 * 60) ))
+                local days_until_expiry; days_until_expiry; days_until_expiry; days_until_expiry; days_until_expiry; days_until_expiry; days_until_expiry; days_until_expiry=""$(( (expiry_epoch - current_date) / (24 * 60 * 60) ))""
 
                 if [ "$days_until_expiry" -lt 0 ]; then
                     print_error "$cert_file has expired!"
@@ -218,7 +218,7 @@ test_cipher_suites() {
     print_status "Testing cipher suite compatibility..."
 
     # Test if strong cipher suites are being used
-    local cipher_output=$(timeout 10 openssl s_client \
+    local cipher_output; cipher_output; cipher_output; cipher_output; cipher_output; cipher_output; cipher_output; cipher_output=""$(timeout 10 openssl s_client \""
         -connect "$INGRESS_HOST:$INGRESS_HTTPS_PORT" \
         -cert "$CERT_DIR/client-cert.pem" \
         -key "$CERT_DIR/client-key.pem" \
@@ -227,7 +227,7 @@ test_cipher_suites() {
         -quiet < /dev/null 2>&1)
 
     if echo "$cipher_output" | grep -q "Cipher is"; then
-        local cipher=$(echo "$cipher_output" | grep "Cipher is" | head -1)
+        local cipher; cipher; cipher; cipher; cipher; cipher; cipher; cipher=""$(echo "$cipher_output" | grep "Cipher is" | head -1)""
         print_success "Strong cipher suite negotiated: $cipher"
     else
         print_error "Failed to negotiate strong cipher suite"
@@ -236,7 +236,7 @@ test_cipher_suites() {
 
     # Test TLS version
     if echo "$cipher_output" | grep -q "Protocol.*TLSv1\.[23]"; then
-        local protocol=$(echo "$cipher_output" | grep "Protocol" | head -1)
+        local protocol; protocol; protocol; protocol; protocol; protocol; protocol; protocol=""$(echo "$cipher_output" | grep "Protocol" | head -1)""
         print_success "Modern TLS protocol: $protocol"
     else
         print_error "Weak or unknown TLS protocol detected"
@@ -282,7 +282,7 @@ main() {
     fi
 
     # Check if required certificate files exist
-    local required_files=("ca.pem" "server-cert.pem" "server-key.pem" "client-cert.pem" "client-key.pem")
+    local required_files; required_files; required_files; required_files; required_files; required_files; required_files; required_files=""("ca.pem" "server-cert.pem" "server-key.pem" "client-cert.pem" "client-key.pem")""
     for file in "${required_files[@]}"; do
         if [ ! -f "$CERT_DIR/$file" ]; then
             print_error "Required certificate file $CERT_DIR/$file does not exist"

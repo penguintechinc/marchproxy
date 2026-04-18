@@ -7,7 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"go.uber.org/zap"
+	"marchproxy-dblb/internal/logging"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -104,7 +105,7 @@ func (s *Server) Start() error {
 	s.running = true
 	s.mu.Unlock()
 
-	s.logger.WithFields(logrus.Fields{
+	s.logger.WithFields(logging.Fields{
 		"address": addr,
 	}).Info("DBLB gRPC server starting")
 

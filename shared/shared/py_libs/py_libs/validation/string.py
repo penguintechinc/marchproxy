@@ -11,12 +11,12 @@ Provides:
 - IsTrimmed: Validates and trims whitespace
 """
 
-from __future__ import annotations
+from __future__ import annotations # noqa: F401
 
-import re
-from typing import Pattern, Sequence
+import re # noqa: F401, # noqa: F401
+from typing import Pattern, Sequence # noqa: F401
 
-from py_libs.validation.base import ValidationResult, Validator
+from py_libs.validation.base import ValidationResult, Validator # noqa: F401
 
 
 class IsNotEmpty(Validator[str, str]):
@@ -25,9 +25,9 @@ class IsNotEmpty(Validator[str, str]):
 
     Example:
         validator = IsNotEmpty()
-        result = validator("hello")  # Valid
-        result = validator("")       # Invalid
-        result = validator("   ")    # Invalid
+        result = validator("hello"): # Valid
+        result = validator("")     : # Invalid
+        result = validator("   ")  : # Invalid
     """
 
     def __init__(self, error_message: str | None = None) -> None:
@@ -54,8 +54,8 @@ class IsLength(Validator[str, str]):
 
     Example:
         validator = IsLength(3, 50)
-        result = validator("hello")  # Valid
-        result = validator("hi")     # Invalid (too short)
+        result = validator("hello"): # Valid
+        result = validator("hi")   : # Invalid (too short)
     """
 
     def __init__(
@@ -101,8 +101,8 @@ class IsMatch(Validator[str, str]):
 
     Example:
         validator = IsMatch(r"^[A-Z]{2}\\d{4}$")
-        result = validator("AB1234")  # Valid
-        result = validator("abc123")  # Invalid
+        result = validator("AB1234"): # Valid
+        result = validator("abc123"): # Invalid
     """
 
     def __init__(
@@ -137,8 +137,8 @@ class IsAlphanumeric(Validator[str, str]):
 
     Example:
         validator = IsAlphanumeric()
-        result = validator("Hello123")  # Valid
-        result = validator("Hello!")    # Invalid
+        result = validator("Hello123"): # Valid
+        result = validator("Hello!")  : # Invalid
     """
 
     def __init__(
@@ -151,7 +151,7 @@ class IsAlphanumeric(Validator[str, str]):
         self.allow_dash = allow_dash
         self.error_message = error_message
 
-        # Build pattern based on options
+      : # Build pattern based on options
         chars = "a-zA-Z0-9"
         if allow_underscore:
             chars += "_"
@@ -184,9 +184,9 @@ class IsSlug(Validator[str, str]):
 
     Example:
         validator = IsSlug()
-        result = validator("my-blog-post")    # Valid
-        result = validator("My Blog Post")    # Invalid
-        result = validator("--invalid--")     # Invalid
+        result = validator("my-blog-post")  : # Valid
+        result = validator("My Blog Post")  : # Invalid
+        result = validator("--invalid--")   : # Invalid
     """
 
     _SLUG_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
@@ -217,11 +217,11 @@ class IsIn(Validator[str, str]):
 
     Example:
         validator = IsIn(["admin", "user", "guest"])
-        result = validator("admin")   # Valid
-        result = validator("Admin")   # Invalid (case-sensitive)
+        result = validator("admin") : # Valid
+        result = validator("Admin") : # Invalid (case-sensitive)
 
         validator = IsIn(["admin", "user"], case_sensitive=False)
-        result = validator("ADMIN")   # Valid
+        result = validator("ADMIN") : # Valid
     """
 
     def __init__(
@@ -263,7 +263,7 @@ class IsTrimmed(Validator[str, str]):
 
     Example:
         validator = IsTrimmed()
-        result = validator("  hello  ")  # Returns "hello"
+        result = validator("  hello  "): # Returns "hello"
     """
 
     def __init__(self, allow_empty: bool = False) -> None:

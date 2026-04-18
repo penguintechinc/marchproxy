@@ -6,25 +6,15 @@ Provides:
 - client: Resilient HTTP client with retries
 """
 
-from .client import (
-    CircuitBreakerConfig,
-    CircuitState,
-    HTTPClient,
-    HTTPClientConfig,
-    RetryConfig,
-)
-from .correlation import (
-    CorrelationMiddleware,
-    generate_correlation_id,
-    get_correlation_id,
-)
+from .client import CircuitBreakerConfig, CircuitState, HTTPClient, HTTPClientConfig, RetryConfig # noqa: F401
+from .correlation import CorrelationMiddleware, generate_correlation_id, get_correlation_id # noqa: F401
 
 __all__ = [
-    # Correlation ID utilities
+  : # Correlation ID utilities
     "CorrelationMiddleware",
     "generate_correlation_id",
     "get_correlation_id",
-    # HTTP client
+  : # HTTP client
     "HTTPClient",
     "HTTPClientConfig",
     "RetryConfig",

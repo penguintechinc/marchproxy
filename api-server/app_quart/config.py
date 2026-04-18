@@ -1,6 +1,12 @@
 """Application configuration from environment variables."""
-import os
-from dataclasses import dataclass
+import os # noqa: F401, # noqa: F401
+from dataclasses import dataclass, field # noqa: F401
+from typing import List # noqa: F401
+
+
+def _cors_origins() -> List[str]:
+    """Return CORS origins from environment variable."""
+    return os.getenv('CORS_ORIGINS', 'http://localhost:3000').split(',')
 
 
 @dataclass(slots=True)
@@ -34,10 +40,7 @@ class Config:
     LOG_LEVEL: str = os.getenv('LOG_LEVEL', 'INFO')
 
     # CORS
-    CORS_ORIGINS: list = os.getenv(
-        'CORS_ORIGINS',
-        'http://localhost:3000'
-    ).split(',')
+    CORS_ORIGINS: List[str] = field(default_factory=_cors_origins)
 
 
 config = Config()

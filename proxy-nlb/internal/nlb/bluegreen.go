@@ -6,9 +6,10 @@ import (
 	"sync"
 	"time"
 
+	"marchproxy-nlb/internal/logging"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"go.uber.org/zap"
 )
 
 var (
@@ -117,7 +118,7 @@ func (bgc *BlueGreenController) InitializeDeployment(protocol Protocol, version 
 	blueGreenSplits.WithLabelValues(protocol.String(), deployment.BlueVersion, "blue").Set(float64(deployment.BlueWeight))
 	blueGreenSplits.WithLabelValues(protocol.String(), deployment.GreenVersion, "green").Set(float64(deployment.GreenWeight))
 
-	bgc.logger.WithFields(logrus.Fields{
+	bgc.logger.WithFields(logging.Fields{
 		"protocol": protocol.String(),
 		"version":  version,
 		"color":    color,
@@ -161,7 +162,7 @@ func (bgc *BlueGreenController) StartCanaryDeployment(protocol Protocol, newVers
 
 	blueGreenDeployments.WithLabelValues(protocol.String(), "started").Inc()
 
-	bgc.logger.WithFields(logrus.Fields{
+	bgc.logger.WithFields(logging.Fields{
 		"protocol":      protocol.String(),
 		"new_version":   newVersion,
 		"target_color":  targetColor,
@@ -236,7 +237,7 @@ func (bgc *BlueGreenController) stepRollout(protocol Protocol) (bool, error) {
 	blueGreenSplits.WithLabelValues(protocol.String(), deployment.BlueVersion, "blue").Set(float64(deployment.BlueWeight))
 	blueGreenSplits.WithLabelValues(protocol.String(), deployment.GreenVersion, "green").Set(float64(deployment.GreenWeight))
 
-	bgc.logger.WithFields(logrus.Fields{
+	bgc.logger.WithFields(logging.Fields{
 		"protocol":     protocol.String(),
 		"blue_weight":  deployment.BlueWeight,
 		"green_weight": deployment.GreenWeight,
@@ -285,7 +286,7 @@ func (bgc *BlueGreenController) InstantSwitch(protocol Protocol, targetColor Dep
 
 	blueGreenDeployments.WithLabelValues(protocol.String(), "instant_switch").Inc()
 
-	bgc.logger.WithFields(logrus.Fields{
+	bgc.logger.WithFields(logging.Fields{
 		"protocol":     protocol.String(),
 		"target_color": targetColor,
 	}).Info("Instant switch completed")
@@ -322,7 +323,7 @@ func (bgc *BlueGreenController) Rollback(protocol Protocol) error {
 
 	blueGreenRollbacks.Inc()
 
-	bgc.logger.WithFields(logrus.Fields{
+	bgc.logger.WithFields(logging.Fields{
 		"protocol":     protocol.String(),
 		"active_color": deployment.ActiveColor,
 	}).Warn("Deployment rolled back")

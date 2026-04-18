@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/penguintechinc/penguin-libs/packages/go-common/logging"
 	"go.uber.org/zap"
 )
 
@@ -19,6 +20,7 @@ type MTLSAuthenticator struct {
 	metrics     *MTLSMetrics
 	mutex       sync.RWMutex
 	initialized bool
+	logger      *logging.SanitizedLogger
 }
 
 type MTLSConfig struct {
@@ -83,17 +85,24 @@ type ClientCertInfo struct {
 }
 
 func NewMTLSAuthenticator(config MTLSConfig) (*MTLSAuthenticator, error) {
+	logger, err := logging.NewSanitizedLogger("mtls_auth")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create logger: %w", err)
+	}
+
 	if !config.Enabled {
 		return &MTLSAuthenticator{
 			config:      config,
 			metrics:     &MTLSMetrics{},
 			initialized: false,
+			logger:      logger,
 		}, nil
 	}
 
 	auth := &MTLSAuthenticator{
 		config:  config,
 		metrics: &MTLSMetrics{},
+		logger:  logger,
 	}
 
 	if err := auth.initialize(); err != nil {
@@ -151,7 +160,7 @@ func (m *MTLSAuthenticator) initialize() error {
 	}
 
 	m.initialized = true
-	logger.Info("mTLS authenticator initialized successfully")
+	m.logger.Info("mTLS authenticator initialized successfully")
 	return nil
 }
 
@@ -167,14 +176,14 @@ func (m *MTLSAuthenticator) loadClientCAs() error {
 		if !m.certPool.AppendCertsFromPEM(caCert) {
 			return fmt.Errorf("failed to parse CA certificate")
 		}
-		logger.Info("Loaded CA certificate from %s", m.config.ClientCAPath)
+		m.logger.Info("Loaded CA certificate from path", zap.String("path", m.config.ClientCAPath))
 	}
 
 	for i, caData := range m.config.ClientCABundle {
 		if !m.certPool.AppendCertsFromPEM([]byte(caData)) {
 			return fmt.Errorf("failed to parse CA certificate bundle entry %d", i)
 		}
-		logger.Info("Loaded CA certificate from bundle entry %d", i)
+		m.logger.Info("Loaded CA certificate from bundle entry", zap.Int("entry", i))
 	}
 
 	if len(m.certPool.Subjects()) == 0 {
@@ -252,7 +261,7 @@ func (m *MTLSAuthenticator) verifyClientCertificate(rawCerts [][]byte, verifiedC
 func (m *MTLSAuthenticator) validateClientCertificate(cert *x509.Certificate, chain []*x509.Certificate) error {
 	if time.Now().After(cert.NotAfter) {
 		if m.config.CertExpiredGrace > 0 && time.Since(cert.NotAfter) <= m.config.CertExpiredGrace {
-			logger.Warn("Accepting expired certificate within grace period: %s", cert.Subject)
+			m.logger.Warn("Accepting expired certificate within grace period", zap.String("subject", cert.Subject.String()))
 		} else {
 			m.metrics.recordExpiredCert()
 			return fmt.Errorf("client certificate expired on %s", cert.NotAfter.Format(time.RFC3339))
@@ -333,7 +342,7 @@ func (m *MTLSAuthenticator) Reload() error {
 		return nil
 	}
 
-	logger.Info("Reloading mTLS configuration")
+	m.logger.Info("Reloading mTLS configuration")
 
 	cert, err := tls.LoadX509KeyPair(m.config.ServerCertPath, m.config.ServerKeyPath)
 	if err != nil {
@@ -349,7 +358,7 @@ func (m *MTLSAuthenticator) Reload() error {
 		m.tlsConfig.ClientCAs = m.certPool
 	}
 
-	logger.Info("mTLS configuration reloaded successfully")
+	m.logger.Info("mTLS configuration reloaded successfully")
 	return nil
 }
 

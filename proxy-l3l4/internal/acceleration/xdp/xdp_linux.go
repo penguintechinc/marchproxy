@@ -1,4 +1,5 @@
-//go:build linux
+//go:build xdp
+// +build xdp
 
 package xdp
 

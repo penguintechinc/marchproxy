@@ -30,6 +30,249 @@ func TestNewConfig(t *testing.T) {
 	}
 }
 
+// TestConfigStructFields validates all configuration structure fields
+func TestConfigStructFields(t *testing.T) {
+	tests := []struct {
+		name string
+		test func(*testing.T)
+	}{
+		{
+			name: "L7Config fields",
+			test: func(t *testing.T) {
+				cfg := &L7Config{
+					Enabled:         true,
+					EnvoyBinary:     "/usr/bin/envoy",
+					EnvoyAdminPort:  9001,
+					HTTPListenPort:  8080,
+					HTTPSListenPort: 8443,
+					HTTP3Enabled:    true,
+				}
+				if !cfg.Enabled || cfg.EnvoyAdminPort != 9001 {
+					t.Error("L7Config field validation failed")
+				}
+			},
+		},
+		{
+			name: "ThreatConfig fields",
+			test: func(t *testing.T) {
+				cfg := &ThreatConfig{
+					Enabled:               true,
+					IPBlockingEnabled:     true,
+					IPCacheSize:           1000,
+					DomainBlockingEnabled: true,
+					URLMatchEngine:        "re2",
+				}
+				if !cfg.Enabled || cfg.IPCacheSize != 1000 {
+					t.Error("ThreatConfig field validation failed")
+				}
+			},
+		},
+		{
+			name: "TLSInterceptConfig fields",
+			test: func(t *testing.T) {
+				cfg := &TLSInterceptConfig{
+					Enabled:       true,
+					Mode:          "mitm",
+					CACertPath:    "/etc/certs/ca.crt",
+					CertCacheSize: 5000,
+				}
+				if !cfg.Enabled || cfg.CertCacheSize != 5000 {
+					t.Error("TLSInterceptConfig field validation failed")
+				}
+			},
+		},
+		{
+			name: "ExtAuthConfig fields",
+			test: func(t *testing.T) {
+				cfg := &ExtAuthConfig{
+					Enabled: true,
+					Port:    9000,
+					Host:    "127.0.0.1",
+				}
+				if !cfg.Enabled || cfg.Port != 9000 {
+					t.Error("ExtAuthConfig field validation failed")
+				}
+			},
+		},
+		{
+			name: "AccessControlConfig fields",
+			test: func(t *testing.T) {
+				cfg := &AccessControlConfig{
+					Enabled:            true,
+					DefaultRequireAuth: true,
+					DefaultAllow:       false,
+				}
+				if !cfg.Enabled || cfg.DefaultAllow {
+					t.Error("AccessControlConfig field validation failed")
+				}
+			},
+		},
+		{
+			name: "LeversConfig fields",
+			test: func(t *testing.T) {
+				cfg := &LeversConfig{
+					Enabled:    true,
+					ListenAddr: "127.0.0.1:9010",
+				}
+				if !cfg.Enabled {
+					t.Error("LeversConfig field validation failed")
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.test(t)
+		})
+	}
+}
+
+// TestConfigManagerSettings validates manager-related config
+func TestConfigManagerSettings(t *testing.T) {
+	config := NewConfig()
+	config.ManagerURL = "http://manager:9000"
+	config.ClusterAPIKey = "test-api-key"
+
+	if config.ManagerURL != "http://manager:9000" {
+		t.Errorf("expected ManagerURL 'http://manager:9000', got %s", config.ManagerURL)
+	}
+	if config.ClusterAPIKey != "test-api-key" {
+		t.Errorf("expected ClusterAPIKey 'test-api-key', got %s", config.ClusterAPIKey)
+	}
+}
+
+// TestConfigProxySettings validates proxy-related config
+func TestConfigProxySettings(t *testing.T) {
+	config := NewConfig()
+	config.ProxyName = "proxy-egress-1"
+	config.Hostname = "proxy.example.com"
+	config.ListenPort = 9000
+	config.AdminPort = 9001
+
+	if config.ProxyName != "proxy-egress-1" {
+		t.Errorf("expected ProxyName 'proxy-egress-1', got %s", config.ProxyName)
+	}
+	if config.ListenPort != 9000 {
+		t.Errorf("expected ListenPort 9000, got %d", config.ListenPort)
+	}
+}
+
+// TestConfigPerformanceSettings validates performance-related config
+func TestConfigPerformanceSettings(t *testing.T) {
+	config := NewConfig()
+	config.EnableEBPF = true
+	config.EnableMetrics = true
+	config.WorkerThreads = 8
+
+	if !config.EnableEBPF {
+		t.Error("expected EnableEBPF to be true")
+	}
+	if config.WorkerThreads != 8 {
+		t.Errorf("expected WorkerThreads 8, got %d", config.WorkerThreads)
+	}
+}
+
+// TestConfigNetworkAcceleration validates network acceleration options
+func TestConfigNetworkAcceleration(t *testing.T) {
+	config := NewConfig()
+	config.EnableDPDK = true
+	config.EnableXDP = true
+	config.EnableAFXDP = false
+	config.DPDKDevices = "0000:01:00.0,0000:01:00.1"
+
+	if !config.EnableDPDK {
+		t.Error("expected EnableDPDK to be true")
+	}
+	if !config.EnableXDP {
+		t.Error("expected EnableXDP to be true")
+	}
+	if config.EnableAFXDP {
+		t.Error("expected EnableAFXDP to be false")
+	}
+	if config.DPDKDevices != "0000:01:00.0,0000:01:00.1" {
+		t.Errorf("expected DPDKDevices '0000:01:00.0,0000:01:00.1', got %s", config.DPDKDevices)
+	}
+}
+
+// TestConfigTLSSettings validates TLS configuration
+func TestConfigTLSSettings(t *testing.T) {
+	config := NewConfig()
+	config.TLSCertPath = "/etc/certs/server.crt"
+	config.TLSKeyPath = "/etc/certs/server.key"
+
+	if config.TLSCertPath != "/etc/certs/server.crt" {
+		t.Errorf("expected TLSCertPath '/etc/certs/server.crt', got %s", config.TLSCertPath)
+	}
+}
+
+// TestConfigMTLSSettings validates mutual TLS configuration
+func TestConfigMTLSSettings(t *testing.T) {
+	config := NewConfig()
+	config.EnableMTLS = true
+	config.MTLSServerCertPath = "/etc/certs/mtls-server.crt"
+	config.MTLSServerKeyPath = "/etc/certs/mtls-server.key"
+	config.MTLSClientCAPath = "/etc/certs/client-ca.crt"
+	config.MTLSRequireClientCert = true
+	config.MTLSVerifyClientCert = true
+
+	if !config.EnableMTLS {
+		t.Error("expected EnableMTLS to be true")
+	}
+	if !config.MTLSRequireClientCert {
+		t.Error("expected MTLSRequireClientCert to be true")
+	}
+}
+
+// TestConfigRateLimiting validates rate limit configuration
+func TestConfigRateLimiting(t *testing.T) {
+	config := NewConfig()
+	config.RateLimitEnabled = true
+	config.RateLimitRPS = 1000
+
+	if !config.RateLimitEnabled {
+		t.Error("expected RateLimitEnabled to be true")
+	}
+	if config.RateLimitRPS != 1000 {
+		t.Errorf("expected RateLimitRPS 1000, got %d", config.RateLimitRPS)
+	}
+}
+
+// TestConfigKillKrillIntegration validates KillKrill configuration
+func TestConfigKillKrillIntegration(t *testing.T) {
+	config := NewConfig()
+	config.KillKrillEnabled = true
+	config.KillKrillLogEndpoint = "http://killkrill:8000/logs"
+	config.KillKrillAPIKey = "test-api-key"
+	config.KillKrillBatchSize = 100
+	config.KillKrillFlushInterval = 5
+
+	if !config.KillKrillEnabled {
+		t.Error("expected KillKrillEnabled to be true")
+	}
+	if config.KillKrillBatchSize != 100 {
+		t.Errorf("expected KillKrillBatchSize 100, got %d", config.KillKrillBatchSize)
+	}
+}
+
+// TestConfigTimeouts validates timeout configuration
+func TestConfigTimeouts(t *testing.T) {
+	config := NewConfig()
+	config.ConfigUpdateInterval = 30
+	config.HeartbeatInterval = 60
+	config.ConnectionTimeout = 10
+
+	if config.ConfigUpdateInterval != 30 {
+		t.Errorf("expected ConfigUpdateInterval 30, got %d", config.ConfigUpdateInterval)
+	}
+	if config.HeartbeatInterval != 60 {
+		t.Errorf("expected HeartbeatInterval 60, got %d", config.HeartbeatInterval)
+	}
+	if config.ConnectionTimeout != 10 {
+		t.Errorf("expected ConnectionTimeout 10, got %d", config.ConnectionTimeout)
+	}
+}
+
 func TestLoadFromEnvironment(t *testing.T) {
 	// Set environment variables
 	os.Setenv("MANAGER_URL", "http://test-manager:8000")

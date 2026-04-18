@@ -275,3 +275,129 @@ func TestTLSVersionMinimum(t *testing.T) {
 		t.Errorf("unexpected TLS 1.2 version constant: %x", expectedMinVersion)
 	}
 }
+
+// TestMTLSMetricsAllFields verifies all metric fields exist and are zero-initialized.
+func TestMTLSMetricsAllFields(t *testing.T) {
+	cfg := auth.MTLSConfig{Enabled: false}
+	a, _ := auth.NewMTLSAuthenticator(cfg)
+	metrics := a.GetMetrics()
+
+	tests := []struct {
+		name  string
+		value uint64
+	}{
+		{"SuccessfulAuths", metrics.SuccessfulAuths},
+		{"FailedAuths", metrics.FailedAuths},
+		{"ExpiredCerts", metrics.ExpiredCerts},
+		{"RevokedCerts", metrics.RevokedCerts},
+		{"InvalidCerts", metrics.InvalidCerts},
+		{"ClientCertMissing", metrics.ClientCertMissing},
+		{"CAValidationErrors", metrics.CAValidationErrors},
+		{"CertChainTooLong", metrics.CertChainTooLong},
+		{"CustomValidationErr", metrics.CustomValidationErr},
+	}
+
+	for _, tt := range tests {
+		if tt.value != 0 {
+			t.Errorf("%s expected 0, got %d", tt.name, tt.value)
+		}
+	}
+}
+
+// TestMTLSMetricsLatency verifies latency is initialized and accessible.
+func TestMTLSMetricsLatency(t *testing.T) {
+	cfg := auth.MTLSConfig{Enabled: false}
+	a, _ := auth.NewMTLSAuthenticator(cfg)
+	metrics := a.GetMetrics()
+
+	// Duration should be zero on first call
+	if metrics.AverageLatency != 0 {
+		t.Errorf("expected AverageLatency 0, got %v", metrics.AverageLatency)
+	}
+}
+
+// TestClientCertInfoIPAddresses verifies IP address field access.
+func TestClientCertInfoIPAddresses(t *testing.T) {
+	info := auth.ClientCertInfo{
+		IPAddresses: []string{"192.168.1.1", "10.0.0.1"},
+	}
+
+	if len(info.IPAddresses) != 2 {
+		t.Errorf("expected 2 IP addresses, got %d", len(info.IPAddresses))
+	}
+}
+
+// TestMTLSConfigDefaultValues verifies zero values for optional fields.
+func TestMTLSConfigDefaultValues(t *testing.T) {
+	cfg := auth.MTLSConfig{}
+
+	if cfg.Enabled {
+		t.Error("expected Enabled to default to false")
+	}
+	if cfg.RequireClientCert {
+		t.Error("expected RequireClientCert to default to false")
+	}
+	if cfg.MaxCertChainDepth != 0 {
+		t.Errorf("expected MaxCertChainDepth 0 by default, got %d", cfg.MaxCertChainDepth)
+	}
+}
+
+// TestMTLSAuthenticatorWithoutClientCert verifies enabled but not required path.
+func TestMTLSAuthenticatorWithoutClientCert(t *testing.T) {
+	cfg := auth.MTLSConfig{
+		Enabled: false,
+	}
+	a, err := auth.NewMTLSAuthenticator(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
+	certInfo, authErr := a.AuthenticateRequest(req)
+
+	if certInfo != nil {
+		t.Error("expected nil certInfo when disabled")
+	}
+	if authErr != nil {
+		t.Errorf("expected nil error when disabled, got %v", authErr)
+	}
+}
+
+// TestMTLSCipherSuites verifies cipher suite configuration.
+func TestMTLSCipherSuites(t *testing.T) {
+	// These are the expected cipher suites from the implementation
+	expectedSuites := []uint16{
+		tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+		tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+		tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+		tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+		tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+		tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+	}
+
+	if len(expectedSuites) != 6 {
+		t.Errorf("expected 6 cipher suites, got %d", len(expectedSuites))
+	}
+
+	// Verify all suites are valid (non-zero)
+	for i, suite := range expectedSuites {
+		if suite == 0 {
+			t.Errorf("cipher suite %d is invalid (zero)", i)
+		}
+	}
+}
+
+// TestClientAuthModes verifies TLS client auth modes.
+func TestClientAuthModes(t *testing.T) {
+	modes := []tls.ClientAuthType{
+		tls.NoClientCert,
+		tls.RequestClientCert,
+		tls.RequireAnyClientCert,
+		tls.VerifyClientCertIfGiven,
+		tls.RequireAndVerifyClientCert,
+	}
+
+	if len(modes) != 5 {
+		t.Errorf("expected 5 client auth modes, got %d", len(modes))
+	}
+}

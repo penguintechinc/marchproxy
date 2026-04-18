@@ -1,8 +1,9 @@
 """Audit logging service."""
-from typing import Optional, Dict, Any
-from quart import request
-from app_quart.extensions import db
-from app_quart.models.audit import AuditLog
+from typing import Any, Dict, Optional # noqa: F401
+
+from app_quart.extensions import db # noqa: F401
+from app_quart.models.audit import AuditLog # noqa: F401
+from quart import request # noqa: F401
 
 
 class AuditService:

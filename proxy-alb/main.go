@@ -9,11 +9,10 @@ import (
 	"syscall"
 	"time"
 
-	"go.uber.org/zap"
-
 	"github.com/PenguinTech/MarchProxy/proxy-alb/internal/config"
 	"github.com/PenguinTech/MarchProxy/proxy-alb/internal/envoy"
 	"github.com/PenguinTech/MarchProxy/proxy-alb/internal/grpc"
+	"github.com/PenguinTech/MarchProxy/proxy-alb/internal/logging"
 	"github.com/PenguinTech/MarchProxy/proxy-alb/internal/metrics"
 )
 
@@ -25,9 +24,13 @@ var (
 
 func main() {
 	// Setup logger
-	logger := setupLogger()
+	logger, err := logging.NewLogrusAdapter("marchproxy")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to setup logger: %v\n", err)
+		os.Exit(1)
+	}
 
-	logger.WithFields(logrus.Fields{
+	logger.WithFields(logging.Fields{
 		"version":    version,
 		"build_time": buildTime,
 		"git_commit": gitCommit,
@@ -39,7 +42,7 @@ func main() {
 		logger.WithError(err).Fatal("Failed to load configuration")
 	}
 
-	logger.WithFields(logrus.Fields{
+	logger.WithFields(logging.Fields{
 		"module_id":   cfg.ModuleID,
 		"grpc_port":   cfg.GRPCPort,
 		"xds_server":  cfg.XDSServerAddr,
@@ -97,24 +100,6 @@ func main() {
 	waitForShutdown(ctx, cancel, cfg, envoyManager, grpcServer, logger)
 }
 
-// setupLogger configures the logger
-func setupLogger() *logging.LogrusAdapter {
-	logger := NewLogrusAdapter("marchproxy")
-	logger.SetOutput(os.Stdout)
-		TimestampFormat: time.RFC3339,
-	})
-
-	logLevel := os.Getenv("LOG_LEVEL")
-	switch logLevel {
-	case "debug":
-	case "info":
-	case "warn":
-	case "error":
-	default:
-	}
-
-	return logger
-}
 
 // startHealthCheckServer starts HTTP health check endpoint
 func startHealthCheckServer(port int, envoyMgr *envoy.Manager, logger *logging.LogrusAdapter) {

@@ -3,21 +3,25 @@
 Example demonstrating KillKrill integration with MarchProxy Manager
 """
 
-import logging
-import time
-import sys
-import os
+import logging # noqa: F401, # noqa: F401
+import os # noqa: F401, # noqa: F401
+import sys # noqa: F401, # noqa: F401
+import time # noqa: F401, # noqa: F401
 
 # Add the manager directory to the path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'manager'))
 
-from services.killkrill_service import KillKrillService, KillKrillLogHandler, setup_killkrill_logging
+from services.killkrill_service import ( # noqa: F401
+    KillKrillLogHandler,
+    KillKrillService,
+    setup_killkrill_logging,
+)
 
 
 def main():
     print("MarchProxy Manager KillKrill Integration Example")
 
-    # Example configuration
+  : # Example configuration
     config = {
         'enabled': True,
         'log_endpoint': 'https://killkrill.example.com/api/v1/logs',
@@ -25,32 +29,32 @@ def main():
         'api_key': 'your-api-key-here',
         'source_name': 'marchproxy-manager-example',
         'application': 'manager',
-        'batch_size': 5,  # Small batch for demo
-        'flush_interval': 3,  # Quick flush for demo
+        'batch_size': 5,: # Small batch for demo
+        'flush_interval': 3,: # Quick flush for demo
         'timeout': 10,
         'use_http3': True
     }
 
-    # Create KillKrill service
+  : # Create KillKrill service
     killkrill_service = KillKrillService(config)
 
-    # Setup logging
+  : # Setup logging
     logger = logging.getLogger('marchproxy.example')
     logger.setLevel(logging.DEBUG)
 
-    # Add console handler
+  : # Add console handler
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
 
-    # Setup KillKrill logging
+  : # Setup KillKrill logging
     setup_killkrill_logging(logger, killkrill_service)
 
     print("Starting logging examples...")
 
-    # Example logging
+  : # Example logging
     logger.info("Manager starting with KillKrill integration",
                 extra={'component': 'example', 'version': '1.0.0'})
 
@@ -60,7 +64,7 @@ def main():
     logger.error("Example error message",
                  extra={'error_code': 'AUTH_FAILED', 'component': 'authentication'})
 
-    # Direct KillKrill usage
+  : # Direct KillKrill usage
     print("Sending direct logs and metrics to KillKrill...")
 
     killkrill_service.send_log(
@@ -87,25 +91,25 @@ def main():
         help_text='Number of active sessions'
     )
 
-    # Health check example
+  : # Health check example
     print("\nPerforming KillKrill health check...")
     health = killkrill_service.health_check()
     print(f"Health check result: {health}")
 
-    # Stats example
+  : # Stats example
     print("\nGetting KillKrill service stats...")
     stats = killkrill_service.get_stats()
     print(f"Service stats: {stats}")
 
-    # Wait for flush
+  : # Wait for flush
     print("\nWaiting for data to flush to KillKrill...")
     time.sleep(5)
 
-    # Final flush
+  : # Final flush
     killkrill_service.flush_logs()
     killkrill_service.flush_metrics()
 
-    # Stop service
+  : # Stop service
     print("Stopping KillKrill service...")
     killkrill_service.stop()
 

@@ -377,3 +377,219 @@ class TestCreateClusterRequest:
     def test_max_proxies_negative_raises(self):
         with pytest.raises(ValidationError):
             CreateClusterRequest(name="abc", max_proxies=-1)
+
+
+# ---------------------------------------------------------------------------
+# create_default_cluster
+# ---------------------------------------------------------------------------
+
+class _FakeSelectResult:
+    """Fake PyDAL select result supporting len(), iter(), and first()."""
+    def __init__(self, items, first_item=None):
+        self._items = list(items) if items else []
+        self._first = first_item
+    def __iter__(self):
+        return iter(self._items)
+    def __len__(self):
+        return len(self._items)
+    def first(self):
+        return self._first
+
+
+class TestCreateDefaultCluster:
+    def _make_db(self, existing_default=None):
+        db = MagicMock(name="db")
+        query_mock = MagicMock()
+        select_result = _FakeSelectResult(
+            [existing_default] if existing_default else [],
+            first_item=existing_default,
+        )
+        query_mock.select = MagicMock(return_value=select_result)
+        db.return_value = query_mock
+        db.clusters = MagicMock()
+        db.clusters.insert = MagicMock(return_value=99)
+        return db
+
+    def test_returns_existing_when_default_exists(self):
+        existing = MagicMock()
+        existing.id = 7
+        db = self._make_db(existing_default=existing)
+        cluster_id, api_key = ClusterModel.create_default_cluster(db, created_by=1)
+        assert cluster_id == 7
+        assert api_key is None
+        db.clusters.insert.assert_not_called()
+
+    def test_creates_new_default_cluster_when_none_exists(self):
+        db = self._make_db(existing_default=None)
+        cluster_id, api_key = ClusterModel.create_default_cluster(db, created_by=1)
+        assert cluster_id == 99
+        assert api_key is not None
+        assert isinstance(api_key, str)
+        db.clusters.insert.assert_called_once()
+
+    def test_new_default_cluster_has_correct_fields(self):
+        db = self._make_db(existing_default=None)
+        ClusterModel.create_default_cluster(db, created_by=5)
+        call_kwargs = db.clusters.insert.call_args[1]
+        assert call_kwargs["name"] == "default"
+        assert call_kwargs["is_default"] is True
+        assert call_kwargs["is_active"] is True
+        assert call_kwargs["created_by"] == 5
+        assert call_kwargs["max_proxies"] == 3
+
+    def test_stored_api_key_is_hashed(self):
+        db = self._make_db(existing_default=None)
+        _, api_key = ClusterModel.create_default_cluster(db, created_by=1)
+        call_kwargs = db.clusters.insert.call_args[1]
+        expected_hash = ClusterModel.hash_api_key(api_key)
+        assert call_kwargs["api_key_hash"] == expected_hash
+
+
+# ---------------------------------------------------------------------------
+# update_logging_config
+# ---------------------------------------------------------------------------
+
+class TestUpdateLoggingConfig:
+    def _make_db(self, cluster_record=None):
+        db = MagicMock(name="db")
+        db.clusters = MagicMock()
+        db.clusters.__getitem__ = MagicMock(return_value=cluster_record)
+        return db
+
+    def test_returns_false_when_cluster_not_found(self):
+        db = self._make_db(cluster_record=None)
+        result = ClusterModel.update_logging_config(db, cluster_id=999)
+        assert result is False
+
+    def test_returns_true_on_success(self):
+        cluster = MagicMock()
+        cluster.update_record = MagicMock()
+        db = self._make_db(cluster_record=cluster)
+        result = ClusterModel.update_logging_config(db, cluster_id=1)
+        assert result is True
+
+    def test_updates_syslog_endpoint(self):
+        cluster = MagicMock()
+        cluster.update_record = MagicMock()
+        db = self._make_db(cluster_record=cluster)
+        ClusterModel.update_logging_config(db, cluster_id=1, syslog_endpoint="syslog.example.com:514")
+        call_kwargs = cluster.update_record.call_args[1]
+        assert call_kwargs["syslog_endpoint"] == "syslog.example.com:514"
+
+    def test_updates_log_auth_flag(self):
+        cluster = MagicMock()
+        cluster.update_record = MagicMock()
+        db = self._make_db(cluster_record=cluster)
+        ClusterModel.update_logging_config(db, cluster_id=1, log_auth=False)
+        call_kwargs = cluster.update_record.call_args[1]
+        assert call_kwargs["log_auth"] is False
+
+    def test_updates_log_netflow_flag(self):
+        cluster = MagicMock()
+        cluster.update_record = MagicMock()
+        db = self._make_db(cluster_record=cluster)
+        ClusterModel.update_logging_config(db, cluster_id=1, log_netflow=True)
+        call_kwargs = cluster.update_record.call_args[1]
+        assert call_kwargs["log_netflow"] is True
+
+    def test_updates_log_debug_flag(self):
+        cluster = MagicMock()
+        cluster.update_record = MagicMock()
+        db = self._make_db(cluster_record=cluster)
+        ClusterModel.update_logging_config(db, cluster_id=1, log_debug=True)
+        call_kwargs = cluster.update_record.call_args[1]
+        assert call_kwargs["log_debug"] is True
+
+    def test_none_values_are_not_included_in_update(self):
+        cluster = MagicMock()
+        cluster.update_record = MagicMock()
+        db = self._make_db(cluster_record=cluster)
+        ClusterModel.update_logging_config(db, cluster_id=1)
+        call_kwargs = cluster.update_record.call_args[1]
+        assert "syslog_endpoint" not in call_kwargs
+        assert "log_auth" not in call_kwargs
+        assert "log_netflow" not in call_kwargs
+        assert "log_debug" not in call_kwargs
+        assert "updated_at" in call_kwargs
+
+
+# ---------------------------------------------------------------------------
+# get_cluster_config
+# ---------------------------------------------------------------------------
+
+class TestGetClusterConfig:
+    def _make_cluster_record(self, cluster_id=1):
+        c = MagicMock()
+        c.id = cluster_id
+        c.name = "test-cluster"
+        c.syslog_endpoint = "syslog:514"
+        c.log_auth = True
+        c.log_netflow = True
+        c.log_debug = False
+        return c
+
+    def _make_qmock(self, items, first_item=None):
+        """Build a query mock whose select() returns a FakeSelectResult."""
+        q = MagicMock()
+        q.select = MagicMock(return_value=_FakeSelectResult(items or [], first_item=first_item))
+        return q
+
+    def _make_db(self, cluster=None, services=None, mappings=None, certs=None):
+        db = MagicMock(name="db")
+
+        call_idx = [0]
+        cluster_q = self._make_qmock([], first_item=cluster)
+        services_q = self._make_qmock(services or [])
+        mappings_q = self._make_qmock(mappings or [])
+        certs_q = self._make_qmock(certs or [])
+        call_sequence = [cluster_q, services_q, mappings_q, certs_q]
+
+        def db_call(*args, **kwargs):
+            idx = call_idx[0]
+            call_idx[0] += 1
+            return call_sequence[idx] if idx < len(call_sequence) else MagicMock()
+
+        # Use side_effect on the MagicMock (not __call__)
+        db.side_effect = db_call
+        db.clusters = MagicMock()
+        db.services = MagicMock()
+        db.mappings = MagicMock()
+        db.certificates = MagicMock()
+        return db
+
+    def test_returns_none_when_cluster_not_found(self):
+        db = self._make_db(cluster=None)
+        result = ClusterModel.get_cluster_config(db, cluster_id=999)
+        assert result is None
+
+    def test_returns_config_dict_with_expected_keys(self):
+        cluster = self._make_cluster_record()
+
+        svc = MagicMock()
+        svc.__iter__ = MagicMock(return_value=iter([("id", 1), ("name", "svc")]))
+
+        db = self._make_db(cluster=cluster)
+        result = ClusterModel.get_cluster_config(db, cluster_id=1)
+        assert result is not None
+        assert "cluster" in result
+        assert "services" in result
+        assert "mappings" in result
+        assert "certificates" in result
+
+    def test_cluster_info_has_correct_fields(self):
+        cluster = self._make_cluster_record(cluster_id=5)
+        db = self._make_db(cluster=cluster)
+        result = ClusterModel.get_cluster_config(db, cluster_id=5)
+        info = result["cluster"]
+        assert info["id"] == 5
+        assert info["name"] == "test-cluster"
+        assert info["syslog_endpoint"] == "syslog:514"
+        assert info["log_auth"] is True
+
+    def test_services_and_mappings_are_lists(self):
+        cluster = self._make_cluster_record()
+        db = self._make_db(cluster=cluster)
+        result = ClusterModel.get_cluster_config(db, cluster_id=1)
+        assert isinstance(result["services"], list)
+        assert isinstance(result["mappings"], list)
+        assert isinstance(result["certificates"], list)

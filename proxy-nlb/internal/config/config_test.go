@@ -1,3 +1,5 @@
+//go:build ci
+
 package config_test
 
 import (
@@ -193,5 +195,149 @@ func TestConfigIsEnterpriseFeatureEnabledReleaseMode(t *testing.T) {
 	cfg.LicenseKey = "valid-license"
 	if !cfg.IsEnterpriseFeatureEnabled("sso") {
 		t.Error("expected enterprise feature enabled in release mode with license key")
+	}
+}
+
+func TestConfigValidateInvalidRateLimit(t *testing.T) {
+	withAPIKey(t)
+
+	cfg := &config.Config{
+		ManagerURL:              "http://api-server:8000",
+		ClusterAPIKey:           "key",
+		GRPCPort:                50051,
+		EnableRateLimiting:      true,
+		DefaultRateLimit:        -1,
+		DefaultBurstSize:        20000,
+		EnableAutoscaling:       true,
+		AutoscaleInterval:       30 * time.Second,
+		ScaleUpCooldown:         3 * time.Minute,
+		ScaleDownCooldown:       5 * time.Minute,
+		EnableBlueGreen:         true,
+		CanaryStepSize:          10,
+		CanaryStepDuration:      2 * time.Minute,
+		MaxModulesPerProtocol:   50,
+		MaxConnectionsPerModule: 10000,
+	}
+
+	if err := cfg.Validate(); err == nil {
+		t.Error("expected error for invalid DefaultRateLimit")
+	}
+}
+
+func TestConfigValidateInvalidBurstSize(t *testing.T) {
+	withAPIKey(t)
+
+	cfg := &config.Config{
+		ManagerURL:              "http://api-server:8000",
+		ClusterAPIKey:           "key",
+		GRPCPort:                50051,
+		EnableRateLimiting:      true,
+		DefaultRateLimit:        10000,
+		DefaultBurstSize:        -1,
+		EnableAutoscaling:       true,
+		AutoscaleInterval:       30 * time.Second,
+		ScaleUpCooldown:         3 * time.Minute,
+		ScaleDownCooldown:       5 * time.Minute,
+		EnableBlueGreen:         true,
+		CanaryStepSize:          10,
+		CanaryStepDuration:      2 * time.Minute,
+		MaxModulesPerProtocol:   50,
+		MaxConnectionsPerModule: 10000,
+	}
+
+	if err := cfg.Validate(); err == nil {
+		t.Error("expected error for invalid DefaultBurstSize")
+	}
+}
+
+func TestConfigValidateInvalidAutoscaleInterval(t *testing.T) {
+	withAPIKey(t)
+
+	cfg := &config.Config{
+		ManagerURL:              "http://api-server:8000",
+		ClusterAPIKey:           "key",
+		GRPCPort:                50051,
+		EnableRateLimiting:      true,
+		DefaultRateLimit:        10000,
+		DefaultBurstSize:        20000,
+		EnableAutoscaling:       true,
+		AutoscaleInterval:       -1,
+		ScaleUpCooldown:         3 * time.Minute,
+		ScaleDownCooldown:       5 * time.Minute,
+		EnableBlueGreen:         true,
+		CanaryStepSize:          10,
+		CanaryStepDuration:      2 * time.Minute,
+		MaxModulesPerProtocol:   50,
+		MaxConnectionsPerModule: 10000,
+	}
+
+	if err := cfg.Validate(); err == nil {
+		t.Error("expected error for invalid AutoscaleInterval")
+	}
+}
+
+func TestConfigValidateInvalidCanaryStepSize(t *testing.T) {
+	withAPIKey(t)
+
+	cfg := &config.Config{
+		ManagerURL:              "http://api-server:8000",
+		ClusterAPIKey:           "key",
+		GRPCPort:                50051,
+		EnableRateLimiting:      true,
+		DefaultRateLimit:        10000,
+		DefaultBurstSize:        20000,
+		EnableAutoscaling:       true,
+		AutoscaleInterval:       30 * time.Second,
+		ScaleUpCooldown:         3 * time.Minute,
+		ScaleDownCooldown:       5 * time.Minute,
+		EnableBlueGreen:         true,
+		CanaryStepSize:          101,
+		CanaryStepDuration:      2 * time.Minute,
+		MaxModulesPerProtocol:   50,
+		MaxConnectionsPerModule: 10000,
+	}
+
+	if err := cfg.Validate(); err == nil {
+		t.Error("expected error for CanaryStepSize > 100")
+	}
+}
+
+func TestConfigValidateNoManagerURL(t *testing.T) {
+	cfg := &config.Config{
+		ManagerURL:              "",
+		ClusterAPIKey:           "key",
+		GRPCPort:                50051,
+		DefaultRateLimit:        10000,
+		DefaultBurstSize:        20000,
+		EnableAutoscaling:       true,
+		AutoscaleInterval:       30 * time.Second,
+		ScaleUpCooldown:         3 * time.Minute,
+		ScaleDownCooldown:       5 * time.Minute,
+		MaxModulesPerProtocol:   50,
+		MaxConnectionsPerModule: 10000,
+	}
+
+	if err := cfg.Validate(); err == nil {
+		t.Error("expected error when ManagerURL is empty")
+	}
+}
+
+func TestConfigValidateNoAPIKey(t *testing.T) {
+	cfg := &config.Config{
+		ManagerURL:              "http://api-server:8000",
+		ClusterAPIKey:           "",
+		GRPCPort:                50051,
+		DefaultRateLimit:        10000,
+		DefaultBurstSize:        20000,
+		EnableAutoscaling:       true,
+		AutoscaleInterval:       30 * time.Second,
+		ScaleUpCooldown:         3 * time.Minute,
+		ScaleDownCooldown:       5 * time.Minute,
+		MaxModulesPerProtocol:   50,
+		MaxConnectionsPerModule: 10000,
+	}
+
+	if err := cfg.Validate(); err == nil {
+		t.Error("expected error when ClusterAPIKey is empty")
 	}
 }

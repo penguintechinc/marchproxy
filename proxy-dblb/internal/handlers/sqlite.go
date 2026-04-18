@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"marchproxy-dblb/internal/logging"
 	"context"
 	"database/sql"
 	"fmt"
@@ -17,7 +18,6 @@ import (
 	"marchproxy-dblb/internal/security"
 
 	_ "github.com/mattn/go-sqlite3"
-	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
 
@@ -108,7 +108,7 @@ func (h *SQLiteHandler) Start(ctx context.Context) error {
 	// Start accepting connections
 	go h.acceptConnections()
 
-	h.logger.WithFields(logrus.Fields{
+	h.logger.WithFields(logging.Fields{
 		"protocol": h.protocol,
 		"port":     h.port,
 	}).Info("SQLite handler started")
@@ -189,7 +189,7 @@ func (h *SQLiteHandler) initDatabases() {
 
 	for _, cfg := range configs {
 		if err := h.initDatabase(cfg); err != nil {
-			h.logger.WithFields(logrus.Fields{
+			h.logger.WithFields(logging.Fields{
 				"name":  cfg.Name,
 				"path":  cfg.Path,
 				"error": err,
@@ -197,7 +197,7 @@ func (h *SQLiteHandler) initDatabases() {
 			continue
 		}
 
-		h.logger.WithFields(logrus.Fields{
+		h.logger.WithFields(logging.Fields{
 			"name":      cfg.Name,
 			"path":      cfg.Path,
 			"read_only": cfg.ReadOnly,
@@ -262,7 +262,7 @@ func (h *SQLiteHandler) buildDSN(cfg SQLiteConfig) string {
 
 		dir := filepath.Dir(path)
 		if err := os.MkdirAll(dir, 0755); err != nil {
-			h.logger.WithFields(logrus.Fields{
+			h.logger.WithFields(logging.Fields{
 				"dir":   dir,
 				"error": err,
 			}).Warn("Failed to create database directory")
@@ -325,7 +325,7 @@ func (h *SQLiteHandler) applyPragmas(db *sql.DB, cfg SQLiteConfig) error {
 
 	for _, pragma := range pragmas {
 		if _, err := db.Exec(pragma); err != nil {
-			h.logger.WithFields(logrus.Fields{
+			h.logger.WithFields(logging.Fields{
 				"pragma": pragma,
 				"error":  err,
 			}).Warn("Failed to apply pragma")
@@ -380,7 +380,7 @@ func (h *SQLiteHandler) handleConnection(clientConn net.Conn) {
 	// Get database
 	sqliteDB, err := h.getDatabase(database)
 	if err != nil {
-		h.logger.WithFields(logrus.Fields{
+		h.logger.WithFields(logging.Fields{
 			"database": database,
 			"error":    err,
 		}).Error("Database not found")
@@ -426,7 +426,7 @@ func (h *SQLiteHandler) proxyTraffic(client net.Conn, sqliteDB *SQLiteDatabase, 
 
 			// Check if database is read-only
 			if sqliteDB.config.ReadOnly && h.isWriteQuery(query) {
-				h.logger.WithFields(logrus.Fields{
+				h.logger.WithFields(logging.Fields{
 					"database": database,
 					"query":    truncateQuery(query, 100),
 				}).Warn("Write query on read-only database")
@@ -436,7 +436,7 @@ func (h *SQLiteHandler) proxyTraffic(client net.Conn, sqliteDB *SQLiteDatabase, 
 
 			// Security check
 			if isMalicious, reason := h.securityChecker.CheckQuery(query); isMalicious {
-				h.logger.WithFields(logrus.Fields{
+				h.logger.WithFields(logging.Fields{
 					"user":     username,
 					"database": database,
 					"reason":   reason,
@@ -454,7 +454,7 @@ func (h *SQLiteHandler) proxyTraffic(client net.Conn, sqliteDB *SQLiteDatabase, 
 			// Execute query
 			result, err := h.executeQuery(sqliteDB, query)
 			if err != nil {
-				h.logger.WithFields(logrus.Fields{
+				h.logger.WithFields(logging.Fields{
 					"database": database,
 					"error":    err,
 				}).Error("Query execution failed")
@@ -654,7 +654,7 @@ func (h *SQLiteHandler) performMaintenance() {
 			if errorRate > 0.01 {
 				h.logger.WithField("name", sqliteDB.config.Name).Info("Running VACUUM on database")
 				if _, err := sqliteDB.db.Exec("VACUUM"); err != nil {
-					h.logger.WithFields(logrus.Fields{
+					h.logger.WithFields(logging.Fields{
 						"name":  sqliteDB.config.Name,
 						"error": err,
 					}).Error("VACUUM failed")
@@ -664,7 +664,7 @@ func (h *SQLiteHandler) performMaintenance() {
 
 		// Run ANALYZE periodically
 		if _, err := sqliteDB.db.Exec("ANALYZE"); err != nil {
-			h.logger.WithFields(logrus.Fields{
+			h.logger.WithFields(logging.Fields{
 				"name":  sqliteDB.config.Name,
 				"error": err,
 			}).Warn("ANALYZE failed")
@@ -679,7 +679,7 @@ func (h *SQLiteHandler) closeDatabases() {
 
 	for name, sqliteDB := range h.databases {
 		if err := sqliteDB.db.Close(); err != nil {
-			h.logger.WithFields(logrus.Fields{
+			h.logger.WithFields(logging.Fields{
 				"name":  name,
 				"error": err,
 			}).Error("Failed to close database")

@@ -8,9 +8,19 @@ import (
 	"net/http"
 	"sync"
 
-	log "github.com/sirupsen/logrus"
+	"marchproxy-egress/internal/logging"
 	"marchproxy-egress/internal/oidc"
 )
+
+var logServer *logging.LogrusAdapter
+
+func init() {
+	var err error
+	logServer, err = logging.NewLogrusAdapter("levers-server")
+	if err != nil {
+		panic(err)
+	}
+}
 
 // RuleSet is the compiled, flat rule set pushed by the controller.
 // All entries are simple instructions — no evaluation logic in the proxy.
@@ -62,13 +72,13 @@ func (s *Server) handleRules(w http.ResponseWriter, r *http.Request) {
 
 	var rules RuleSet
 	if err := json.NewDecoder(r.Body).Decode(&rules); err != nil {
-		log.WithError(err).Error("levers: failed to decode rule set")
+		logServer.WithError(err).Error("levers: failed to decode rule set")
 		http.Error(w, "invalid body", http.StatusBadRequest)
 		return
 	}
 
 	if err := s.enforcer.Apply(rules); err != nil {
-		log.WithError(err).Error("levers: failed to apply rule set")
+		logServer.WithError(err).Error("levers: failed to apply rule set")
 		http.Error(w, "apply failed", http.StatusInternalServerError)
 		return
 	}
@@ -80,14 +90,14 @@ func (s *Server) handleRules(w http.ResponseWriter, r *http.Request) {
 			ClientID:  rules.OIDCProvider.ClientID,
 			Audience:  rules.OIDCProvider.Audience,
 		})
-		log.WithField("issuer", rules.OIDCProvider.IssuerURL).Info("levers: configured OIDC provider")
+		logServer.WithField("issuer", rules.OIDCProvider.IssuerURL).Info("levers: configured OIDC provider")
 	}
 
 	s.mu.Lock()
 	s.current = rules
 	s.mu.Unlock()
 
-	log.WithFields(log.Fields{
+	logServer.WithFields(map[string]interface{}{
 		"block_cidrs":    len(rules.BlockCIDRs),
 		"allow_cidrs":    len(rules.AllowCIDRs),
 		"block_domains":  len(rules.BlockDomains),

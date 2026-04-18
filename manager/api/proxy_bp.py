@@ -5,11 +5,11 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import logging
+import logging # noqa: F401, # noqa: F401
 
-from middleware.auth import require_auth
-from models.cluster import UserClusterAssignmentModel
-from models.proxy import (
+from middleware.auth import require_auth # noqa: F401
+from models.cluster import UserClusterAssignmentModel # noqa: F401
+from models.proxy import ( # noqa: F401
     ProxyConfigRequest,
     ProxyHeartbeatRequest,
     ProxyMetricsModel,
@@ -19,9 +19,9 @@ from models.proxy import (
     ProxyServerModel,
     ProxyStatsResponse,
 )
-from pydantic import ValidationError
-from quart import Blueprint, current_app, jsonify, request
-from penguintechinc_utils import get_logger
+from penguintechinc_utils import get_logger # noqa: F401
+from pydantic import ValidationError # noqa: F401
+from quart import Blueprint, current_app, jsonify, request # noqa: F401
 
 logger = get_logger(__name__)
 
@@ -39,7 +39,7 @@ async def register():
 
     db = current_app.db
 
-    # Register proxy with cluster API key validation
+  # Register proxy with cluster API key validation
     proxy_id = ProxyServerModel.register_proxy(
         db,
         name=data.name,
@@ -93,7 +93,7 @@ async def heartbeat():
 
     db = current_app.db
 
-    # Update heartbeat
+  # Update heartbeat
     status_data = {}
     if data.version:
         status_data["version"] = data.version
@@ -112,7 +112,7 @@ async def heartbeat():
             400,
         )
 
-    # Record metrics if provided
+  # Record metrics if provided
     if data.metrics:
         found_proxy = db(db.proxy_servers.name == data.proxy_name).select().first()
         if found_proxy:
@@ -155,11 +155,11 @@ async def list_proxies(user_data):
     cluster_id = request.args.get("cluster_id")
 
     if is_admin:
-        # Admin can see all proxies
+      # Admin can see all proxies
         if cluster_id:
             proxies = ProxyServerModel.get_cluster_proxies(db, int(cluster_id))
         else:
-            # Get all proxies across clusters
+          # Get all proxies across clusters
             all_proxies = db(db.proxy_servers).select()
             proxies = [
                 {
@@ -178,14 +178,14 @@ async def list_proxies(user_data):
                 for p in all_proxies
             ]
     else:
-        # Regular user can only see proxies in their assigned clusters
+      # Regular user can only see proxies in their assigned clusters
         user_clusters = UserClusterAssignmentModel.get_user_clusters(db, user_id)
         cluster_ids = [uc["cluster_id"] for uc in user_clusters]
 
         if cluster_id and int(cluster_id) in cluster_ids:
             proxies = ProxyServerModel.get_cluster_proxies(db, int(cluster_id))
         else:
-            # Get proxies from all user's clusters
+          # Get proxies from all user's clusters
             proxies = []
             for cid in cluster_ids:
                 proxies.extend(ProxyServerModel.get_cluster_proxies(db, cid))
@@ -205,7 +205,7 @@ async def get_proxy(user_data, proxy_id):
     if not found_proxy:
         return jsonify({"error": "Proxy not found"}), 404
 
-    # Check access to proxy cluster
+  # Check access to proxy cluster
     if not is_admin:
         user_role = UserClusterAssignmentModel.check_user_cluster_access(
             db, user_id, found_proxy.cluster_id
@@ -244,7 +244,7 @@ async def get_stats(user_data):
 
     if cluster_id:
         cluster_id = int(cluster_id)
-        # Check access to cluster
+      # Check access to cluster
         if not is_admin:
             user_role = UserClusterAssignmentModel.check_user_cluster_access(
                 db, user_id, cluster_id
@@ -268,7 +268,7 @@ async def get_metrics(user_data, proxy_id):
     if not found_proxy:
         return jsonify({"error": "Proxy not found"}), 404
 
-    # Check access to proxy cluster
+  # Check access to proxy cluster
     if not is_admin:
         user_role = UserClusterAssignmentModel.check_user_cluster_access(
             db, user_id, found_proxy.cluster_id

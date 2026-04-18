@@ -8,13 +8,13 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import functools
-import logging
-from penguintechinc_utils import get_logger
-from typing import Callable, Optional
+import functools # noqa: F401, # noqa: F401
+import logging # noqa: F401, # noqa: F401
+from typing import Callable, Optional # noqa: F401
 
-from models.rbac import Permissions, PermissionScope, RBACModel
-from quart import abort, g, request
+from models.rbac import Permissions, PermissionScope, RBACModel # noqa: F401
+from penguintechinc_utils import get_logger # noqa: F401
+from quart import abort, g, request # noqa: F401
 
 logger = get_logger(__name__)
 
@@ -33,7 +33,7 @@ class RBACMiddleware:
 
     async def load_user_permissions(self):
         """Load user permissions into request context"""
-        # Get current user from session/JWT
+      # Get current user from session/JWT
         user_id = g.get("user_id")
         if user_id:
             db = g.get("db")
@@ -45,7 +45,7 @@ class RBACMiddleware:
             g.permissions = {"global": [], "cluster": {}, "service": {}}
 
 
-def requires_permission(  # noqa: C901
+def requires_permission( # noqa: C901
     permission: str,
     resource_type: Optional[str] = None,
     resource_id_param: Optional[str] = None,
@@ -71,7 +71,7 @@ def requires_permission(  # noqa: C901
     def decorator(f: Callable) -> Callable:
         @functools.wraps(f)
         async def decorated_function(*args, **kwargs):
-            # Check if user is authenticated
+          # Check if user is authenticated
             user_id = g.get("user_id")
             if not user_id:
                 logger.warning(f"Unauthenticated access attempt to {f.__name__}")
@@ -82,15 +82,15 @@ def requires_permission(  # noqa: C901
                 logger.error("Database not available in request context")
                 abort(500, "Internal server error")
 
-            # Get resource ID if specified
+          # Get resource ID if specified
             resource_id = None
             if resource_id_param:
-                # Try to get from kwargs first (URL params)
+              # Try to get from kwargs first (URL params)
                 resource_id = kwargs.get(resource_id_param)
-                # Try request args if not in kwargs
+              # Try request args if not in kwargs
                 if resource_id is None:
                     resource_id = request.args.get(resource_id_param)
-                # Try JSON body
+              # Try JSON body
                 if resource_id is None and request.is_json:
                     json_data = await request.get_json()
                     resource_id = json_data.get(resource_id_param)
@@ -101,7 +101,7 @@ def requires_permission(  # noqa: C901
                     except (ValueError, TypeError):
                         abort(400, f"Invalid {resource_id_param}")
 
-            # Check permission
+          # Check permission
             has_perm = RBACModel.has_permission(db, user_id, permission, resource_type, resource_id)
 
             if not has_perm:
@@ -118,7 +118,7 @@ def requires_permission(  # noqa: C901
     return decorator
 
 
-def requires_role(  # noqa: C901
+def requires_role( # noqa: C901
     role_name: str,
     scope: PermissionScope = PermissionScope.GLOBAL,
     resource_id_param: Optional[str] = None,
@@ -144,7 +144,7 @@ def requires_role(  # noqa: C901
     def decorator(f: Callable) -> Callable:
         @functools.wraps(f)
         async def decorated_function(*args, **kwargs):
-            # Check if user is authenticated
+          # Check if user is authenticated
             user_id = g.get("user_id")
             if not user_id:
                 abort(401, "Authentication required")
@@ -153,7 +153,7 @@ def requires_role(  # noqa: C901
             if not db:
                 abort(500, "Internal server error")
 
-            # Get resource ID if specified
+          # Get resource ID if specified
             resource_id = None
             if resource_id_param and scope != PermissionScope.GLOBAL:
                 resource_id = kwargs.get(resource_id_param)
@@ -169,7 +169,7 @@ def requires_role(  # noqa: C901
                     except (ValueError, TypeError):
                         abort(400, f"Invalid {resource_id_param}")
 
-            # Check if user has role
+          # Check if user has role
             user_roles = RBACModel.get_user_roles(db, user_id)
 
             has_role = False
@@ -217,7 +217,7 @@ def requires_any_permission(*permissions: str):
             if not db:
                 abort(500, "Internal server error")
 
-            # Check if user has any of the required permissions
+          # Check if user has any of the required permissions
             user_perms = RBACModel.get_user_permissions(db, user_id)
 
             has_permission = False
@@ -225,7 +225,7 @@ def requires_any_permission(*permissions: str):
                 if perm in user_perms["global"]:
                     has_permission = True
                     break
-                # Could also check scoped permissions here
+              # Could also check scoped permissions here
 
             if not has_permission:
                 logger.warning(f"No required permissions: user={user_id}, required={permissions}")
@@ -262,7 +262,7 @@ def requires_all_permissions(*permissions: str):
             if not db:
                 abort(500, "Internal server error")
 
-            # Check if user has all required permissions
+          # Check if user has all required permissions
             user_perms = RBACModel.get_user_permissions(db, user_id)
 
             missing_permissions = []

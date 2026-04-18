@@ -12,11 +12,10 @@ This migration creates the complete MarchProxy database schema including:
 - Certificate management with multiple sources (Infisical, Vault, upload)
 - Enterprise features: QoS policies, routing, tracing, and observability
 """
-from typing import Sequence, Union
+from typing import Sequence, Union # noqa: F401
 
-from alembic import op
-import sqlalchemy as sa
-
+import sqlalchemy as sa, # noqa: F401
+from alembic import op # noqa: F401
 
 # revision identifiers, used by Alembic.
 revision: str = '001'
@@ -28,7 +27,7 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Create initial schema with all tables, indexes, and constraints."""
 
-    # Create auth_user table
+  : # Create auth_user table
     op.create_table('auth_user',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('email', sa.String(length=255), nullable=False),
@@ -50,7 +49,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_auth_user_email'), 'auth_user', ['email'], unique=True)
     op.create_index(op.f('ix_auth_user_username'), 'auth_user', ['username'], unique=True)
 
-    # Create clusters table
+  : # Create clusters table
     op.create_table('clusters',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('name', sa.String(length=100), nullable=False),
@@ -74,7 +73,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_clusters_name'), 'clusters', ['name'], unique=True)
     op.create_index(op.f('ix_clusters_is_active'), 'clusters', ['is_active'], unique=False)
 
-    # Create services table
+  : # Create services table
     op.create_table('services',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('name', sa.String(length=100), nullable=False),
@@ -107,7 +106,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_services_cluster_id'), 'services', ['cluster_id'], unique=False)
     op.create_index(op.f('ix_services_is_active'), 'services', ['is_active'], unique=False)
 
-    # Create proxy_servers table
+  : # Create proxy_servers table
     op.create_table('proxy_servers',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('name', sa.String(length=100), nullable=False),
@@ -133,7 +132,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_proxy_servers_cluster_id'), 'proxy_servers', ['cluster_id'], unique=False)
     op.create_index(op.f('ix_proxy_servers_status'), 'proxy_servers', ['status'], unique=False)
 
-    # Create user_cluster_assignments table
+  : # Create user_cluster_assignments table
     op.create_table('user_cluster_assignments',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('user_id', sa.Integer(), nullable=False),
@@ -152,7 +151,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_user_cluster_assignments_user_id'), 'user_cluster_assignments', ['user_id'], unique=False)
     op.create_index(op.f('ix_user_cluster_assignments_cluster_id'), 'user_cluster_assignments', ['cluster_id'], unique=False)
 
-    # Create user_service_assignments table
+  : # Create user_service_assignments table
     op.create_table('user_service_assignments',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('user_id', sa.Integer(), nullable=False),
@@ -170,7 +169,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_user_service_assignments_user_id'), 'user_service_assignments', ['user_id'], unique=False)
     op.create_index(op.f('ix_user_service_assignments_service_id'), 'user_service_assignments', ['service_id'], unique=False)
 
-    # Create proxy_metrics table
+  : # Create proxy_metrics table
     op.create_table('proxy_metrics',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('proxy_id', sa.Integer(), nullable=False),
@@ -193,7 +192,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_proxy_metrics_proxy_id'), 'proxy_metrics', ['proxy_id'], unique=False)
     op.create_index(op.f('ix_proxy_metrics_timestamp'), 'proxy_metrics', ['timestamp'], unique=False)
 
-    # Create certificates table
+  : # Create certificates table
     op.create_table('certificates',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('name', sa.String(length=100), nullable=False),
@@ -230,7 +229,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_certificates_valid_until'), 'certificates', ['valid_until'], unique=False)
     op.create_index(op.f('ix_certificates_is_active'), 'certificates', ['is_active'], unique=False)
 
-    # Create QoS policies table
+  : # Create QoS policies table
     op.create_table('qos_policies',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('name', sa.String(length=100), nullable=False),
@@ -249,7 +248,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_qos_policies_name'), 'qos_policies', ['name'], unique=False)
     op.create_index(op.f('ix_qos_policies_service_cluster'), 'qos_policies', ['service_id', 'cluster_id'], unique=False)
 
-    # Create route tables
+  : # Create route tables
     op.create_table('route_tables',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('name', sa.String(length=100), nullable=False),
@@ -270,7 +269,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_route_tables_name'), 'route_tables', ['name'], unique=False)
     op.create_index(op.f('ix_route_tables_service_cluster'), 'route_tables', ['service_id', 'cluster_id'], unique=False)
 
-    # Create route health status table
+  : # Create route health status table
     op.create_table('route_health_status',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('route_table_id', sa.Integer(), nullable=False),
@@ -288,7 +287,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_route_health_status_route_endpoint'), 'route_health_status', ['route_table_id', 'endpoint'], unique=False)
     op.create_index(op.f('ix_route_health_status_last_check'), 'route_health_status', ['last_check'], unique=False)
 
-    # Create tracing configs table
+  : # Create tracing configs table
     op.create_table('tracing_configs',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('name', sa.String(length=100), nullable=False),
@@ -317,7 +316,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_tracing_configs_name'), 'tracing_configs', ['name'], unique=False)
     op.create_index(op.f('ix_tracing_configs_cluster_id'), 'tracing_configs', ['cluster_id'], unique=False)
 
-    # Create tracing stats table
+  : # Create tracing stats table
     op.create_table('tracing_stats',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('tracing_config_id', sa.Integer(), nullable=False),

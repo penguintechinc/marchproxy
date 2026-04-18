@@ -1,3 +1,6 @@
+//go:build xdp
+// +build xdp
+
 package ebpf
 
 import (

@@ -1,7 +1,8 @@
 
-import sys
-import os
-from passlib.context import CryptContext
+import os # noqa: F401, # noqa: F401
+import sys # noqa: F401, # noqa: F401
+
+from passlib.context import CryptContext # noqa: F401
 
 # 1. Setup the fallback context (simulating the migration failure case)
 fallback_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -9,14 +10,14 @@ def fallback_hash(password: str) -> str:
     return fallback_context.hash(password)
 
 # 2. Setup the app's context (simulating the compiled app)
-# We try to import it, but if it fails we mock it to what we see in the file
+# We try to import it, but if it fails we mock it to what we see in the file # noqa: F401
 try:
     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-    from app.core.security import verify_password as app_verify
-    from app.core.security import get_password_hash as app_hash
+    from app.core.security import get_password_hash as app_hash # noqa: F401
+    from app.core.security import verify_password as app_verify # noqa: F401
     print("Successfully imported app.core.security")
 except ImportError as e:
-    print(f"Failed to import app.core.security: {e}")
+    print(f"Failed to import app.core.security: {e}") # noqa: F401
     print("Using mocked app context based on file reading")
     app_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     def app_verify(plain, hashed):

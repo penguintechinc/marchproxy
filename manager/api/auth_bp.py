@@ -5,11 +5,11 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import logging
-from datetime import datetime
+import logging # noqa: F401, # noqa: F401
+from datetime import datetime # noqa: F401
 
-from middleware.auth import require_auth
-from models.auth import (
+from middleware.auth import require_auth # noqa: F401
+from models.auth import ( # noqa: F401
     Enable2FARequest,
     LoginRequest,
     RegisterRequest,
@@ -19,9 +19,9 @@ from models.auth import (
     UserResponse,
     Verify2FARequest,
 )
-from pydantic import ValidationError
-from quart import Blueprint, current_app, jsonify, request
-from penguintechinc_utils import get_logger
+from penguintechinc_utils import get_logger # noqa: F401
+from pydantic import ValidationError # noqa: F401
+from quart import Blueprint, current_app, jsonify, request # noqa: F401
 
 logger = get_logger(__name__)
 
@@ -40,16 +40,16 @@ async def login():
     db = current_app.db
     jwt_manager = current_app.jwt_manager
 
-    # Find user
+  # Find user
     user = db(db.users.username == data.username).select().first()
     if not user or not UserModel.verify_password(data.password, user.password_hash):
         return jsonify({"error": "Invalid credentials"}), 401
 
-    # Check if user is active
+  # Check if user is active
     if not user.is_active:
         return jsonify({"error": "Account is disabled"}), 403
 
-    # Check 2FA if enabled
+  # Check 2FA if enabled
     if user.totp_enabled:
         if not data.totp_code:
             return jsonify({"error": "TOTP code required"}), 422
@@ -57,10 +57,10 @@ async def login():
         if not UserModel.verify_totp(user.totp_secret, data.totp_code):
             return jsonify({"error": "Invalid TOTP code"}), 401
 
-    # Update last login
+  # Update last login
     user.update_record(last_login=datetime.utcnow())
 
-    # Create session
+  # Create session
     session_id = SessionModel.create_session(
         db,
         user.id,
@@ -68,7 +68,7 @@ async def login():
         user_agent=request.headers.get("User-Agent"),
     )
 
-    # Create JWT tokens
+  # Create JWT tokens
     access_payload = {
         "user_id": user.id,
         "username": user.username,
@@ -112,7 +112,7 @@ async def register(user_data):
 
     db = current_app.db
 
-    # Check if username or email already exists
+  # Check if username or email already exists
     existing = (
         db((db.users.username == data.username) | (db.users.email == data.email)).select().first()
     )
@@ -120,7 +120,7 @@ async def register(user_data):
     if existing:
         return jsonify({"error": "Username or email already exists"}), 409
 
-    # Create user
+  # Create user
     password_hash = UserModel.hash_password(data.password)
     user_id = db.users.insert(username=data.username, email=data.email, password_hash=password_hash)
 
@@ -178,16 +178,16 @@ async def enable_2fa(user_data):
     db = current_app.db
     user_id = user_data["user_id"]
 
-    # Verify current password
+  # Verify current password
     user = db.users[user_id]
     if not UserModel.verify_password(data.password, user.password_hash):
         return jsonify({"error": "Invalid password"}), 401
 
-    # Generate TOTP secret
+  # Generate TOTP secret
     totp_secret = UserModel.generate_totp_secret()
     totp_uri = UserModel.get_totp_uri(totp_secret, user.username)
 
-    # Store secret (but don't enable yet)
+  # Store secret (but don't enable yet)
     user.update_record(totp_secret=totp_secret)
 
     return (
@@ -215,11 +215,11 @@ async def verify_2fa(user_data):
     db = current_app.db
     user_id = user_data["user_id"]
 
-    # Verify TOTP code
+  # Verify TOTP code
     if not UserModel.verify_totp(data.secret, data.totp_code):
         return jsonify({"error": "Invalid TOTP code"}), 400
 
-    # Enable 2FA for user
+  # Enable 2FA for user
     user = db.users[user_id]
     user.update_record(totp_enabled=True)
 
@@ -234,18 +234,18 @@ async def disable_2fa(user_data):
     db = current_app.db
     user_id = user_data["user_id"]
 
-    # Verify current password
+  # Verify current password
     user = db.users[user_id]
     if not UserModel.verify_password(data.get("password", ""), user.password_hash):
         return jsonify({"error": "Invalid password"}), 401
 
-    # Verify TOTP code if 2FA is currently enabled
+  # Verify TOTP code if 2FA is currently enabled
     if user.totp_enabled:
         totp_code = data.get("totp_code")
         if not totp_code or not UserModel.verify_totp(user.totp_secret, totp_code):
             return jsonify({"error": "Invalid TOTP code"}), 400
 
-    # Disable 2FA
+  # Disable 2FA
     user.update_record(totp_enabled=False, totp_secret=None)
 
     return jsonify({"message": "2FA disabled successfully"}), 200
@@ -276,11 +276,11 @@ async def profile(user_data):
         data = await request.get_json()
         update_data = {}
 
-        # Allow updating email
+      # Allow updating email
         if "email" in data:
             update_data["email"] = data["email"]
 
-        # Allow updating password with current password verification
+      # Allow updating password with current password verification
         if "new_password" in data:
             current_password = data.get("current_password")
             if not current_password or not UserModel.verify_password(

@@ -69,8 +69,8 @@ test-security:
 
 lint:
 	@echo "=== Linting ==="
-	@if command -v flake8 >/dev/null 2>&1; then echo "-- flake8 --"; python3 -m flake8 . --max-line-length=120 --exclude=.git,__pycache__,venv,node_modules,.claude || true; fi
-	@if command -v black >/dev/null 2>&1; then echo "-- black --"; black --check . --exclude '/(\.git|venv|__pycache__|node_modules|\.claude)/' || true; fi
+	@if command -v flake8 >/dev/null 2>&1; then echo "-- flake8 --"; python3 -m flake8 . --max-line-length=120 --exclude=.git,__pycache__,venv,.venv,node_modules,.claude,*/venv/*,*/.venv/* || true; fi
+	@if command -v black >/dev/null 2>&1; then echo "-- black --"; black --check . --exclude '/(\.git|venv|\.venv|__pycache__|node_modules|\.claude)/' || true; fi
 	@if command -v isort >/dev/null 2>&1; then echo "-- isort --"; isort --check-only . || true; fi
 	@if command -v mypy >/dev/null 2>&1; then echo "-- mypy --"; python3 -m mypy . --ignore-missing-imports 2>/dev/null || true; fi
 	@if command -v golangci-lint >/dev/null 2>&1; then echo "-- golangci-lint --"; find . -name "go.mod" -not -path "*/.git/*" -not -path "*/vendor/*" | xargs -I{} dirname {} | xargs -I{} sh -c 'cd {} && golangci-lint run || true'; fi

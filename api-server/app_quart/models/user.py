@@ -1,6 +1,7 @@
-from datetime import datetime
-from flask_security import UserMixin, RoleMixin
-from app_quart.extensions import db
+from datetime import datetime # noqa: F401
+
+from app_quart.extensions import db # noqa: F401
+from flask_security import RoleMixin, UserMixin # noqa: F401
 
 # Association table for users and roles
 roles_users = db.Table(
@@ -18,7 +19,7 @@ class Role(db.Model, RoleMixin):
     name = db.Column(db.String(80), unique=True, nullable=False)
     description = db.Column(db.String(255))
 
-    # Permissions as JSON array
+ # Permissions as JSON array
     permissions = db.Column(db.JSON, default=list)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -34,20 +35,20 @@ class User(db.Model, UserMixin):
     username = db.Column(db.String(255), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
 
-    # Flask-Security fields
+ # Flask-Security fields
     active = db.Column(db.Boolean, default=True)
     fs_uniquifier = db.Column(db.String(64), unique=True, nullable=False)
     confirmed_at = db.Column(db.DateTime)
 
-    # 2FA
+ # 2FA
     tf_totp_secret = db.Column(db.String(255))
     tf_primary_method = db.Column(db.String(64))
 
-    # Profile
+ # Profile
     first_name = db.Column(db.String(100))
     last_name = db.Column(db.String(100))
 
-    # Timestamps
+ # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
     last_login_at = db.Column(db.DateTime)
@@ -56,7 +57,7 @@ class User(db.Model, UserMixin):
     current_login_ip = db.Column(db.String(100))
     login_count = db.Column(db.Integer, default=0)
 
-    # Relationships
+ # Relationships
     roles = db.relationship('Role', secondary=roles_users,
                            backref=db.backref('users', lazy='dynamic'))
 

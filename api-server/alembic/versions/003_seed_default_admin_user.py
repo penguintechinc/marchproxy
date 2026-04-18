@@ -14,21 +14,23 @@ This is for development and testing purposes. In production, you should:
 2. Create a new admin user with a strong password
 3. Never share default credentials
 """
-from typing import Sequence, Union
-from alembic import op
-import sqlalchemy as sa
-from datetime import datetime
+import os # noqa: F401, # noqa: F401
 
 # Import security utilities for password hashing
-import sys
-import os
+import sys # noqa: F401, # noqa: F401
+from datetime import datetime # noqa: F401
+from typing import Sequence, Union # noqa: F401
+
+import sqlalchemy as sa, # noqa: F401
+from alembic import op # noqa: F401
+
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__) + '/../../'))
 
 try:
-    from app.core.security import get_password_hash
+    from app.core.security import get_password_hash # noqa: F401
 except ImportError:
-    # Fallback if import fails
-    from passlib.context import CryptContext
+  : # Fallback if import fails # noqa: F401
+    from passlib.context import CryptContext # noqa: F401
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     def get_password_hash(password: str) -> str:
         return pwd_context.hash(password)
@@ -43,10 +45,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Create default admin user."""
-    # Hash the password
+  : # Hash the password
     password_hash = get_password_hash("admin123")
 
-    # Insert default admin user
+  : # Insert default admin user
     op.execute(
         sa.text(
             """

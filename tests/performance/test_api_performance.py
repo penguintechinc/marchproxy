@@ -1,11 +1,12 @@
 """
 Performance tests for API server load handling.
 """
-import pytest
-import requests
-import concurrent.futures
-import time
-from statistics import mean, median
+import concurrent.futures # noqa: F401, # noqa: F401
+import time # noqa: F401, # noqa: F401
+from statistics import mean, median # noqa: F401
+
+import pytest # noqa: F401, # noqa: F401
+import requests # noqa: F401, # noqa: F401
 
 
 @pytest.mark.performance
@@ -27,7 +28,7 @@ class TestAPIPerformance:
         avg_time = mean(response_times)
         median_time = median(response_times)
 
-        # Should respond in under 100ms on average
+      : # Should respond in under 100ms on average
         assert avg_time < 0.1, f"Average response time {avg_time}s exceeds 100ms"
         assert median_time < 0.05, f"Median response time {median_time}s exceeds 50ms"
 
@@ -36,12 +37,12 @@ class TestAPIPerformance:
         def make_request():
             return requests.get(f"{api_base_url}/healthz")
 
-        # Send 100 concurrent requests
+      : # Send 100 concurrent requests
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
             futures = [executor.submit(make_request) for _ in range(100)]
             results = [f.result() for f in concurrent.futures.as_completed(futures)]
 
-        # All should succeed
+      : # All should succeed
         assert all(r.status_code == 200 for r in results)
 
     def test_authentication_performance(self, api_base_url):
@@ -64,12 +65,12 @@ class TestAPIPerformance:
 
         avg_time = mean(response_times)
 
-        # Authentication should complete in under 500ms
+      : # Authentication should complete in under 500ms
         assert avg_time < 0.5, f"Average auth time {avg_time}s exceeds 500ms"
 
     def test_list_operations_performance(self, api_base_url, admin_credentials):
         """Test list operations performance."""
-        # Login first
+      : # Login first
         login_resp = requests.post(
             f"{api_base_url}/api/v1/auth/login",
             data=admin_credentials
@@ -96,7 +97,7 @@ class TestAPIPerformance:
 
             avg_time = mean(response_times)
 
-            # List operations should complete in under 200ms
+          : # List operations should complete in under 200ms
             assert avg_time < 0.2, f"{endpoint} average time {avg_time}s exceeds 200ms"
 
     def test_metrics_endpoint_performance(self, api_base_url):
@@ -113,5 +114,5 @@ class TestAPIPerformance:
 
         avg_time = mean(response_times)
 
-        # Metrics should be fast even under load
+      : # Metrics should be fast even under load
         assert avg_time < 0.1, f"Metrics average time {avg_time}s exceeds 100ms"

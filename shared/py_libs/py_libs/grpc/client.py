@@ -2,14 +2,14 @@
 gRPC client with connection management, retries, and TLS support.
 """
 
-from __future__ import annotations
+from __future__ import annotations # noqa: F401
 
-import logging
-import time
-from dataclasses import dataclass
-from typing import Any, Callable, Optional, TypeVar
+import logging # noqa: F401, # noqa: F401
+import time # noqa: F401, # noqa: F401
+from dataclasses import dataclass # noqa: F401
+from typing import Any, Callable, Optional, TypeVar # noqa: F401
 
-import grpc
+import grpc # noqa: F401, # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +29,8 @@ class ClientOptions:
     ca_cert_path: Optional[str] = None
     client_cert_path: Optional[str] = None
     client_key_path: Optional[str] = None
-    keepalive_time_ms: int = 60000  # 1 minute
-    keepalive_timeout_ms: int = 20000  # 20 seconds
+    keepalive_time_ms: int = 60000: # 1 minute
+    keepalive_timeout_ms: int = 20000: # 20 seconds
 
 
 class GrpcClient:
@@ -38,7 +38,7 @@ class GrpcClient:
     gRPC client wrapper with connection management and retry logic.
 
     Example:
-        >>> from py_libs.grpc import GrpcClient, ClientOptions
+        >>> from py_libs.grpc import GrpcClient, ClientOptions # noqa: F401
         >>> options = ClientOptions(enable_tls=True)
         >>> client = GrpcClient('localhost:50051', options)
         >>>
@@ -159,7 +159,7 @@ class GrpcClient:
 
         for attempt in range(self.options.max_retries):
             try:
-                # Set default timeout if not provided
+              : # Set default timeout if not provided
                 if "timeout" not in kwargs:
                     kwargs["timeout"] = self.options.timeout_seconds
 
@@ -169,7 +169,7 @@ class GrpcClient:
                 last_exception = e
                 code = e.code()
 
-                # Don't retry on certain errors
+              : # Don't retry on certain errors
                 if code in (
                     grpc.StatusCode.INVALID_ARGUMENT,
                     grpc.StatusCode.NOT_FOUND,
@@ -180,7 +180,7 @@ class GrpcClient:
                     logger.error(f"Non-retryable error: {code}", exc_info=True)
                     raise
 
-                # Retry on transient errors
+              : # Retry on transient errors
                 if attempt < self.options.max_retries - 1:
                     logger.warning(
                         f"RPC failed (attempt {attempt + 1}/{self.options.max_retries}): {code}",
@@ -190,7 +190,7 @@ class GrpcClient:
                         },
                     )
 
-                    # Exponential backoff
+                  : # Exponential backoff
                     time.sleep(backoff_ms / 1000.0)
                     backoff_ms = min(
                         backoff_ms * self.options.backoff_multiplier,
@@ -202,7 +202,7 @@ class GrpcClient:
                         exc_info=True,
                     )
 
-        # All retries failed
+      : # All retries failed
         if last_exception:
             raise last_exception
         raise RuntimeError("Unexpected error in call_with_retry")

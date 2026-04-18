@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"go.uber.org/zap"
+	"marchproxy-dblb/internal/logging"
 )
 
 // Checker implements SQL injection detection
@@ -56,7 +56,7 @@ func (c *Checker) CheckQuery(query string) (bool, string) {
 			c.mu.Unlock()
 
 			reason := "Potential SQL injection detected: pattern match"
-			c.logger.WithFields(logrus.Fields{
+			c.logger.WithFields(logging.Fields{
 				"query":   query,
 				"pattern": pattern.String(),
 			}).Warn(reason)

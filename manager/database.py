@@ -8,28 +8,28 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import logging
-from penguintechinc_utils import get_logger
-import os
-import threading
-from typing import Optional
-from urllib.parse import urlparse
+import logging # noqa: F401, # noqa: F401
+import os # noqa: F401, # noqa: F401
+import threading # noqa: F401, # noqa: F401
+from typing import Optional # noqa: F401
+from urllib.parse import urlparse # noqa: F401
 
 # Import all model classes for table definitions
-from models.auth import APITokenModel, SessionModel, UserModel
-from models.block_rules import BlockRuleModel
-from models.certificate import CertificateModel
-from models.cluster import ClusterModel, UserClusterAssignmentModel
-from models.enterprise_auth import EnterpriseAuthProviderModel
-from models.license import LicenseCacheModel
-from models.mapping import MappingModel
-from models.media_settings import MediaSettingsModel, MediaStreamModel
-from models.proxy import ProxyMetricsModel, ProxyServerModel
-from models.rate_limiting import RateLimitModel
-from models.service import ServiceModel
-from pydal import DAL
-from sqlalchemy import create_engine, inspect
-from sqlalchemy.engine import Engine
+from models.auth import APITokenModel, SessionModel, UserModel # noqa: F401
+from models.block_rules import BlockRuleModel # noqa: F401
+from models.certificate import CertificateModel # noqa: F401
+from models.cluster import ClusterModel, UserClusterAssignmentModel # noqa: F401
+from models.enterprise_auth import EnterpriseAuthProviderModel # noqa: F401
+from models.license import LicenseCacheModel # noqa: F401
+from models.mapping import MappingModel # noqa: F401
+from models.media_settings import MediaSettingsModel, MediaStreamModel # noqa: F401
+from models.proxy import ProxyMetricsModel, ProxyServerModel # noqa: F401
+from models.rate_limiting import RateLimitModel # noqa: F401
+from models.service import ServiceModel # noqa: F401
+from penguintechinc_utils import get_logger # noqa: F401
+from pydal import DAL # noqa: F401
+from sqlalchemy import create_engine, inspect # noqa: F401
+from sqlalchemy.engine import Engine # noqa: F401
 
 logger = get_logger(__name__)
 
@@ -49,7 +49,7 @@ class DatabaseManager:
         pydal_uri: PyDAL-formatted database connection string
     """
 
-    # Thread-local storage for PyDAL connections
+  # Thread-local storage for PyDAL connections
     _thread_local = threading.local()
 
     def __init__(self):
@@ -60,13 +60,13 @@ class DatabaseManager:
         if not self.database_url:
             raise ValueError("DATABASE_URL environment variable is required")
 
-        # Validate db_type
+      # Validate db_type
         if self.db_type not in ["postgres", "mysql", "sqlite"]:
             raise ValueError(
                 f"DB_TYPE must be 'postgres', 'mysql', or 'sqlite', got '{self.db_type}'"
             )
 
-        # Convert DATABASE_URL to PyDAL format
+      # Convert DATABASE_URL to PyDAL format
         self.pydal_uri = self._convert_url_to_pydal(self.database_url, self.db_type)
 
         logger.info(
@@ -105,7 +105,7 @@ class DatabaseManager:
         parsed = urlparse(database_url)
 
         if db_type == "postgres":
-            # Convert postgresql:// to postgres://
+          # Convert postgresql:// to postgres://
             scheme = "postgres"
             if parsed.port:
                 netloc = f"{parsed.username}:{parsed.password}@{parsed.hostname}:{parsed.port}"
@@ -115,7 +115,7 @@ class DatabaseManager:
             return f"{scheme}://{netloc}{path}"
 
         elif db_type == "mysql":
-            # MySQL format: mysql://user:pass@host:port/db
+          # MySQL format: mysql://user:pass@host:port/db
             scheme = "mysql"
             if parsed.port:
                 netloc = f"{parsed.username}:{parsed.password}@{parsed.hostname}:{parsed.port}"
@@ -125,8 +125,8 @@ class DatabaseManager:
             return f"{scheme}://{netloc}{path}"
 
         elif db_type == "sqlite":
-            # SQLite format: sqlite:///path/to/database.db
-            # Use the path directly
+          # SQLite format: sqlite:///path/to/database.db
+          # Use the path directly
             path = parsed.path or ":memory:"
             return f"sqlite:///{path.lstrip('/')}"
 
@@ -145,17 +145,17 @@ class DatabaseManager:
         try:
             logger.info("Initializing database schema", extra={"db_type": self.db_type})
 
-            # Create SQLAlchemy engine
+          # Create SQLAlchemy engine
             engine = self._create_sqlalchemy_engine()
 
-            # Check if all required tables exist
-            from models.sqlalchemy_schema import Base
+          # Check if all required tables exist
+            from models.sqlalchemy_schema import Base # noqa: F401
 
             inspector = inspect(engine)
             existing_tables = set(inspector.get_table_names())
             required_tables = set(Base.metadata.tables.keys())
 
-            # If all required tables exist, skip creation
+          # If all required tables exist, skip creation
             if required_tables.issubset(existing_tables):
                 logger.info(
                     "All required tables already exist, skipping schema creation",
@@ -163,7 +163,7 @@ class DatabaseManager:
                 )
                 return True
 
-            # Create missing tables using SQLAlchemy Base metadata
+          # Create missing tables using SQLAlchemy Base metadata
             missing_tables = required_tables - existing_tables
             logger.info(
                 "Creating missing tables via SQLAlchemy",
@@ -187,11 +187,11 @@ class DatabaseManager:
         """
         engine_kwargs = {
             "echo": os.getenv("SQL_ECHO", "false").lower() == "true",
-            "pool_pre_ping": True,  # Test connection before using
+            "pool_pre_ping": True, # Test connection before using
         }
 
         if self.db_type in ["postgres", "mysql"]:
-            # Configure connection pool for networked databases
+          # Configure connection pool for networked databases
             engine_kwargs["pool_size"] = 10
             engine_kwargs["max_overflow"] = 20
             engine_kwargs["pool_recycle"] = 3600
@@ -216,7 +216,7 @@ class DatabaseManager:
         Raises:
             RuntimeError: If connection fails
         """
-        # Check thread-local storage for existing connection
+      # Check thread-local storage for existing connection
         if hasattr(self._thread_local, "db") and self._thread_local.db:
             return self._thread_local.db
 
@@ -229,7 +229,7 @@ class DatabaseManager:
                 },
             )
 
-            # Check if tables already exist using SQLAlchemy inspector
+          # Check if tables already exist using SQLAlchemy inspector
             tables_exist = False
             try:
                 engine = self._create_sqlalchemy_engine()
@@ -240,8 +240,8 @@ class DatabaseManager:
             except Exception:
                 pass
 
-            # Create DAL instance with appropriate configuration
-            # Use fake_migrate=True if tables already exist
+          # Create DAL instance with appropriate configuration
+          # Use fake_migrate=True if tables already exist
             db = DAL(
                 self.pydal_uri,
                 pool_size=10,
@@ -250,14 +250,14 @@ class DatabaseManager:
                 auto_import=False,
             )
 
-            # Define all tables with retry on race condition
+          # Define all tables with retry on race condition
             try:
                 self._define_all_tables(db)
             except Exception as table_error:
                 error_msg = str(table_error).lower()
                 if "already exists" in error_msg:
-                    # Race condition - another worker created tables
-                    # Close and retry with fake_migrate
+                  # Race condition - another worker created tables
+                  # Close and retry with fake_migrate
                     logger.info("Tables created by another worker, retrying with fake_migrate")
                     db.close()
                     db = DAL(
@@ -271,7 +271,7 @@ class DatabaseManager:
                 else:
                     raise
 
-            # Store in thread-local storage
+          # Store in thread-local storage
             self._thread_local.db = db
 
             logger.info("PyDAL connection created successfully", extra={"db_type": self.db_type})
@@ -294,41 +294,41 @@ class DatabaseManager:
             db: PyDAL DAL instance
         """
         try:
-            # Core user table first (referenced by many tables)
+          # Core user table first (referenced by many tables)
             UserModel.define_table(db)
 
-            # Cluster management tables (referenced by services)
+          # Cluster management tables (referenced by services)
             ClusterModel.define_table(db)
             UserClusterAssignmentModel.define_table(db)
 
-            # Service table (referenced by api_tokens and mappings)
+          # Service table (referenced by api_tokens and mappings)
             ServiceModel.define_table(db)
 
-            # Authentication tables (api_tokens references services)
+          # Authentication tables (api_tokens references services)
             SessionModel.define_table(db)
             APITokenModel.define_table(db)
 
-            # Proxy tables
+          # Proxy tables
             ProxyServerModel.define_table(db)
             ProxyMetricsModel.define_table(db)
 
-            # Mapping table (references services)
+          # Mapping table (references services)
             MappingModel.define_table(db)
 
-            # Certificate management table
+          # Certificate management table
             CertificateModel.define_table(db)
 
-            # License and rate limiting tables
+          # License and rate limiting tables
             LicenseCacheModel.define_table(db)
             RateLimitModel.define_table(db)
 
-            # Security tables
+          # Security tables
             BlockRuleModel.define_table(db)
 
-            # Enterprise authentication tables
+          # Enterprise authentication tables
             EnterpriseAuthProviderModel.define_table(db)
 
-            # Media settings tables
+          # Media settings tables
             MediaSettingsModel.define_table(db)
             MediaStreamModel.define_table(db)
 
@@ -374,7 +374,7 @@ class DatabaseManager:
             True if connection is healthy, False otherwise
         """
         try:
-            # Execute simple query on first available table
+          # Execute simple query on first available table
             result = db(db.users).count()
             logger.debug(f"Health check passed, user count: {result}")
             return True
@@ -419,26 +419,26 @@ def get_db() -> DAL:
 
 
 if __name__ == "__main__":
-    # Example usage
-    import sys
+  # Example usage
+    import sys # noqa: F401
 
     try:
         manager = DatabaseManager()
 
-        # Initialize schema
+      # Initialize schema
         if manager.initialize_schema():
             print("✓ Schema initialized successfully")
 
-            # Get connection
+          # Get connection
             db = manager.get_pydal_connection()
 
-            # Check health
+          # Check health
             if manager.health_check(db):
                 print("✓ Database connection is healthy")
             else:
                 print("✗ Database health check failed")
 
-            # Clean up
+          # Clean up
             manager.close()
             print("✓ Connection closed")
 

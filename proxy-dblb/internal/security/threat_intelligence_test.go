@@ -1,15 +1,15 @@
 package security
 
 import (
+	"marchproxy-dblb/internal/logging"
 	"testing"
 	"time"
 
-	"go.uber.org/zap"
 )
 
 // TestNewThreatIntelligenceEngine tests the creation of a new ThreatIntelligenceEngine
 func TestNewThreatIntelligenceEngine(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	config := &ThreatIntelConfig{
 		Enabled:        true,
 		UpdateInterval: 1 * time.Hour,
@@ -59,7 +59,7 @@ func TestNewThreatIntelligenceEngine(t *testing.T) {
 
 // TestIsIPThreat tests checking if an IP is a known threat
 func TestIsIPThreat(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	config := &ThreatIntelConfig{
 		Enabled:        true,
 		UpdateInterval: 1 * time.Hour,
@@ -133,7 +133,7 @@ func TestIsIPThreat(t *testing.T) {
 
 // TestIsDomainThreat tests checking if a domain is a known threat
 func TestIsDomainThreat(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	config := &ThreatIntelConfig{
 		Enabled:        true,
 		UpdateInterval: 1 * time.Hour,
@@ -207,7 +207,7 @@ func TestIsDomainThreat(t *testing.T) {
 
 // TestAddCustomThreat tests adding custom threat indicators
 func TestAddCustomThreat(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	config := &ThreatIntelConfig{
 		Enabled:        true,
 		UpdateInterval: 1 * time.Hour,
@@ -258,7 +258,7 @@ func TestAddCustomThreat(t *testing.T) {
 
 // TestRemoveCustomThreat tests removing threat indicators
 func TestRemoveCustomThreat(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	config := &ThreatIntelConfig{
 		Enabled:        true,
 		UpdateInterval: 1 * time.Hour,
@@ -313,7 +313,7 @@ func TestRemoveCustomThreat(t *testing.T) {
 
 // TestGetThreatInfo tests getting threat details
 func TestGetThreatInfo(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	config := &ThreatIntelConfig{
 		Enabled:        true,
 		UpdateInterval: 1 * time.Hour,
@@ -375,7 +375,7 @@ func TestGetThreatInfo(t *testing.T) {
 
 // TestGetStats tests getting threat intelligence statistics
 func TestGetStats(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	config := &ThreatIntelConfig{
 		Enabled:        true,
 		UpdateInterval: 1 * time.Hour,
@@ -438,7 +438,7 @@ func TestGetStats(t *testing.T) {
 
 // TestMultipleIndicators tests handling multiple indicators
 func TestMultipleIndicators(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	config := &ThreatIntelConfig{
 		Enabled:        true,
 		UpdateInterval: 1 * time.Hour,
@@ -494,7 +494,7 @@ func TestMultipleIndicators(t *testing.T) {
 
 // TestAutoBlock tests auto-blocking functionality
 func TestAutoBlock(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	config := &ThreatIntelConfig{
 		Enabled:        true,
 		UpdateInterval: 1 * time.Hour,
@@ -545,7 +545,7 @@ func TestAutoBlock(t *testing.T) {
 
 // TestConcurrentAccess tests concurrent access to the engine
 func TestConcurrentAccess(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	config := &ThreatIntelConfig{
 		Enabled:        true,
 		UpdateInterval: 1 * time.Hour,
@@ -603,7 +603,7 @@ func TestConcurrentAccess(t *testing.T) {
 
 // TestThreatIndicatorFields tests that threat indicator fields are properly set
 func TestThreatIndicatorFields(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	config := &ThreatIntelConfig{
 		Enabled:        true,
 		UpdateInterval: 1 * time.Hour,
@@ -682,7 +682,7 @@ func TestThreatIndicatorFields(t *testing.T) {
 
 // TestEmptyAndNilCases tests edge cases with empty and nil values
 func TestEmptyAndNilCases(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	config := &ThreatIntelConfig{
 		Enabled:        true,
 		UpdateInterval: 1 * time.Hour,
@@ -729,7 +729,7 @@ func TestEmptyAndNilCases(t *testing.T) {
 
 // TestEngineClosing tests that the engine can be properly closed
 func TestEngineClosing(t *testing.T) {
-	logger := NewLogrusAdapter("marchproxy")
+	logger, _ := logging.NewLogrusAdapter("marchproxy")
 	config := &ThreatIntelConfig{
 		Enabled:        true,
 		UpdateInterval: 100 * time.Millisecond,

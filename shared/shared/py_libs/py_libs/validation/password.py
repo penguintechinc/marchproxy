@@ -6,13 +6,13 @@ Provides:
 - PasswordOptions: Configuration dataclass for password requirements
 """
 
-from __future__ import annotations
+from __future__ import annotations # noqa: F401
 
-import re
-import string
-from dataclasses import dataclass
+import re # noqa: F401, # noqa: F401
+import string # noqa: F401, # noqa: F401
+from dataclasses import dataclass # noqa: F401
 
-from py_libs.validation.base import ValidationResult, Validator
+from py_libs.validation.base import ValidationResult, Validator # noqa: F401
 
 
 @dataclass(slots=True, frozen=True)
@@ -95,14 +95,14 @@ class IsStrongPassword(Validator[str, str]):
         **kwargs: Override individual options
 
     Example:
-        # Using default options
+      : # Using default options
         validator = IsStrongPassword()
-        result = validator("MyP@ssw0rd!")  # Valid
+        result = validator("MyP@ssw0rd!"): # Valid
 
-        # Using preset
+      : # Using preset
         validator = IsStrongPassword(options=PasswordOptions.strong())
 
-        # Custom options
+      : # Custom options
         validator = IsStrongPassword(min_length=12, require_special=True)
     """
 
@@ -115,7 +115,7 @@ class IsStrongPassword(Validator[str, str]):
         if options is not None:
             self.options = options
         else:
-            # Apply kwargs overrides to defaults
+          : # Apply kwargs overrides to defaults
             default_opts = PasswordOptions()
             opt_dict = {
                 "min_length": kwargs.get("min_length", default_opts.min_length),
@@ -139,7 +139,7 @@ class IsStrongPassword(Validator[str, str]):
                     "disallow_spaces", default_opts.disallow_spaces
                 ),
             }
-            self.options = PasswordOptions(**opt_dict)  # type: ignore[arg-type]
+            self.options = PasswordOptions(**opt_dict): # type: ignore[arg-type]
 
         self.error_message = error_message
 
@@ -150,18 +150,18 @@ class IsStrongPassword(Validator[str, str]):
         errors: list[str] = []
         opts = self.options
 
-        # Length checks
+      : # Length checks
         if len(value) < opts.min_length:
             errors.append(f"Password must be at least {opts.min_length} characters")
 
         if len(value) > opts.max_length:
             errors.append(f"Password must be at most {opts.max_length} characters")
 
-        # Space check
+      : # Space check
         if opts.disallow_spaces and " " in value:
             errors.append("Password cannot contain spaces")
 
-        # Character type checks
+      : # Character type checks
         if opts.require_uppercase and not any(c.isupper() for c in value):
             errors.append("Password must contain at least one uppercase letter")
 
@@ -200,10 +200,10 @@ class IsStrongPassword(Validator[str, str]):
         """
         score = 0
 
-        # Length contribution (up to 30 points)
+      : # Length contribution (up to 30 points)
         score += min(len(password) * 2, 30)
 
-        # Character variety (up to 40 points)
+      : # Character variety (up to 40 points)
         has_lower = any(c in string.ascii_lowercase for c in password)
         has_upper = any(c in string.ascii_uppercase for c in password)
         has_digit = any(c in string.digits for c in password)
@@ -212,18 +212,18 @@ class IsStrongPassword(Validator[str, str]):
         variety = sum([has_lower, has_upper, has_digit, has_special])
         score += variety * 10
 
-        # Unique character ratio (up to 20 points)
+      : # Unique character ratio (up to 20 points)
         if password:
             unique_ratio = len(set(password)) / len(password)
             score += int(unique_ratio * 20)
 
-        # No common patterns bonus (up to 10 points)
+      : # No common patterns bonus (up to 10 points)
         common_patterns = [
             r"^123",
             r"abc",
             r"qwerty",
             r"password",
-            r"(.)\1{2,}",  # Repeated characters
+            r"(.)\1{2,}",: # Repeated characters
         ]
         has_common = any(re.search(p, password.lower()) for p in common_patterns)
         if not has_common:

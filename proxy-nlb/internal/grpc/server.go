@@ -7,7 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"go.uber.org/zap"
+	"marchproxy-nlb/internal/logging"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -158,7 +159,7 @@ func (s *Server) Start() error {
 	s.running = true
 	s.mu.Unlock()
 
-	s.logger.WithFields(logrus.Fields{
+	s.logger.WithFields(logging.Fields{
 		"address": addr,
 	}).Info("NLB gRPC server starting")
 
@@ -260,7 +261,7 @@ func (m *MockNLBService) RegisterModule(ctx context.Context, req *RegisterModule
 	moduleID := fmt.Sprintf("%s-%s", req.Protocol, req.ModuleName)
 	m.modules[moduleID] = true
 
-	m.logger.WithFields(logrus.Fields{
+	m.logger.WithFields(logging.Fields{
 		"module":   req.ModuleName,
 		"protocol": req.Protocol,
 		"address":  req.Address,
@@ -282,7 +283,7 @@ func (m *MockNLBService) UnregisterModule(ctx context.Context, req *UnregisterMo
 	moduleID := fmt.Sprintf("%s-%s", req.Protocol, req.ModuleName)
 	delete(m.modules, moduleID)
 
-	m.logger.WithFields(logrus.Fields{
+	m.logger.WithFields(logging.Fields{
 		"module":   req.ModuleName,
 		"protocol": req.Protocol,
 	}).Info("Module unregistered")
@@ -295,7 +296,7 @@ func (m *MockNLBService) UnregisterModule(ctx context.Context, req *UnregisterMo
 
 // UpdateHealth implements health update
 func (m *MockNLBService) UpdateHealth(ctx context.Context, req *HealthUpdateRequest) (*HealthUpdateResponse, error) {
-	m.logger.WithFields(logrus.Fields{
+	m.logger.WithFields(logging.Fields{
 		"module":  req.ModuleName,
 		"healthy": req.Healthy,
 	}).Debug("Health updated")

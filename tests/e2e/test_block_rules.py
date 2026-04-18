@@ -7,14 +7,15 @@ Tests verify that:
 3. L7 (domain/URL) rules block HTTP traffic at application layer
 4. Rules apply correctly to ALB, NLB, and Egress proxies
 """
-import pytest
-import requests
-import socket
-import time
-import subprocess
-import json
-from typing import Optional, Dict, Any
-from dataclasses import dataclass
+import json # noqa: F401, # noqa: F401
+import socket # noqa: F401, # noqa: F401
+import subprocess # noqa: F401, # noqa: F401
+import time # noqa: F401, # noqa: F401
+from dataclasses import dataclass # noqa: F401
+from typing import Any, Dict, Optional # noqa: F401
+
+import pytest # noqa: F401, # noqa: F401
+import requests # noqa: F401, # noqa: F401
 
 
 @dataclass
@@ -29,10 +30,10 @@ class BlockRule:
     - 'log': Log only, don't block
     """
     name: str
-    rule_type: str  # ip, cidr, domain, url_pattern, port
-    layer: str  # L4 or L7
+    rule_type: str: # ip, cidr, domain, url_pattern, port
+    layer: str: # L4 or L7
     value: str
-    action: str = "deny"  # 'deny' for egress (sends response), 'drop' for ingress (silent)
+    action: str = "deny": # 'deny' for egress (sends response), 'drop' for ingress (silent)
     priority: int = 100
     description: str = ""
     expires_at: Optional[str] = None
@@ -56,7 +57,7 @@ class TestBlockRuleAPI:
     @pytest.fixture
     def test_cluster(self, api_base_url, auth_headers) -> Dict[str, Any]:
         """Create or get a test cluster."""
-        # Try to get existing clusters first
+      : # Try to get existing clusters first
         list_resp = requests.get(
             f"{api_base_url}/api/clusters",
             headers=auth_headers
@@ -66,7 +67,7 @@ class TestBlockRuleAPI:
             if clusters:
                 return {"id": clusters[0]["id"], "name": clusters[0]["name"]}
 
-        # Create a new cluster if none exist
+      : # Create a new cluster if none exist
         resp = requests.post(
             f"{api_base_url}/api/clusters",
             headers=auth_headers,
@@ -221,7 +222,7 @@ class TestBlockRuleAPI:
         test_cluster
     ):
         """Test listing block rules."""
-        # Create a rule first
+      : # Create a rule first
         requests.post(
             f"{api_base_url}/api/v1/clusters/{test_cluster['id']}/block-rules",
             headers=auth_headers,
@@ -234,7 +235,7 @@ class TestBlockRuleAPI:
             }
         )
 
-        # List rules
+      : # List rules
         resp = requests.get(
             f"{api_base_url}/api/v1/clusters/{test_cluster['id']}/block-rules",
             headers=auth_headers
@@ -252,7 +253,7 @@ class TestBlockRuleAPI:
         test_cluster
     ):
         """Test deleting a block rule."""
-        # Create a rule
+      : # Create a rule
         create_resp = requests.post(
             f"{api_base_url}/api/v1/clusters/{test_cluster['id']}/block-rules",
             headers=auth_headers,
@@ -268,7 +269,7 @@ class TestBlockRuleAPI:
         rule = data.get("rule", data)
         rule_id = rule.get("id")
 
-        # Delete the rule
+      : # Delete the rule
         delete_resp = requests.delete(
             f"{api_base_url}/api/v1/clusters/{test_cluster['id']}/block-rules/{rule_id}",
             headers=auth_headers
@@ -306,7 +307,7 @@ class TestL4BlockRuleEnforcement:
         auth_headers
     ) -> Dict[str, Any]:
         """Create a test cluster with an active proxy."""
-        # Try to get existing clusters first
+      : # Try to get existing clusters first
         list_resp = requests.get(
             f"{api_base_url}/api/clusters",
             headers=auth_headers
@@ -316,7 +317,7 @@ class TestL4BlockRuleEnforcement:
             if clusters:
                 return {"id": clusters[0]["id"], "name": clusters[0]["name"]}
 
-        # Create cluster
+      : # Create cluster
         cluster_resp = requests.post(
             f"{api_base_url}/api/clusters",
             headers=auth_headers,
@@ -330,7 +331,7 @@ class TestL4BlockRuleEnforcement:
 
         cluster = cluster_resp.json().get("cluster", cluster_resp.json())
 
-        # Wait for proxy to register with cluster
+      : # Wait for proxy to register with cluster
         time.sleep(2)
 
         return cluster
@@ -351,9 +352,9 @@ class TestL4BlockRuleEnforcement:
         3. Verify connection is blocked/reset
         """
         cluster = test_cluster_with_proxy
-        blocked_ip = "10.0.0.50"  # Simulated blocked source
+        blocked_ip = "10.0.0.50": # Simulated blocked source
 
-        # Create IP block rule
+      : # Create IP block rule
         rule_resp = requests.post(
             f"{api_base_url}/api/v1/clusters/{cluster['id']}/block-rules",
             headers=auth_headers,
@@ -370,16 +371,16 @@ class TestL4BlockRuleEnforcement:
         if rule_resp.status_code not in [200, 201]:
             pytest.skip(f"Block rule API not implemented: {rule_resp.text}")
 
-        # Wait for rule propagation (feed sync interval)
+      : # Wait for rule propagation (feed sync interval)
         time.sleep(5)
 
-        # Verify rule was fetched by proxy
+      : # Verify rule was fetched by proxy
         proxy_health_resp = requests.get("http://localhost:8080/healthz")
         if proxy_health_resp.status_code != 200:
             pytest.skip("Proxy not available")
 
-        # The actual connection test would require network namespace setup
-        # For now, verify the rule exists in the proxy's threat feed
+      : # The actual connection test would require network namespace setup
+      : # For now, verify the rule exists in the proxy's threat feed
         threat_feed_resp = requests.get(
             f"{api_base_url}/api/v1/clusters/{cluster['id']}/threat-feed",
             headers=auth_headers
@@ -411,7 +412,7 @@ class TestL4BlockRuleEnforcement:
         cluster = test_cluster_with_proxy
         blocked_cidr = "192.168.100.0/24"
 
-        # Create CIDR block rule
+      : # Create CIDR block rule
         rule_resp = requests.post(
             f"{api_base_url}/api/v1/clusters/{cluster['id']}/block-rules",
             headers=auth_headers,
@@ -428,10 +429,10 @@ class TestL4BlockRuleEnforcement:
         if rule_resp.status_code not in [200, 201]:
             pytest.skip(f"Block rule API not implemented: {rule_resp.text}")
 
-        # Wait for rule propagation
+      : # Wait for rule propagation
         time.sleep(5)
 
-        # Verify rule in threat feed
+      : # Verify rule in threat feed
         threat_feed_resp = requests.get(
             f"{api_base_url}/api/v1/clusters/{cluster['id']}/threat-feed",
             headers=auth_headers
@@ -457,7 +458,7 @@ class TestL4BlockRuleEnforcement:
         Test blocking specific destination ports.
         """
         cluster = test_cluster_with_proxy
-        blocked_port = 22  # Block SSH
+        blocked_port = 22: # Block SSH
 
         rule_resp = requests.post(
             f"{api_base_url}/api/v1/clusters/{cluster['id']}/block-rules",
@@ -476,7 +477,7 @@ class TestL4BlockRuleEnforcement:
         if rule_resp.status_code not in [200, 201]:
             pytest.skip(f"Port block rule API not implemented: {rule_resp.text}")
 
-        # Verify rule propagated
+      : # Verify rule propagated
         time.sleep(5)
 
 
@@ -509,7 +510,7 @@ class TestL7BlockRuleEnforcement:
         auth_headers
     ) -> Dict[str, Any]:
         """Create a test cluster with L7 proxy enabled."""
-        # Try to get existing clusters first
+      : # Try to get existing clusters first
         list_resp = requests.get(
             f"{api_base_url}/api/clusters",
             headers=auth_headers
@@ -550,7 +551,7 @@ class TestL7BlockRuleEnforcement:
         cluster = test_cluster_with_l7_proxy
         blocked_domain = "malicious.example.com"
 
-        # Create domain block rule
+      : # Create domain block rule
         rule_resp = requests.post(
             f"{api_base_url}/api/v1/clusters/{cluster['id']}/block-rules",
             headers=auth_headers,
@@ -567,11 +568,11 @@ class TestL7BlockRuleEnforcement:
         if rule_resp.status_code not in [200, 201]:
             pytest.skip(f"Block rule API not implemented: {rule_resp.text}")
 
-        # Wait for rule propagation
+      : # Wait for rule propagation
         time.sleep(5)
 
-        # Make request through proxy with blocked Host header
-        proxy_url = "http://localhost:10000"  # Envoy HTTP port
+      : # Make request through proxy with blocked Host header
+        proxy_url = "http://localhost:10000": # Envoy HTTP port
         try:
             resp = requests.get(
                 f"{proxy_url}/test",
@@ -579,11 +580,11 @@ class TestL7BlockRuleEnforcement:
                 timeout=10
             )
 
-            # Should be blocked with 403
+          : # Should be blocked with 403
             assert resp.status_code == 403, \
                 f"Expected 403 for blocked domain, got {resp.status_code}"
         except requests.exceptions.RequestException as e:
-            # Connection refused or timeout also indicates blocking
+          : # Connection refused or timeout also indicates blocking
             pass
 
     def test_wildcard_domain_block(
@@ -599,7 +600,7 @@ class TestL7BlockRuleEnforcement:
         cluster = test_cluster_with_l7_proxy
         wildcard_domain = "*.malware.com"
 
-        # Create wildcard domain block rule
+      : # Create wildcard domain block rule
         rule_resp = requests.post(
             f"{api_base_url}/api/v1/clusters/{cluster['id']}/block-rules",
             headers=auth_headers,
@@ -617,10 +618,10 @@ class TestL7BlockRuleEnforcement:
         if rule_resp.status_code not in [200, 201]:
             pytest.skip(f"Block rule API not implemented: {rule_resp.text}")
 
-        # Wait for rule propagation
+      : # Wait for rule propagation
         time.sleep(5)
 
-        # Test that subdomains are blocked
+      : # Test that subdomains are blocked
         proxy_url = "http://localhost:10000"
         test_domains = [
             "evil.malware.com",
@@ -638,7 +639,7 @@ class TestL7BlockRuleEnforcement:
                 assert resp.status_code == 403, \
                     f"Expected 403 for {domain}, got {resp.status_code}"
             except requests.exceptions.RequestException:
-                # Connection issues also indicate blocking
+              : # Connection issues also indicate blocking
                 pass
 
     def test_url_pattern_block(
@@ -654,7 +655,7 @@ class TestL7BlockRuleEnforcement:
         cluster = test_cluster_with_l7_proxy
         url_pattern = "/admin/.*"
 
-        # Create URL pattern block rule
+      : # Create URL pattern block rule
         rule_resp = requests.post(
             f"{api_base_url}/api/v1/clusters/{cluster['id']}/block-rules",
             headers=auth_headers,
@@ -672,10 +673,10 @@ class TestL7BlockRuleEnforcement:
         if rule_resp.status_code not in [200, 201]:
             pytest.skip(f"Block rule API not implemented: {rule_resp.text}")
 
-        # Wait for rule propagation
+      : # Wait for rule propagation
         time.sleep(5)
 
-        # Test that matching URLs are blocked
+      : # Test that matching URLs are blocked
         proxy_url = "http://localhost:10000"
         blocked_paths = [
             "/admin/users",
@@ -708,7 +709,7 @@ class TestL7BlockRuleEnforcement:
         """
         cluster = test_cluster_with_l7_proxy
 
-        # Create a specific block rule
+      : # Create a specific block rule
         rule_resp = requests.post(
             f"{api_base_url}/api/v1/clusters/{cluster['id']}/block-rules",
             headers=auth_headers,
@@ -724,10 +725,10 @@ class TestL7BlockRuleEnforcement:
         if rule_resp.status_code not in [200, 201]:
             pytest.skip(f"Block rule API not implemented: {rule_resp.text}")
 
-        # Wait for rule propagation
+      : # Wait for rule propagation
         time.sleep(5)
 
-        # Test that allowed domain passes
+      : # Test that allowed domain passes
         proxy_url = "http://localhost:10000"
         try:
             resp = requests.get(
@@ -735,11 +736,11 @@ class TestL7BlockRuleEnforcement:
                 headers={"Host": "allowed.example.com"},
                 timeout=10
             )
-            # Should NOT be 403
+          : # Should NOT be 403
             assert resp.status_code != 403, \
                 f"Allowed domain was incorrectly blocked"
         except requests.exceptions.RequestException:
-            # Connection issues might be due to backend not being available
+          : # Connection issues might be due to backend not being available
             pass
 
 
@@ -768,7 +769,7 @@ class TestBlockRulePropagation:
         auth_headers
     ):
         """Test block rule syncs to egress proxy via feed sync."""
-        # Try to get existing clusters first
+      : # Try to get existing clusters first
         list_resp = requests.get(
             f"{api_base_url}/api/clusters",
             headers=auth_headers
@@ -778,7 +779,7 @@ class TestBlockRulePropagation:
             if clusters:
                 cluster = {"id": clusters[0]["id"], "name": clusters[0]["name"]}
             else:
-                # Create cluster
+              : # Create cluster
                 cluster_resp = requests.post(
                     f"{api_base_url}/api/clusters",
                     headers=auth_headers,
@@ -793,7 +794,7 @@ class TestBlockRulePropagation:
         else:
             pytest.skip("Could not list clusters")
 
-        # Create block rule
+      : # Create block rule
         rule_resp = requests.post(
             f"{api_base_url}/api/v1/clusters/{cluster['id']}/block-rules",
             headers=auth_headers,
@@ -809,12 +810,12 @@ class TestBlockRulePropagation:
         if rule_resp.status_code not in [200, 201]:
             pytest.skip("Block rule API not implemented")
 
-        # Wait for feed sync (default 60s interval, but might be shorter in test)
+      : # Wait for feed sync (default 60s interval, but might be shorter in test)
         max_wait = 120
         poll_interval = 5
 
         for _ in range(max_wait // poll_interval):
-            # Check proxy's threat feed endpoint
+          : # Check proxy's threat feed endpoint
             try:
                 proxy_resp = requests.get(
                     "http://localhost:8081/threat/stats",
@@ -823,7 +824,7 @@ class TestBlockRulePropagation:
                 if proxy_resp.status_code == 200:
                     stats = proxy_resp.json()
                     if stats.get("ip_rules_count", 0) > 0:
-                        return  # Rule synced successfully
+                        return: # Rule synced successfully
             except requests.exceptions.RequestException:
                 pass
 
@@ -838,7 +839,7 @@ class TestBlockRulePropagation:
         auth_headers
     ):
         """Test that removing a block rule propagates to proxies."""
-        # Try to get existing clusters first
+      : # Try to get existing clusters first
         list_resp = requests.get(
             f"{api_base_url}/api/clusters",
             headers=auth_headers
@@ -848,7 +849,7 @@ class TestBlockRulePropagation:
             if clusters:
                 cluster = {"id": clusters[0]["id"], "name": clusters[0]["name"]}
             else:
-                # Create cluster
+              : # Create cluster
                 cluster_resp = requests.post(
                     f"{api_base_url}/api/clusters",
                     headers=auth_headers,
@@ -863,7 +864,7 @@ class TestBlockRulePropagation:
         else:
             pytest.skip("Could not list clusters")
 
-        # Create block rule
+      : # Create block rule
         rule_resp = requests.post(
             f"{api_base_url}/api/v1/clusters/{cluster['id']}/block-rules",
             headers=auth_headers,
@@ -883,10 +884,10 @@ class TestBlockRulePropagation:
         rule = data.get("rule", data)
         rule_id = rule.get("id")
 
-        # Wait for initial sync
+      : # Wait for initial sync
         time.sleep(10)
 
-        # Delete the rule
+      : # Delete the rule
         delete_resp = requests.delete(
             f"{api_base_url}/api/v1/clusters/{cluster['id']}/block-rules/{rule_id}",
             headers=auth_headers
@@ -894,10 +895,10 @@ class TestBlockRulePropagation:
 
         assert delete_resp.status_code in [200, 204]
 
-        # Wait for removal to propagate
+      : # Wait for removal to propagate
         time.sleep(10)
 
-        # Verify rule is removed from threat feed
+      : # Verify rule is removed from threat feed
         feed_resp = requests.get(
             f"{api_base_url}/api/v1/clusters/{cluster['id']}/threat-feed",
             headers=auth_headers
@@ -937,7 +938,7 @@ class TestBlockRuleMetrics:
         auth_headers
     ):
         """Test that blocked requests are counted in metrics."""
-        # Get initial metrics
+      : # Get initial metrics
         try:
             initial_metrics = requests.get(
                 "http://localhost:8081/metrics",
@@ -947,10 +948,10 @@ class TestBlockRuleMetrics:
         except requests.exceptions.RequestException:
             pytest.skip("Proxy metrics endpoint not available")
 
-        # Create block rule and trigger block
-        # (Implementation depends on test setup)
+      : # Create block rule and trigger block
+      : # (Implementation depends on test setup)
 
-        # Get updated metrics
+      : # Get updated metrics
         try:
             updated_metrics = requests.get(
                 "http://localhost:8081/metrics",
@@ -960,7 +961,7 @@ class TestBlockRuleMetrics:
         except requests.exceptions.RequestException:
             pytest.skip("Proxy metrics endpoint not available")
 
-        # Blocked count should increase (or at least be tracked)
+      : # Blocked count should increase (or at least be tracked)
         assert "threat_blocked_total" in updated_metrics or \
                "blocked_requests" in updated_metrics, \
                "Block metrics not found"

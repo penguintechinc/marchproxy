@@ -1,12 +1,10 @@
 """
 Integration tests for service lifecycle management.
 """
-import pytest
-from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models.cluster import Cluster
-from app.models.service import Service
+import pytest # noqa: F401, # noqa: F401
+from app_quart.models.kong import KongService # noqa: F401
+from httpx import AsyncClient # noqa: F401
+from sqlalchemy.ext.asyncio import AsyncSession # noqa: F401
 
 
 @pytest.mark.asyncio

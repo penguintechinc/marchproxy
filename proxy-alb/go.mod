@@ -9,6 +9,7 @@ require (
 )
 
 require (
+	github.com/PenguinTech/MarchProxy/proto v0.0.0-00010101000000-000000000000 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/net v0.38.0 // indirect

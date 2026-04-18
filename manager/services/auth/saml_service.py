@@ -3,18 +3,18 @@ SAML Authentication Service for MarchProxy Enterprise
 Handles SAML SSO integration with enterprise identity providers
 """
 
-import logging
-from penguintechinc_utils import get_logger
-import time
-import uuid
-from datetime import datetime
-from typing import Any, Dict, Optional
-from urllib.parse import urlencode
+import logging # noqa: F401, # noqa: F401
+import time # noqa: F401, # noqa: F401
+import uuid # noqa: F401, # noqa: F401
+from datetime import datetime # noqa: F401
+from typing import Any, Dict, Optional # noqa: F401
+from urllib.parse import urlencode # noqa: F401
 
-from quart import abort, session, url_for
+from penguintechinc_utils import get_logger # noqa: F401
+from quart import abort, session, url_for # noqa: F401
 
-from ...models import get_db
-from ..license_service import LicenseService
+from ...models import get_db # noqa: F401
+from ..license_service import LicenseService # noqa: F401
 
 logger = get_logger(__name__)
 
@@ -30,7 +30,7 @@ class SAMLService:
 
     def _load_saml_config(self) -> Dict:
         """Load SAML configuration from environment/settings"""
-        # This would typically come from environment variables or database
+      # This would typically come from environment variables or database
         return {
             "entity_id": "marchproxy-sp",
             "assertion_consumer_service_url": url_for("auth.saml_acs", _external=True),
@@ -43,7 +43,7 @@ class SAMLService:
             "logout_requests_signed": True,
             "want_assertions_signed": True,
             "want_name_id_encrypted": False,
-            "idp_metadata_url": None,  # Set per IdP configuration
+            "idp_metadata_url": None, # Set per IdP configuration
             "attribute_mapping": {
                 "email": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress",
                 "first_name": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname",
@@ -55,11 +55,11 @@ class SAMLService:
 
     def is_enabled(self) -> bool:
         """Check if SAML authentication is enabled for this instance"""
-        # Check license features
+      # Check license features
         if not self.license_service.has_feature("saml_authentication"):
             return False
 
-        # Check if SAML is configured
+      # Check if SAML is configured
         return bool(self.config.get("idp_metadata_url"))
 
     def initiate_sso(self, relay_state: Optional[str] = None) -> str:
@@ -67,15 +67,15 @@ class SAMLService:
         if not self.is_enabled():
             abort(403, "SAML authentication not available")
 
-        # Generate SAML AuthnRequest
+      # Generate SAML AuthnRequest
         authn_request = self._generate_authn_request()
 
-        # Store request details in session for validation
+      # Store request details in session for validation
         session["saml_request_id"] = authn_request["id"]
         session["saml_request_timestamp"] = time.time()
         session["saml_relay_state"] = relay_state
 
-        # Build SSO URL
+      # Build SSO URL
         sso_url = self._build_sso_url(authn_request, relay_state)
 
         logger.info(f"Initiating SAML SSO for request ID: {authn_request['id']}")
@@ -99,8 +99,8 @@ class SAMLService:
 
     def _build_sso_url(self, authn_request: Dict, relay_state: Optional[str]) -> str:
         """Build SSO URL with SAML AuthnRequest"""
-        # In a full implementation, this would generate proper SAML XML
-        # and potentially sign it if required
+      # In a full implementation, this would generate proper SAML XML
+      # and potentially sign it if required
         saml_request = self._encode_saml_request(authn_request)
 
         params = {
@@ -117,9 +117,9 @@ class SAMLService:
 
     def _encode_saml_request(self, authn_request: Dict) -> str:
         """Encode SAML AuthnRequest as base64 (simplified)"""
-        # In production, this would generate proper SAML XML
-        import base64
-        import zlib
+      # In production, this would generate proper SAML XML
+        import base64 # noqa: F401
+        import zlib # noqa: F401
 
         xml_template = f"""<?xml version="1.0" encoding="UTF-8"?>
 <samlp:AuthnRequest
@@ -143,29 +143,29 @@ class SAMLService:
         if not self.is_enabled():
             abort(403, "SAML authentication not available")
 
-        # Validate session state
+      # Validate session state
         if "saml_request_id" not in session:
             abort(400, "Invalid SAML session state")
 
-        # Check request timeout (5 minutes)
+      # Check request timeout (5 minutes)
         request_age = time.time() - session.get("saml_request_timestamp", 0)
         if request_age > 300:
             abort(400, "SAML request timeout")
 
-        # Decode and validate SAML response
+      # Decode and validate SAML response
         assertion = self._decode_saml_response(saml_response)
 
-        # Validate assertion
+      # Validate assertion
         if not self._validate_assertion(assertion):
             abort(401, "Invalid SAML assertion")
 
-        # Extract user attributes
+      # Extract user attributes
         user_attributes = self._extract_user_attributes(assertion)
 
-        # Provision or update user
+      # Provision or update user
         user = self._provision_user(user_attributes)
 
-        # Clear SAML session data
+      # Clear SAML session data
         for key in ["saml_request_id", "saml_request_timestamp", "saml_relay_state"]:
             session.pop(key, None)
 
@@ -174,15 +174,15 @@ class SAMLService:
 
     def _decode_saml_response(self, saml_response: str) -> Dict:
         """Decode and parse SAML Response (simplified)"""
-        import base64
-        import xml.etree.ElementTree as ET
+        import base64 # noqa: F401
+        import xml.etree.ElementTree as ET # noqa: F401
 
         try:
             decoded = base64.b64decode(saml_response)
             root = ET.fromstring(decoded)
 
-            # Extract assertion (simplified XML parsing)
-            # In production, use proper SAML library like python3-saml
+          # Extract assertion (simplified XML parsing)
+          # In production, use proper SAML library like python3-saml
 
             assertion = {
                 "subject": self._extract_xml_text(root, ".//saml:Subject/saml:NameID"),
@@ -199,7 +199,7 @@ class SAMLService:
 
     def _validate_assertion(self, assertion: Dict) -> bool:
         """Validate SAML assertion"""
-        # Check conditions (NotBefore, NotOnOrAfter)
+      # Check conditions (NotBefore, NotOnOrAfter)
         conditions = assertion.get("conditions", {})
         now = datetime.utcnow()
 
@@ -215,13 +215,13 @@ class SAMLService:
                 logger.warning("SAML assertion expired")
                 return False
 
-        # Validate audience restriction
+      # Validate audience restriction
         audience = conditions.get("audience")
         if audience and audience != self.config["entity_id"]:
             logger.warning(f"Invalid audience: {audience}")
             return False
 
-        # Additional validations would go here (signature, etc.)
+      # Additional validations would go here (signature, etc.)
         return True
 
     def _extract_user_attributes(self, assertion: Dict) -> Dict:
@@ -232,10 +232,10 @@ class SAMLService:
         user_data = {
             "external_id": assertion.get("subject"),
             "auth_provider": "saml",
-            "is_admin": False,  # Default, can be overridden by group membership
+            "is_admin": False, # Default, can be overridden by group membership
         }
 
-        # Map SAML attributes to user fields
+      # Map SAML attributes to user fields
         for field, attr_name in mapping.items():
             if attr_name in attributes:
                 value = attributes[attr_name]
@@ -243,7 +243,7 @@ class SAMLService:
                     value = value[0]
                 user_data[field] = value
 
-        # Check for admin group membership
+      # Check for admin group membership
         groups = user_data.get("groups", [])
         if isinstance(groups, str):
             groups = [groups]
@@ -261,7 +261,7 @@ class SAMLService:
         if not email:
             abort(400, "Email address required for user provisioning")
 
-        # Check if user exists by email or external_id
+      # Check if user exists by email or external_id
         user = (
             self.db(
                 (self.db.auth_user.email == email) | (self.db.auth_user.external_id == external_id)
@@ -271,7 +271,7 @@ class SAMLService:
         )
 
         if user:
-            # Update existing user
+          # Update existing user
             self.db(self.db.auth_user.id == user.id).update(
                 first_name=user_attributes.get("first_name", user.first_name),
                 last_name=user_attributes.get("last_name", user.last_name),
@@ -285,10 +285,10 @@ class SAMLService:
             logger.info(f"Updated SAML user: {email}")
             return user.as_dict()
         else:
-            # Create new user
+          # Create new user
             username = email.split("@")[0]  # Use email prefix as username
 
-            # Ensure username is unique
+          # Ensure username is unique
             counter = 1
             original_username = username
             while self.db(self.db.auth_user.username == username).count():
@@ -303,7 +303,7 @@ class SAMLService:
                 is_admin=user_attributes.get("is_admin", False),
                 external_id=external_id,
                 auth_provider="saml",
-                password_hash="",  # No local password for SAML users
+                password_hash="", # No local password for SAML users
                 registration_date=datetime.utcnow(),
                 last_login=datetime.utcnow(),
             )
@@ -334,31 +334,31 @@ class SAMLService:
 
     def _get_idp_sso_url(self) -> str:
         """Get IdP SSO URL from metadata"""
-        # In production, this would parse IdP metadata
-        # For now, return configured URL
+      # In production, this would parse IdP metadata
+      # For now, return configured URL
         return self.config.get("idp_sso_url", "https://idp.example.com/sso")
 
     def _sign_request(self, params: Dict) -> str:
         """Sign SAML request (simplified)"""
-        # In production, implement proper XML signature
+      # In production, implement proper XML signature
         return "placeholder_signature"
 
     def _extract_xml_text(self, root, xpath: str) -> Optional[str]:
         """Extract text from XML element"""
-        # Simplified XML parsing
+      # Simplified XML parsing
         return None
 
     def _extract_attributes(self, root) -> Dict:
         """Extract attributes from SAML assertion"""
-        # Simplified attribute extraction
+      # Simplified attribute extraction
         return {}
 
     def _extract_conditions(self, root) -> Dict:
         """Extract conditions from SAML assertion"""
-        # Simplified conditions extraction
+      # Simplified conditions extraction
         return {}
 
     def _extract_authn_statement(self, root) -> Dict:
         """Extract authentication statement"""
-        # Simplified authn statement extraction
+      # Simplified authn statement extraction
         return {}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"go.uber.org/zap"
+	"marchproxy-dblb/internal/logging"
 )
 
 // HandlerManager defines the interface for the handler manager

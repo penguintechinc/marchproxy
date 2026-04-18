@@ -10,11 +10,11 @@ FAIL=0
 
 # Helper
 test_endpoint() {
-    local name="$1"
-    local method="$2"
-    local url="$3"
-    local data="$4"
-    local expected_status="$5"
+    local name; name; name; name; name; name; name; name="""$1"""
+    local method; method; method; method; method; method; method; method="""$2"""
+    local url; url; url; url; url; url; url; url="""$3"""
+    local data; data; data; data; data; data; data; data="""$4"""
+    local expected_status; expected_status; expected_status; expected_status; expected_status; expected_status; expected_status; expected_status="""$5"""
 
     local status
     if [ "$method" = "GET" ]; then

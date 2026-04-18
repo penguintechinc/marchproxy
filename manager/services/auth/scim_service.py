@@ -3,16 +3,16 @@ SCIM (System for Cross-domain Identity Management) Service for MarchProxy Enterp
 Handles automated user provisioning from enterprise identity providers
 """
 
-import logging
-from penguintechinc_utils import get_logger
-import uuid
-from datetime import datetime
-from typing import Dict, List, Any
+import logging # noqa: F401, # noqa: F401
+import uuid # noqa: F401, # noqa: F401
+from datetime import datetime # noqa: F401
+from typing import Any, Dict, List # noqa: F401
 
-from quart import abort
+from penguintechinc_utils import get_logger # noqa: F401
+from quart import abort # noqa: F401
 
-from ...models import get_db
-from ..license_service import LicenseService
+from ...models import get_db # noqa: F401
+from ..license_service import LicenseService # noqa: F401
 
 logger = get_logger(__name__)
 
@@ -225,21 +225,21 @@ class SCIMService:
         if not self.is_enabled():
             abort(403, "SCIM provisioning not available")
 
-        # Validate required fields
+      # Validate required fields
         if "userName" not in user_data:
             abort(400, "userName is required")
 
         username = user_data["userName"]
 
-        # Check if user already exists
+      # Check if user already exists
         existing_user = self.db(self.db.auth_user.username == username).select().first()
         if existing_user:
             abort(409, f"User with userName '{username}' already exists")
 
-        # Extract user attributes
+      # Extract user attributes
         user_attrs = self._extract_user_attributes(user_data)
 
-        # Create user
+      # Create user
         user_id = self.db.auth_user.insert(
             username=username,
             email=user_attrs.get("email", ""),
@@ -248,7 +248,7 @@ class SCIMService:
             is_admin=user_attrs.get("is_admin", False),
             external_id=user_attrs.get("external_id", str(uuid.uuid4())),
             auth_provider="scim",
-            password_hash="",  # SCIM users don't have local passwords
+            password_hash="", # SCIM users don't have local passwords
             registration_date=datetime.utcnow(),
             last_login=None,
         )
@@ -279,10 +279,10 @@ class SCIMService:
         if not user:
             abort(404, f"User with id '{user_id}' not found")
 
-        # Extract updated attributes
+      # Extract updated attributes
         user_attrs = self._extract_user_attributes(user_data)
 
-        # Update user
+      # Update user
         update_data = {}
         if "userName" in user_data:
             update_data["username"] = user_data["userName"]
@@ -304,7 +304,7 @@ class SCIMService:
         logger.info(f"SCIM: Updated user {updated_user.username}")
         return self._user_to_scim(updated_user)
 
-    def patch_user(self, user_id: str, patch_data: Dict) -> Dict:  # noqa: C901
+    def patch_user(self, user_id: str, patch_data: Dict) -> Dict: # noqa: C901
         """Patch user via SCIM PATCH operation"""
         if not self.is_enabled():
             abort(403, "SCIM provisioning not available")
@@ -360,7 +360,7 @@ class SCIMService:
 
         username = user.username
 
-        # Soft delete - mark as inactive
+      # Soft delete - mark as inactive
         self.db(self.db.auth_user.id == user_id).update(
             is_active=False, external_id=f"deleted_{user.external_id}"
         )
@@ -373,23 +373,23 @@ class SCIMService:
         if not self.is_enabled():
             abort(403, "SCIM provisioning not available")
 
-        # Build query
+      # Build query
         query = self.db.auth_user.id > 0
 
-        # Apply filter if provided
+      # Apply filter if provided
         if filter_expr:
             query = self._apply_scim_filter(query, filter_expr)
 
-        # Get total count
+      # Get total count
         total_results = self.db(query).count()
 
-        # Apply pagination
+      # Apply pagination
         offset = start_index - 1
         users = self.db(query).select(
             limitby=(offset, offset + count), orderby=self.db.auth_user.username
         )
 
-        # Convert to SCIM format
+      # Convert to SCIM format
         scim_users = [self._user_to_scim(user) for user in users]
 
         return {
@@ -404,7 +404,7 @@ class SCIMService:
         """Extract user attributes from SCIM user data"""
         attrs = {}
 
-        # Extract email
+      # Extract email
         emails = user_data.get("emails", [])
         if emails:
             primary_email = next((email["value"] for email in emails if email.get("primary")), None)
@@ -413,18 +413,18 @@ class SCIMService:
             elif emails[0].get("value"):
                 attrs["email"] = emails[0]["value"]
 
-        # Extract name
+      # Extract name
         name = user_data.get("name", {})
         if "givenName" in name:
             attrs["first_name"] = name["givenName"]
         if "familyName" in name:
             attrs["last_name"] = name["familyName"]
 
-        # Extract other attributes
+      # Extract other attributes
         if "externalId" in user_data:
             attrs["external_id"] = user_data["externalId"]
 
-        # Enterprise extension
+      # Enterprise extension
         enterprise = user_data.get("urn:ietf:params:scim:schemas:extension:enterprise:2.0:User", {})
         if "department" in enterprise:
             attrs["department"] = enterprise["department"]
@@ -457,7 +457,7 @@ class SCIMService:
             },
         }
 
-        # Add external ID if present
+      # Add external ID if present
         if user.external_id:
             scim_user["externalId"] = user.external_id
 
@@ -465,7 +465,7 @@ class SCIMService:
 
     def _apply_scim_filter(self, query, filter_expr: str):
         """Apply SCIM filter expression to query"""
-        # Simplified filter parsing - in production use proper SCIM filter parser
+      # Simplified filter parsing - in production use proper SCIM filter parser
         if "userName eq" in filter_expr:
             username = filter_expr.split('"')[1]
             query &= self.db.auth_user.username == username
@@ -483,7 +483,7 @@ class SCIMService:
         if not self.is_enabled():
             abort(403, "SCIM provisioning not available")
 
-        # Bulk operations not implemented yet
+      # Bulk operations not implemented yet
         abort(501, "Bulk operations not supported")
 
     def get_groups(self) -> Dict:
@@ -491,7 +491,7 @@ class SCIMService:
         if not self.is_enabled():
             abort(403, "SCIM provisioning not available")
 
-        # Groups functionality would be implemented here
+      # Groups functionality would be implemented here
         return {
             "schemas": ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
             "totalResults": 0,

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"marchproxy-dblb/internal/logging"
 	"context"
 	"encoding/binary"
 	"fmt"
@@ -16,7 +17,6 @@ import (
 	"marchproxy-dblb/internal/pool"
 	"marchproxy-dblb/internal/security"
 
-	"go.uber.org/zap"
 )
 
 // PostgreSQLHandler implements the Handler interface for PostgreSQL protocol
@@ -86,7 +86,7 @@ func (h *PostgreSQLHandler) Start(ctx context.Context) error {
 	// Start accepting connections
 	go h.acceptConnections()
 
-	h.logger.WithFields(logrus.Fields{
+	h.logger.WithFields(logging.Fields{
 		"protocol": "postgresql",
 		"port":     h.route.ListenPort,
 		"route":    h.route.Name,
@@ -179,7 +179,7 @@ func (h *PostgreSQLHandler) handleConnection(clientConn net.Conn) {
 		return
 	}
 
-	h.logger.WithFields(logrus.Fields{
+	h.logger.WithFields(logging.Fields{
 		"user":     username,
 		"database": database,
 		"route":    h.route.Name,
@@ -218,7 +218,7 @@ func (h *PostgreSQLHandler) performHandshake(conn net.Conn) (string, string, err
 	length := binary.BigEndian.Uint32(buf[0:4])
 	protocolVersion := binary.BigEndian.Uint32(buf[4:8])
 
-	h.logger.WithFields(logrus.Fields{
+	h.logger.WithFields(logging.Fields{
 		"length":           length,
 		"protocol_version": protocolVersion,
 	}).Debug("PostgreSQL startup message received")
@@ -357,7 +357,7 @@ func (h *PostgreSQLHandler) proxyTraffic(client, backend net.Conn, username, dat
 
 						// Check for SQL injection
 						if malicious, reason := h.securityChecker.CheckQuery(query); malicious {
-							h.logger.WithFields(logrus.Fields{
+							h.logger.WithFields(logging.Fields{
 								"user":     username,
 								"database": database,
 								"reason":   reason,

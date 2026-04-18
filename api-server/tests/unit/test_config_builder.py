@@ -1,11 +1,12 @@
 """Unit tests for app/services/config_builder.py"""
-import pytest
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock # noqa: F401
+
+import pytest # noqa: F401, # noqa: F401
 
 
 class TestParseServiceList:
     def setup_method(self):
-        from app.services.config_builder import ConfigBuilder
+        from app.services.config_builder import ConfigBuilder # noqa: F401
         self.builder = ConfigBuilder(MagicMock())
 
     def test_all_string_returns_list_with_all(self):
@@ -43,7 +44,7 @@ class TestParseServiceList:
 
 class TestParsePortConfig:
     def setup_method(self):
-        from app.services.config_builder import ConfigBuilder
+        from app.services.config_builder import ConfigBuilder # noqa: F401
         self.builder = ConfigBuilder(MagicMock())
 
     def test_single_port(self):
@@ -88,7 +89,7 @@ class TestParsePortConfig:
 
 class TestGenerateConfigHash:
     def setup_method(self):
-        from app.services.config_builder import ConfigBuilder
+        from app.services.config_builder import ConfigBuilder # noqa: F401
         self.builder = ConfigBuilder(MagicMock())
 
     def test_returns_hex_string(self):

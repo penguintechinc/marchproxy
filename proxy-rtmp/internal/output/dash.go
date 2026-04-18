@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"go.uber.org/zap"
+	"github.com/penguintech/marchproxy/proxy-rtmp/internal/logging"
 )
 
 // DASHConfig holds DASH output configuration
@@ -23,6 +23,7 @@ type DASHSegmenter struct {
 	config    *DASHConfig
 	streamKey string
 	outputDir string
+	logger    *logging.LogrusAdapter
 }
 
 // NewDASHSegmenter creates a new DASH segmenter
@@ -32,10 +33,13 @@ func NewDASHSegmenter(streamKey string, config *DASHConfig) (*DASHSegmenter, err
 		return nil, fmt.Errorf("failed to create DASH output directory: %w", err)
 	}
 
+	logger, _ := logging.NewLogrusAdapter("dash")
+
 	return &DASHSegmenter{
 		config:    config,
 		streamKey: streamKey,
 		outputDir: outputDir,
+		logger:    logger,
 	}, nil
 }
 
@@ -133,7 +137,7 @@ func (d *DASHSegmenter) GenerateManifest(variants []AdaptationSet) error {
 		return fmt.Errorf("failed to write DASH manifest: %w", err)
 	}
 
-	logrus.WithFields(logrus.Fields{
+	d.logger.WithFields(map[string]interface{}{
 		"stream_key": d.streamKey,
 		"path":       manifestPath,
 		"variants":   len(variants),
@@ -166,7 +170,7 @@ func (d *DASHSegmenter) Cleanup() error {
 
 		if now.Sub(info.ModTime()) > maxAge {
 			if err := os.Remove(file); err != nil {
-				logrus.WithError(err).WithField("file", file).Warn("Failed to delete old segment")
+				d.logger.WithError(err).WithFields(map[string]interface{}{"file": file}).Warn("Failed to delete old segment")
 			}
 		}
 	}

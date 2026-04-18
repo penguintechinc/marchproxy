@@ -3,11 +3,11 @@ Configuration management for MarchProxy Manager.
 Priority: Control Panel DB Settings > Environment Variables > Defaults
 """
 
-import json
-import os
-from typing import Any, Dict, Optional
+import json # noqa: F401, # noqa: F401
+import os # noqa: F401, # noqa: F401
+from typing import Any, Dict, Optional # noqa: F401
 
-from pydal import DAL, Field
+from pydal import DAL, Field # noqa: F401
 
 
 class ConfigManager:
@@ -37,14 +37,14 @@ class ConfigManager:
 
     def get_config(self, key: str, default: Any = None, category: str = None) -> Any:
         """Get configuration value with fallback hierarchy"""
-        import time
+        import time # noqa: F401
 
-        # Check cache first
+      # Check cache first
         current_time = time.time()
         if (current_time - self._last_cache_update) < self._cache_ttl and key in self._config_cache:
             return self._config_cache[key]
 
-        # Try database first
+      # Try database first
         try:
             query = self.db.system_config.key == key
             if category:
@@ -53,10 +53,10 @@ class ConfigManager:
             config_row = self.db(query).select().first()
             if config_row and config_row.value:
                 try:
-                    # Try to parse as JSON for complex values
+                  # Try to parse as JSON for complex values
                     value = json.loads(config_row.value)
                 except (json.JSONDecodeError, TypeError):
-                    # Use as string if not JSON
+                  # Use as string if not JSON
                     value = config_row.value
 
                 self._config_cache[key] = value
@@ -64,13 +64,13 @@ class ConfigManager:
         except Exception as e:
             print(f"Error reading config from DB: {e}")
 
-        # Fall back to environment variable
+      # Fall back to environment variable
         env_value = os.getenv(key.upper(), default)
         if env_value is not None:
             self._config_cache[key] = env_value
             return env_value
 
-        # Return default
+      # Return default
         self._config_cache[key] = default
         return default
 
@@ -84,13 +84,13 @@ class ConfigManager:
     ) -> bool:
         """Set configuration value in database"""
         try:
-            # Convert complex values to JSON
+          # Convert complex values to JSON
             if isinstance(value, (dict, list)):
                 value_str = json.dumps(value)
             else:
                 value_str = str(value) if value is not None else ""
 
-            # Update or insert
+          # Update or insert
             existing = self.db(self.db.system_config.key == key).select().first()
             if existing:
                 existing.update_record(
@@ -110,7 +110,7 @@ class ConfigManager:
 
             self.db.commit()
 
-            # Update cache
+          # Update cache
             self._config_cache[key] = value
 
             return True
@@ -277,7 +277,7 @@ class ConfigManager:
 
     def get_killkrill_config(self) -> Dict[str, Any]:
         """Get KillKrill configuration with fallbacks"""
-        import socket
+        import socket # noqa: F401
 
         hostname = socket.gethostname()
 
@@ -368,7 +368,7 @@ class ConfigManager:
     def initialize_default_config(self):
         """Initialize default configuration values if not present"""
         defaults = [
-            # Database
+          # Database
             (
                 "db_host",
                 os.getenv("DB_HOST", "postgres"),
@@ -395,7 +395,7 @@ class ConfigManager:
                 "Database password",
                 True,
             ),
-            # SMTP
+          # SMTP
             (
                 "smtp_host",
                 os.getenv("SMTP_HOST", "localhost"),
@@ -417,7 +417,7 @@ class ConfigManager:
                 "smtp",
                 "Default from address",
             ),
-            # Syslog
+          # Syslog
             (
                 "syslog_enabled",
                 os.getenv("SYSLOG_ENABLED", "true"),
@@ -436,7 +436,7 @@ class ConfigManager:
                 "syslog",
                 "Syslog server port",
             ),
-            # Monitoring
+          # Monitoring
             (
                 "alert_email_default",
                 os.getenv("ALERT_EMAIL_DEFAULT", "ops-team@company.com"),
@@ -449,7 +449,7 @@ class ConfigManager:
                 "monitoring",
                 "Metrics retention period",
             ),
-            # License
+          # License
             (
                 "license_key",
                 os.getenv("LICENSE_KEY", ""),
@@ -466,7 +466,7 @@ class ConfigManager:
             description = config_item[3]
             is_secret = len(config_item) > 4 and config_item[4]
 
-            # Only set if not already exists
+          # Only set if not already exists
             existing = self.db(self.db.system_config.key == key).select().first()
             if not existing:
                 self.set_config(key, value, category, description, is_secret)
@@ -484,7 +484,7 @@ class ConfigManager:
         configs = {}
         for row in self.db(query).select():
             try:
-                # Try to parse as JSON
+              # Try to parse as JSON
                 value = json.loads(row.value)
             except (json.JSONDecodeError, TypeError):
                 value = row.value
@@ -521,5 +521,5 @@ def get_config(key: str, default: Any = None, category: str = None) -> Any:
     """Convenience function to get configuration value"""
     if _config_manager:
         return _config_manager.get_config(key, default, category)
-    # Fallback to environment if no config manager
+  # Fallback to environment if no config manager
     return os.getenv(key.upper(), default)

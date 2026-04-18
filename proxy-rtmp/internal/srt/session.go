@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/config"
-	"go.uber.org/zap"
+	"github.com/penguintech/marchproxy/proxy-rtmp/internal/logging"
 )
 
 // SessionState represents SRT session state
@@ -40,6 +40,7 @@ type Session struct {
 	stopChan    chan struct{}
 	mutex       sync.RWMutex
 	onData      func(data []byte)
+	logger      *logging.LogrusAdapter
 }
 
 // SessionStats holds session statistics
@@ -57,6 +58,8 @@ type SessionStats struct {
 
 // NewSession creates a new SRT session
 func NewSession(streamKey string, conn net.Conn, srtCfg *SRTConfig, mainCfg *config.Config) *Session {
+	logger, _ := logging.NewLogrusAdapter("srt_session")
+
 	return &Session{
 		ID:         fmt.Sprintf("srt_%s_%d", streamKey, time.Now().UnixNano()),
 		StreamKey:  streamKey,
@@ -67,6 +70,7 @@ func NewSession(streamKey string, conn net.Conn, srtCfg *SRTConfig, mainCfg *con
 		stats:      &SessionStats{},
 		dataChan:   make(chan []byte, 1000),
 		stopChan:   make(chan struct{}),
+		logger:     logger,
 	}
 }
 
@@ -81,10 +85,10 @@ func (s *Session) Start(ctx context.Context) error {
 	s.startTime = time.Now()
 	s.mutex.Unlock()
 
-	logrus.WithFields(logrus.Fields{
+	s.logger.WithFields(map[string]interface{}{
 		"session_id": s.ID,
 		"stream_key": s.StreamKey,
-	}).Debug("Starting SRT session")
+	}).Info("Starting SRT session")
 
 	// Set to active
 	s.mutex.Lock()
@@ -211,7 +215,7 @@ func (s *Session) Stop() {
 	s.stopTime = time.Now()
 	s.mutex.Unlock()
 
-	logrus.WithField("stream_key", s.StreamKey).Debug("SRT session stopped")
+	s.logger.WithFields(map[string]interface{}{"stream_key": s.StreamKey}).Info("SRT session stopped")
 }
 
 // SetDataCallback sets callback for received data

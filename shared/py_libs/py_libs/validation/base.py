@@ -8,11 +8,11 @@ Provides the foundation for PyDAL-style validators with:
 - chain() function for combining multiple validators
 """
 
-from __future__ import annotations
+from __future__ import annotations # noqa: F401
 
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import Any, Callable, Generic, Sequence, TypeVar
+from abc import ABC, abstractmethod # noqa: F401
+from dataclasses import dataclass # noqa: F401
+from typing import Any, Callable, Generic, Sequence, TypeVar # noqa: F401
 
 T = TypeVar("T")
 V = TypeVar("V")
@@ -105,7 +105,7 @@ class Validator(ABC, Generic[T, V]):
                 return ValidationResult.failure("Value must be uppercase")
 
         validator = IsUpper()
-        result = validator("HELLO")  # ValidationResult(is_valid=True, value="HELLO")
+        result = validator("HELLO"): # ValidationResult(is_valid=True, value="HELLO")
     """
 
     def __call__(self, value: T) -> ValidationResult[V]:

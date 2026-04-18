@@ -5,12 +5,11 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import logging
-from penguintechinc_utils import get_logger
-from datetime import datetime
+import logging # noqa: F401, # noqa: F401
+from datetime import datetime # noqa: F401
 
-from middleware.auth import require_auth
-from models.cluster import (
+from middleware.auth import require_auth # noqa: F401
+from models.cluster import ( # noqa: F401
     AssignUserToClusterRequest,
     ClusterModel,
     ClusterResponse,
@@ -18,8 +17,9 @@ from models.cluster import (
     UpdateClusterRequest,
     UserClusterAssignmentModel,
 )
-from pydantic import ValidationError
-from quart import Blueprint, current_app, jsonify, request
+from penguintechinc_utils import get_logger # noqa: F401
+from pydantic import ValidationError # noqa: F401
+from quart import Blueprint, current_app, jsonify, request # noqa: F401
 
 logger = get_logger(__name__)
 
@@ -27,64 +27,54 @@ clusters_bp = Blueprint("clusters", __name__, url_prefix="/api/v1/clusters")
 
 
 @clusters_bp.route("", methods=["GET", "POST"])
-async def clusters_list():  # noqa: C901
+async def clusters_list(): # noqa: C901
     """List all clusters or create new cluster"""
     db = current_app.db
 
     if request.method == "GET":
-        auth_result = await require_auth()(lambda: None)
-        user_data = auth_result if isinstance(auth_result, dict) else None
 
-        # Fallback: extract user from request context
-        if not user_data:
-            from middleware.auth import _extract_user_from_request
+        @require_auth()
+        async def get_clusters_handler(user_data):
+            user = user_data
 
-            user_data = await _extract_user_from_request(db)
-            if not user_data:
-                return jsonify({"error": "Authentication required"}), 401
+            if user.get("is_admin") or "*:admin" in user.get("scope", []) or "admin" in user.get("roles", []):
+              # Admin sees all clusters
+                all_clusters = db(db.clusters.is_active == True).select( # noqa: E712
+                    orderby=db.clusters.name
+                )
+            else:
+              # Regular user sees only assigned clusters
+                user_clusters = UserClusterAssignmentModel.get_user_clusters(db, user["user_id"])
+                cluster_ids = [uc["cluster_id"] for uc in user_clusters]
+                all_clusters = db(
+                    (db.clusters.id.belongs(cluster_ids))
+                    & (db.clusters.is_active == True)  # noqa: E712
+                ).select(orderby=db.clusters.name)
 
-        user = (
-            user_data.get("user")
-            if isinstance(user_data, dict) and "user" in user_data
-            else user_data
-        )
+            result = []
+            for cluster in all_clusters:
+                active_proxies = ClusterModel.count_active_proxies(db, cluster.id)
+                result.append(
+                    ClusterResponse(
+                        id=cluster.id,
+                        name=cluster.name,
+                        description=cluster.description,
+                        syslog_endpoint=cluster.syslog_endpoint,
+                        log_auth=cluster.log_auth,
+                        log_netflow=cluster.log_netflow,
+                        log_debug=cluster.log_debug,
+                        is_active=cluster.is_active,
+                        is_default=cluster.is_default,
+                        max_proxies=cluster.max_proxies,
+                        active_proxies=active_proxies,
+                        created_at=cluster.created_at,
+                        updated_at=cluster.updated_at,
+                    ).dict()
+                )
 
-        if user["is_admin"]:
-            # Admin sees all clusters
-            clusters_list = db(db.clusters.is_active == True).select(  # noqa: E712
-                orderby=db.clusters.name
-            )
-        else:
-            # Regular user sees only assigned clusters
-            user_clusters = UserClusterAssignmentModel.get_user_clusters(db, user["id"])
-            cluster_ids = [uc["cluster_id"] for uc in user_clusters]
-            clusters_list = db(
-                (db.clusters.id.belongs(cluster_ids))
-                & (db.clusters.is_active == True)  # noqa: E712
-            ).select(orderby=db.clusters.name)
+            return jsonify({"clusters": result}), 200
 
-        result = []
-        for cluster in clusters_list:
-            active_proxies = ClusterModel.count_active_proxies(db, cluster.id)
-            result.append(
-                ClusterResponse(
-                    id=cluster.id,
-                    name=cluster.name,
-                    description=cluster.description,
-                    syslog_endpoint=cluster.syslog_endpoint,
-                    log_auth=cluster.log_auth,
-                    log_netflow=cluster.log_netflow,
-                    log_debug=cluster.log_debug,
-                    is_active=cluster.is_active,
-                    is_default=cluster.is_default,
-                    max_proxies=cluster.max_proxies,
-                    active_proxies=active_proxies,
-                    created_at=cluster.created_at,
-                    updated_at=cluster.updated_at,
-                ).dict()
-            )
-
-        return jsonify({"clusters": result}), 200
+        return await get_clusters_handler()
 
     elif request.method == "POST":
 
@@ -96,12 +86,12 @@ async def clusters_list():  # noqa: C901
             except ValidationError as e:
                 return jsonify({"error": "Validation error", "details": str(e)}), 400
 
-            # Check if cluster name already exists
+          # Check if cluster name already exists
             existing = db(db.clusters.name == data.name).select().first()
             if existing:
                 return jsonify({"error": "Cluster name already exists"}), 409
 
-            # Create cluster
+          # Create cluster
             try:
                 cluster_id, api_key = ClusterModel.create_cluster(
                     db,
@@ -145,11 +135,11 @@ async def clusters_list():  # noqa: C901
                 logger.error(f"Cluster creation failed: {e}")
                 return jsonify({"error": "Failed to create cluster"}), 500
 
-        return await create_cluster_handler(user_data={})
+        return await create_cluster_handler(user_data=None)
 
 
 @clusters_bp.route("/<cluster_id>", methods=["GET", "PUT"])
-async def cluster_detail(cluster_id):  # noqa: C901
+async def cluster_detail(cluster_id): # noqa: C901
     """Get or update cluster details"""
     db = current_app.db
 
@@ -159,8 +149,9 @@ async def cluster_detail(cluster_id):  # noqa: C901
         async def get_cluster_handler(user_data):
             user = user_data
 
-            # Check access to cluster
-            if not user["is_admin"]:
+          # Check access to cluster
+            is_admin = user.get("is_admin") or "*:admin" in user.get("scope", []) or "admin" in user.get("roles", [])
+            if not is_admin:
                 user_role = UserClusterAssignmentModel.check_user_cluster_access(
                     db, user["user_id"], cluster_id
                 )
@@ -198,7 +189,7 @@ async def cluster_detail(cluster_id):  # noqa: C901
                 200,
             )
 
-        return await get_cluster_handler(user_data={})
+        return await get_cluster_handler(user_data=None)
 
     elif request.method == "PUT":
 
@@ -214,11 +205,11 @@ async def cluster_detail(cluster_id):  # noqa: C901
             if not cluster:
                 return jsonify({"error": "Cluster not found"}), 404
 
-            # Update cluster
+          # Update cluster
             update_data = {"updated_at": datetime.utcnow()}
 
             if data.name is not None:
-                # Check name uniqueness
+              # Check name uniqueness
                 existing = (
                     db((db.clusters.name == data.name) & (db.clusters.id != cluster_id))
                     .select()
@@ -266,7 +257,7 @@ async def cluster_detail(cluster_id):  # noqa: C901
                 200,
             )
 
-        return await update_cluster_handler(user_data={})
+        return await update_cluster_handler(user_data=None)
 
 
 @clusters_bp.route("/<cluster_id>/rotate-key", methods=["POST"])
@@ -324,17 +315,17 @@ async def assign_user(cluster_id, user_data):
     except ValidationError as e:
         return jsonify({"error": "Validation error", "details": str(e)}), 400
 
-    # Check if cluster exists
+  # Check if cluster exists
     cluster = db.clusters[cluster_id]
     if not cluster:
         return jsonify({"error": "Cluster not found"}), 404
 
-    # Check if user exists
+  # Check if user exists
     user = db.users[data.user_id]
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    # Assign user to cluster
+  # Assign user to cluster
     success = UserClusterAssignmentModel.assign_user_to_cluster(
         db, data.user_id, cluster_id, data.role, user_data["user_id"]
     )
@@ -350,17 +341,17 @@ async def get_config(cluster_id):
     """Get cluster configuration for proxy (API key authenticated)"""
     db = current_app.db
 
-    # This endpoint uses API key authentication instead of JWT
+  # This endpoint uses API key authentication instead of JWT
     api_key = request.headers.get("X-API-Key") or request.args.get("api_key")
     if not api_key:
         return jsonify({"error": "API key required"}), 401
 
-    # Validate cluster API key
+  # Validate cluster API key
     cluster_info = ClusterModel.validate_api_key(db, api_key)
     if not cluster_info or cluster_info["cluster_id"] != int(cluster_id):
         return jsonify({"error": "Invalid API key for cluster"}), 401
 
-    # Get cluster configuration
+  # Get cluster configuration
     config = ClusterModel.get_cluster_config(db, cluster_id)
     if not config:
         return jsonify({"error": "Cluster configuration not found"}), 404

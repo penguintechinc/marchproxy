@@ -39,10 +39,10 @@ log_error() {
 }
 
 check_service() {
-    local service_name=$1
-    local port=$2
-    local path=${3:-"/"}
-    local protocol=${4:-"http"}
+    local service_name; service_name; service_name; service_name; service_name; service_name; service_name; service_name=""$1""
+    local port; port; port; port; port; port; port; port=""$2""
+    local path; path; path; path; path; path; path; path=""${3:-"/"}""
+    local protocol; protocol; protocol; protocol; protocol; protocol; protocol; protocol=""${4:-"http"}""
 
     # Check if container is running
     if ! docker-compose -f "$COMPOSE_FILE" ps "$service_name" 2>/dev/null | grep -q "running"; then
@@ -51,7 +51,7 @@ check_service() {
     fi
 
     # Try to connect
-    local url="${protocol}://localhost:${port}${path}"
+    local url; url; url; url; url; url; url; url="""${protocol}://localhost:${port}${path}"""
     if curl -sf "$url" > /dev/null 2>&1; then
         log_success "$service_name is healthy ($url)"
         return 0
@@ -62,7 +62,7 @@ check_service() {
 }
 
 check_container_running() {
-    local service_name=$1
+    local service_name; service_name; service_name; service_name; service_name; service_name; service_name; service_name=""$1""
 
     if docker-compose -f "$COMPOSE_FILE" ps "$service_name" 2>/dev/null | grep -q "running"; then
         log_success "$service_name is running"

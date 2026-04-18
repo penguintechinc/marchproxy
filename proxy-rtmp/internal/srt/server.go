@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/penguintech/marchproxy/proxy-rtmp/internal/config"
-	"go.uber.org/zap"
+	"github.com/penguintech/marchproxy/proxy-rtmp/internal/logging"
 )
 
 // Server handles SRT connections
@@ -23,6 +23,7 @@ type Server struct {
 	ctx        context.Context
 	cancel     context.CancelFunc
 	onStream   func(streamKey string, session *Session)
+	logger     *logging.LogrusAdapter
 }
 
 // ServerStats holds server statistics
@@ -40,6 +41,8 @@ func NewServer(cfg *config.Config, onStream func(streamKey string, session *Sess
 	srtConfig := NewSRTConfig(cfg)
 	ctx, cancel := context.WithCancel(context.Background())
 
+	logger, _ := logging.NewLogrusAdapter("srt")
+
 	return &Server{
 		config:     srtConfig,
 		mainConfig: cfg,
@@ -48,6 +51,7 @@ func NewServer(cfg *config.Config, onStream func(streamKey string, session *Sess
 		ctx:        ctx,
 		cancel:     cancel,
 		onStream:   onStream,
+		logger:     logger,
 	}
 }
 
@@ -82,7 +86,7 @@ func (s *Server) Start() error {
 
 	s.running = true
 
-	logrus.WithFields(logrus.Fields{
+	s.logger.WithFields(map[string]interface{}{
 		"port":    s.config.Port,
 		"latency": s.config.Latency,
 	}).Info("SRT server started")
@@ -102,7 +106,7 @@ func (s *Server) acceptLoop() {
 			conn, err := s.listener.Accept()
 			if err != nil {
 				if s.running {
-					logrus.WithError(err).Error("Failed to accept SRT connection")
+					s.logger.WithError(err).Error("Failed to accept SRT connection")
 				}
 				continue
 			}
@@ -129,7 +133,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 	// Extract stream ID from SRT connection
 	streamKey := s.extractStreamKey(conn)
 	if streamKey == "" {
-		logger.Warn("SRT connection without stream key rejected")
+		s.logger.Warn("SRT connection without stream key rejected")
 		s.stats.mutex.Lock()
 		s.stats.ConnectionsRejected++
 		s.stats.mutex.Unlock()
@@ -142,7 +146,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 	s.mutex.Lock()
 	if _, exists := s.sessions[streamKey]; exists {
 		s.mutex.Unlock()
-		logrus.WithField("stream_key", streamKey).Warn("Duplicate SRT stream rejected")
+		s.logger.WithFields(map[string]interface{}{"stream_key": streamKey}).Warn("Duplicate SRT stream rejected")
 		s.stats.mutex.Lock()
 		s.stats.ConnectionsRejected++
 		s.stats.mutex.Unlock()
@@ -151,7 +155,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 	s.sessions[streamKey] = session
 	s.mutex.Unlock()
 
-	logrus.WithFields(logrus.Fields{
+	s.logger.WithFields(map[string]interface{}{
 		"stream_key":   streamKey,
 		"remote_addr":  conn.RemoteAddr(),
 	}).Info("SRT stream connected")
@@ -164,7 +168,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 	// Start session (blocks until complete)
 	err := session.Start(s.ctx)
 	if err != nil {
-		logrus.WithError(err).WithField("stream_key", streamKey).Error("SRT session error")
+		s.logger.WithError(err).WithFields(map[string]interface{}{"stream_key": streamKey}).Error("SRT session error")
 	}
 
 	// Cleanup
@@ -178,7 +182,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 	s.stats.TotalBytesSent += session.stats.BytesSent
 	s.stats.mutex.Unlock()
 
-	logrus.WithField("stream_key", streamKey).Info("SRT stream disconnected")
+	s.logger.WithFields(map[string]interface{}{"stream_key": streamKey}).Info("SRT stream disconnected")
 }
 
 // extractStreamKey extracts stream key from SRT connection
@@ -218,7 +222,7 @@ func (s *Server) Stop() error {
 	}
 	s.mutex.Unlock()
 
-	logger.Info("SRT server stopped")
+	s.logger.Info("SRT server stopped")
 	return nil
 }
 

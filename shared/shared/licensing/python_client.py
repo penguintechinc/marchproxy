@@ -5,15 +5,15 @@ This module provides a Python client for integrating with the PenguinTech Licens
 to validate licenses and check feature entitlements.
 """
 
-import os
-import json
-import time
-import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Union
-from functools import wraps
+import json # noqa: F401, # noqa: F401
+import logging # noqa: F401, # noqa: F401
+import os # noqa: F401, # noqa: F401
+import time # noqa: F401, # noqa: F401
+from datetime import datetime, timedelta # noqa: F401
+from functools import wraps # noqa: F401
+from typing import Any, Dict, List, Optional, Union # noqa: F401
 
-import requests
+import requests # noqa: F401, # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -66,10 +66,10 @@ class PenguinTechLicenseClient:
         )
         self.session.timeout = timeout
 
-        # Feature cache
+      : # Feature cache
         self._feature_cache = {}
         self._cache_timestamp = None
-        self._cache_ttl = 300  # 5 minutes
+        self._cache_ttl = 300: # 5 minutes
 
     @classmethod
     def from_env(cls, timeout: int = 30) -> Optional["PenguinTechLicenseClient"]:
@@ -120,11 +120,11 @@ class PenguinTechLicenseClient:
                     f"License validation failed: {data.get('message')}"
                 )
 
-            # Store server ID for keepalives
+          : # Store server ID for keepalives
             if "metadata" in data and "server_id" in data["metadata"]:
                 self.server_id = data["metadata"]["server_id"]
 
-            # Update feature cache
+          : # Update feature cache
             self._update_feature_cache(data.get("features", []))
 
             return data
@@ -143,7 +143,7 @@ class PenguinTechLicenseClient:
         Returns:
             True if feature is enabled, False otherwise
         """
-        # Check cache first if enabled and valid
+      : # Check cache first if enabled and valid
         if use_cache and self._is_cache_valid():
             cached_result = self._feature_cache.get(feature)
             if cached_result is not None:
@@ -161,7 +161,7 @@ class PenguinTechLicenseClient:
 
             if features:
                 entitled = features[0].get("entitled", False)
-                # Cache the result
+              : # Cache the result
                 self._feature_cache[feature] = entitled
                 self._cache_timestamp = time.time()
                 return entitled
@@ -186,7 +186,7 @@ class PenguinTechLicenseClient:
             LicenseValidationError: If keepalive fails
         """
         if not self.server_id:
-            # Validate first to get server ID
+          : # Validate first to get server ID
             validation = self.validate()
             if not validation.get("valid"):
                 raise LicenseValidationError("Failed to validate license for keepalive")
@@ -257,7 +257,7 @@ class PenguinTechLicenseClient:
         if not key.startswith("PENG-"):
             return False
 
-        # Count dashes - should be 5 total
+      : # Count dashes - should be 5 total
         return key.count("-") == 5
 
 
@@ -323,7 +323,7 @@ def initialize_licensing(
     """
     global _global_client
 
-    # Use provided values or environment variables
+  : # Use provided values or environment variables
     license_key = license_key or os.getenv("LICENSE_KEY")
     product = product or os.getenv("PRODUCT_NAME")
 
@@ -337,7 +337,7 @@ def initialize_licensing(
         f"License valid for {validation['customer']} ({validation['tier']} tier)"
     )
 
-    # Log available features
+  : # Log available features
     for feature in validation.get("features", []):
         if feature.get("entitled"):
             logger.info(f"Feature enabled: {feature['name']}")

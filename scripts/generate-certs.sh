@@ -215,7 +215,7 @@ print_success "Summary saved to certificate-info.txt"
 
 # List generated files
 print_status "Generated files:"
-ls -la *.pem *.txt | while read line; do
+find . -ls *.pem *.txt | while read -r line; do
     echo "  $line"
 done
 

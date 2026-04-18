@@ -8,10 +8,10 @@ import (
 	"sync"
 
 	"marchproxy-dblb/internal/config"
+	"marchproxy-dblb/internal/logging"
 	"marchproxy-dblb/internal/pool"
 	"marchproxy-dblb/internal/security"
 
-	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
 
@@ -56,7 +56,7 @@ func (m *Manager) RegisterHandler(protocol string, port int) error {
 	handler := NewTCPHandler(protocol, port, m.pool, m.securityChecker, m.config, m.logger)
 	m.handlers[protocol] = handler
 
-	m.logger.WithFields(logrus.Fields{
+	m.logger.WithFields(logging.Fields{
 		"protocol": protocol,
 		"port":     port,
 	}).Info("Handler registered")
@@ -169,7 +169,7 @@ func (h *TCPHandler) Start(ctx context.Context) error {
 
 	go h.acceptConnections()
 
-	h.logger.WithFields(logrus.Fields{
+	h.logger.WithFields(logging.Fields{
 		"protocol": h.protocol,
 		"port":     h.port,
 	}).Info("TCP handler started")

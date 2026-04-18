@@ -42,9 +42,9 @@ if [ -z "$PODS" ]; then
 fi
 
 echo "$PODS" | while read -r line; do
-    POD_NAME=$(echo $line | awk '{print $1}')
-    POD_STATUS=$(echo $line | awk '{print $3}')
-    POD_READY=$(echo $line | awk '{print $2}')
+    POD_NAME=$($(echo "line | awk '{print $1}')")
+    POD_STATUS=$($(echo "line | awk '{print $3}')")
+    POD_READY=$($(echo "line | awk '{print $2}')")
 
     if [ "$POD_STATUS" = "Running" ]; then
         echo "✅ $POD_NAME is Running ($POD_READY)"
@@ -63,8 +63,8 @@ if [ -z "$SERVICES" ]; then
     echo "⚠️  No services found"
 else
     echo "$SERVICES" | while read -r line; do
-        SVC_NAME=$(echo $line | awk '{print $1}')
-        SVC_TYPE=$(echo $line | awk '{print $2}')
+        SVC_NAME=$($(echo "line | awk '{print $1}')")
+        SVC_TYPE=$($(echo "line | awk '{print $2}')")
         echo "✅ Service: $SVC_NAME ($SVC_TYPE)"
     done
 fi
@@ -78,8 +78,8 @@ if [ -z "$DEPLOYMENTS" ]; then
     echo "⚠️  No deployments found"
 else
     echo "$DEPLOYMENTS" | while read -r line; do
-        DEPLOY_NAME=$(echo $line | awk '{print $1}')
-        DEPLOY_READY=$(echo $line | awk '{print $2}')
+        DEPLOY_NAME=$($(echo "line | awk '{print $1}')")
+        DEPLOY_READY=$($(echo "line | awk '{print $2}')")
         echo "✅ Deployment: $DEPLOY_NAME ($DEPLOY_READY)"
     done
 fi

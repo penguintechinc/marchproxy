@@ -60,7 +60,7 @@ echo ""
 echo "Test 3: Required Envoy configuration sections"
 
 check_config_section() {
-    local section=$1
+    local section; section; section; section; section; section; section; section=""$1""
     if grep -q "^$section:" "$BOOTSTRAP_FILE"; then
         success "Section present: $section"
         return 0

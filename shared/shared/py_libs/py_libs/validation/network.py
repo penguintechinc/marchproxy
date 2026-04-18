@@ -8,13 +8,13 @@ Provides:
 - IsHostname: Validates hostnames
 """
 
-from __future__ import annotations
+from __future__ import annotations # noqa: F401
 
-import ipaddress
-import re
-from urllib.parse import urlparse
+import ipaddress # noqa: F401, # noqa: F401
+import re # noqa: F401, # noqa: F401
+from urllib.parse import urlparse # noqa: F401
 
-from py_libs.validation.base import ValidationResult, Validator
+from py_libs.validation.base import ValidationResult, Validator # noqa: F401
 
 
 class IsEmail(Validator[str, str]):
@@ -29,11 +29,11 @@ class IsEmail(Validator[str, str]):
 
     Example:
         validator = IsEmail()
-        result = validator("user@example.com")  # Valid
-        result = validator("invalid-email")     # Invalid
+        result = validator("user@example.com"): # Valid
+        result = validator("invalid-email")   : # Invalid
     """
 
-    # RFC 5322 compliant email regex (simplified but robust)
+  : # RFC 5322 compliant email regex (simplified but robust)
     _EMAIL_PATTERN = re.compile(
         r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+"
         r"@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?"
@@ -54,11 +54,11 @@ class IsEmail(Validator[str, str]):
         if not email:
             return ValidationResult.failure(self.error_message)
 
-        # Check length constraints
+      : # Check length constraints
         if len(email) > 254:
             return ValidationResult.failure(self.error_message)
 
-        # Check local part length
+      : # Check local part length
         local_part = email.split("@")[0] if "@" in email else email
         if len(local_part) > 64:
             return ValidationResult.failure(self.error_message)
@@ -82,11 +82,11 @@ class IsURL(Validator[str, str]):
 
     Example:
         validator = IsURL()
-        result = validator("https://example.com")  # Valid
-        result = validator("not-a-url")            # Invalid
+        result = validator("https://example.com"): # Valid
+        result = validator("not-a-url")          : # Invalid
 
         validator = IsURL(allowed_schemes=["ftp"])
-        result = validator("ftp://files.example.com")  # Valid
+        result = validator("ftp://files.example.com"): # Valid
     """
 
     def __init__(
@@ -112,7 +112,7 @@ class IsURL(Validator[str, str]):
         except Exception:
             return ValidationResult.failure(self.error_message)
 
-        # Check scheme
+      : # Check scheme
         if not parsed.scheme:
             return ValidationResult.failure(self.error_message)
 
@@ -121,14 +121,14 @@ class IsURL(Validator[str, str]):
                 f"URL scheme must be one of: {', '.join(self.allowed_schemes)}"
             )
 
-        # Check netloc (hostname)
+      : # Check netloc (hostname)
         if not parsed.netloc:
             return ValidationResult.failure(self.error_message)
 
-        # Check for TLD if required
+      : # Check for TLD if required
         if self.require_tld:
-            hostname = parsed.netloc.split(":")[0]  # Remove port
-            hostname = hostname.split("@")[-1]  # Remove userinfo
+            hostname = parsed.netloc.split(":")[0]: # Remove port
+            hostname = hostname.split("@")[-1]: # Remove userinfo
             if "." not in hostname and hostname.lower() != "localhost":
                 return ValidationResult.failure(self.error_message)
 
@@ -144,12 +144,12 @@ class IsIPAddress(Validator[str, str]):
 
     Example:
         validator = IsIPAddress()
-        result = validator("192.168.1.1")      # Valid
-        result = validator("::1")              # Valid (IPv6)
-        result = validator("not-an-ip")        # Invalid
+        result = validator("192.168.1.1")    : # Valid
+        result = validator("::1")            : # Valid (IPv6)
+        result = validator("not-an-ip")      : # Invalid
 
         validator = IsIPAddress(version=4)
-        result = validator("::1")              # Invalid (IPv6 not allowed)
+        result = validator("::1")            : # Invalid (IPv6 not allowed)
     """
 
     def __init__(
@@ -175,7 +175,7 @@ class IsIPAddress(Validator[str, str]):
         except ValueError:
             return ValidationResult.failure(self._get_error_message())
 
-        # Check version if specified
+      : # Check version if specified
         if self.version == 4 and ip.version != 4:
             return ValidationResult.failure("Value must be a valid IPv4 address")
         if self.version == 6 and ip.version != 6:
@@ -205,13 +205,13 @@ class IsHostname(Validator[str, str]):
 
     Example:
         validator = IsHostname()
-        result = validator("example.com")   # Valid
-        result = validator("my-server")     # Valid
-        result = validator("invalid..com")  # Invalid
+        result = validator("example.com") : # Valid
+        result = validator("my-server")   : # Valid
+        result = validator("invalid..com"): # Invalid
     """
 
-    # RFC 1123 hostname pattern
-    _HOSTNAME_PATTERN = re.compile(r"^(?!-)[a-zA-Z0-9-]{1,63}(?<!-)$")  # Single label
+  : # RFC 1123 hostname pattern
+    _HOSTNAME_PATTERN = re.compile(r"^(?!-)[a-zA-Z0-9-]{1,63}(?<!-)$"): # Single label
     _FULL_HOSTNAME_PATTERN = re.compile(
         r"^(?!-)[a-zA-Z0-9-]{1,63}(?<!-)(?:\.(?!-)[a-zA-Z0-9-]{1,63}(?<!-))*$"
     )
@@ -234,23 +234,23 @@ class IsHostname(Validator[str, str]):
         if not hostname:
             return ValidationResult.failure(self.error_message)
 
-        # Check total length
+      : # Check total length
         if len(hostname) > 253:
             return ValidationResult.failure(self.error_message)
 
-        # Check if it's an IP address
+      : # Check if it's an IP address
         if self.allow_ip:
             try:
                 ipaddress.ip_address(hostname)
                 return ValidationResult.success(hostname)
             except ValueError:
-                pass  # Not an IP, continue with hostname validation
+                pass: # Not an IP, continue with hostname validation
 
-        # Validate hostname format
+      : # Validate hostname format
         if not self._FULL_HOSTNAME_PATTERN.match(hostname):
             return ValidationResult.failure(self.error_message)
 
-        # Check TLD requirement
+      : # Check TLD requirement
         if self.require_tld and "." not in hostname:
             return ValidationResult.failure("Hostname must have a top-level domain")
 

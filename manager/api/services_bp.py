@@ -5,12 +5,11 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import logging
-from penguintechinc_utils import get_logger
-from datetime import datetime
+import logging # noqa: F401, # noqa: F401
+from datetime import datetime # noqa: F401
 
-from middleware.auth import require_auth
-from models.service import (
+from middleware.auth import require_auth # noqa: F401
+from models.service import ( # noqa: F401
     AssignUserToServiceRequest,
     CreateJwtTokenRequest,
     CreateServiceRequest,
@@ -21,16 +20,17 @@ from models.service import (
     UpdateServiceRequest,
     UserServiceAssignmentModel,
 )
-from pydantic import ValidationError
-from quart import Blueprint, current_app, jsonify, request
+from penguintechinc_utils import get_logger # noqa: F401
+from pydantic import ValidationError # noqa: F401
+from quart import Blueprint, current_app, jsonify, request # noqa: F401
 
 logger = get_logger(__name__)
 
-services_bp = Blueprint("services", __name__, url_prefix="/api/v1/services")
+services_bp = Blueprint("services", __name__, url_prefix="/v1/services")
 
 
 @services_bp.route("", methods=["GET", "POST"])
-async def services_list():  # noqa: C901
+async def services_list(): # noqa: C901
     """List all services or create new service"""
     db = current_app.db
 
@@ -65,7 +65,7 @@ async def services_list():  # noqa: C901
 
             return jsonify({"services": result}), 200
 
-        return await get_services(user_data={})
+        return await get_services(user_data=None)
 
     elif request.method == "POST":
 
@@ -114,11 +114,11 @@ async def services_list():  # noqa: C901
                     500,
                 )
 
-        return await create_service_handler(user_data={})
+        return await create_service_handler(user_data=None)
 
 
 @services_bp.route("/<int:service_id>", methods=["GET", "PUT", "DELETE"])
-async def service_detail(service_id):  # noqa: C901
+async def service_detail(service_id): # noqa: C901
     """Get, update or delete a service"""
     db = current_app.db
 
@@ -136,9 +136,8 @@ async def service_detail(service_id):  # noqa: C901
             return jsonify(config), 200
 
         elif request.method == "PUT":
-            # Admin only
-            user = db.auth_user[user_data["user_id"]]
-            if not user.is_admin:
+          # Admin only
+            if not user_data.get("is_admin") and "*:admin" not in user_data.get("scope", []) and "admin" not in user_data.get("roles", []):
                 return jsonify({"error": "Admin access required"}), 403
 
             try:
@@ -191,15 +190,14 @@ async def service_detail(service_id):  # noqa: C901
             return jsonify(response.dict()), 200
 
         elif request.method == "DELETE":
-            # Admin only
-            user = db.auth_user[user_data["user_id"]]
-            if not user.is_admin:
+          # Admin only
+            if not user_data.get("is_admin") and "*:admin" not in user_data.get("scope", []) and "admin" not in user_data.get("roles", []):
                 return jsonify({"error": "Admin access required"}), 403
 
             service.update_record(is_active=False)
             return jsonify({"message": "Service deleted"}), 204
 
-    return await handler(user_data={})
+    return await handler(user_data=None)
 
 
 @services_bp.route("/<int:service_id>/auth", methods=["POST"])

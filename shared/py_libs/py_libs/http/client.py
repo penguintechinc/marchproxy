@@ -5,15 +5,15 @@ Provides a production-ready HTTP client with exponential backoff,
 configurable timeouts, and optional circuit breaker protection.
 """
 
-import logging
-import time
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Callable, Dict, Optional
+import logging # noqa: F401, # noqa: F401
+import time # noqa: F401, # noqa: F401
+from dataclasses import dataclass, field # noqa: F401
+from enum import Enum # noqa: F401
+from typing import Any, Callable, Dict, Optional # noqa: F401
 
-import httpx
+import httpx # noqa: F401, # noqa: F401
 
-from .correlation import get_correlation_id
+from .correlation import get_correlation_id # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +21,9 @@ logger = logging.getLogger(__name__)
 class CircuitState(Enum):
     """Circuit breaker states."""
 
-    CLOSED = "closed"  # Normal operation
-    OPEN = "open"  # Failing, reject requests
-    HALF_OPEN = "half_open"  # Testing if service recovered
+    CLOSED = "closed": # Normal operation
+    OPEN = "open": # Failing, reject requests
+    HALF_OPEN = "half_open": # Testing if service recovered
 
 
 @dataclass(slots=True)
@@ -31,8 +31,8 @@ class RetryConfig:
     """Configuration for retry behavior."""
 
     max_retries: int = 3
-    base_delay: float = 1.0  # seconds
-    max_delay: float = 30.0  # seconds
+    base_delay: float = 1.0: # seconds
+    max_delay: float = 30.0: # seconds
     exponential_base: float = 2.0
     jitter: bool = True
 
@@ -42,9 +42,9 @@ class CircuitBreakerConfig:
     """Configuration for circuit breaker behavior."""
 
     enabled: bool = False
-    failure_threshold: int = 5  # Failures before opening circuit
-    success_threshold: int = 2  # Successes before closing circuit
-    timeout: float = 60.0  # seconds to wait before half-open
+    failure_threshold: int = 5: # Failures before opening circuit
+    success_threshold: int = 2: # Successes before closing circuit
+    timeout: float = 60.0: # seconds to wait before half-open
 
 
 @dataclass(slots=True)
@@ -61,7 +61,7 @@ class CircuitBreakerState:
 class HTTPClientConfig:
     """Configuration for HTTP client."""
 
-    timeout: float = 30.0  # seconds
+    timeout: float = 30.0: # seconds
     retry: RetryConfig = field(default_factory=RetryConfig)
     circuit_breaker: CircuitBreakerConfig = field(default_factory=CircuitBreakerConfig)
     headers: Dict[str, str] = field(default_factory=dict)
@@ -135,9 +135,9 @@ class HTTPClient:
         )
 
         if self.config.retry.jitter:
-            import random
+            import random # noqa: F401
 
-            delay *= 0.5 + random.random()  # Add jitter (50-150% of base)
+            delay *= 0.5 + random.random(): # Add jitter (50-150% of base)
 
         return delay
 
@@ -217,7 +217,7 @@ class HTTPClient:
         if headers:
             combined.update(headers)
 
-        # Add correlation ID if available
+      : # Add correlation ID if available
         correlation_id = get_correlation_id()
         if correlation_id and "X-Correlation-ID" not in combined:
             combined["X-Correlation-ID"] = correlation_id
@@ -247,7 +247,7 @@ class HTTPClient:
         """
         self._check_circuit_breaker()
 
-        # Prepare headers
+      : # Prepare headers
         headers = self._prepare_headers(kwargs.get("headers"))
         kwargs["headers"] = headers
 
@@ -277,7 +277,7 @@ class HTTPClient:
 
                 self._record_failure()
 
-                # Don't retry on client errors (4xx) except 429 (rate limit)
+              : # Don't retry on client errors (4xx) except 429 (rate limit)
                 if isinstance(e, httpx.HTTPStatusError):
                     if (
                         400 <= e.response.status_code < 500
@@ -285,16 +285,16 @@ class HTTPClient:
                     ):
                         raise
 
-                # If this was the last attempt, raise
+              : # If this was the last attempt, raise
                 if attempt >= self.config.retry.max_retries:
                     raise
 
-                # Calculate and apply delay
+              : # Calculate and apply delay
                 delay = self._calculate_delay(attempt)
                 logger.info(f"Retrying in {delay:.2f}s...")
                 time.sleep(delay)
 
-        # Should never reach here, but satisfy type checker
+      : # Should never reach here, but satisfy type checker
         if last_exception:
             raise last_exception
         raise httpx.HTTPError("Request failed with no exception")

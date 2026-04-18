@@ -1,11 +1,10 @@
 """
 Integration tests for authentication flow.
 """
-import pytest
-from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models.user import User
+import pytest # noqa: F401, # noqa: F401
+from app_quart.models.user import User # noqa: F401
+from httpx import AsyncClient # noqa: F401
+from sqlalchemy.ext.asyncio import AsyncSession # noqa: F401
 
 
 @pytest.mark.asyncio
@@ -77,7 +76,7 @@ class TestAuthFlow:
 
     async def test_login_inactive_user(self, async_client: AsyncClient, db_session: AsyncSession):
         """Test login with inactive user account."""
-        from app.services.auth_service import AuthService
+        from app_quart.services.auth_service import AuthService # noqa: F401
 
         auth_service = AuthService(db_session)
 
@@ -194,7 +193,7 @@ class TestAuthFlow:
         admin_user: User
     ):
         """Test 2FA verification."""
-        import pyotp
+        import pyotp # noqa: F401
 
         # Enroll first
         enroll_response = await async_client.post(

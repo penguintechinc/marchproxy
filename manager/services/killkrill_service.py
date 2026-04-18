@@ -5,15 +5,15 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import logging
-import os
-import threading
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+import logging # noqa: F401, # noqa: F401
+import os # noqa: F401, # noqa: F401
+import threading # noqa: F401, # noqa: F401
+from datetime import datetime, timezone # noqa: F401
+from typing import Any, Dict, Optional # noqa: F401
 
-import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
+import requests # noqa: F401, # noqa: F401
+from requests.adapters import HTTPAdapter # noqa: F401
+from urllib3.util.retry import Retry # noqa: F401
 
 
 class KillKrillService:
@@ -39,7 +39,7 @@ class KillKrillService:
         self.stop_event = threading.Event()
         self.flush_thread = None
 
-        # Setup HTTP session with retries
+      # Setup HTTP session with retries
         self.session = requests.Session()
         retry_strategy = Retry(
             total=3,
@@ -51,7 +51,7 @@ class KillKrillService:
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
 
-        # Set default headers
+      # Set default headers
         self.session.headers.update(
             {
                 "Content-Type": "application/json",
@@ -78,7 +78,7 @@ class KillKrillService:
         if self.flush_thread and self.flush_thread.is_alive():
             self.flush_thread.join(timeout=5)
 
-        # Flush any remaining data
+      # Flush any remaining data
         self.flush_logs()
         self.flush_metrics()
 
@@ -90,7 +90,7 @@ class KillKrillService:
         hostname = kwargs.get("hostname", os.uname().nodename)
         timestamp = kwargs.get("timestamp", datetime.now(timezone.utc).isoformat())
 
-        # Extract labels and tags
+      # Extract labels and tags
         labels = {}
         tags = kwargs.get("tags", [])
 
@@ -118,7 +118,7 @@ class KillKrillService:
             "tags": tags,
         }
 
-        # Add trace information if available
+      # Add trace information if available
         if "trace_id" in kwargs:
             log_entry["trace_id"] = kwargs["trace_id"]
         if "span_id" in kwargs:
@@ -190,7 +190,7 @@ class KillKrillService:
         }
         self.log_buffer.clear()
 
-        # Send in background thread to avoid blocking
+      # Send in background thread to avoid blocking
         threading.Thread(target=self._send_log_batch, args=(batch,), daemon=True).start()
 
     def _flush_metrics(self):
@@ -201,7 +201,7 @@ class KillKrillService:
         batch = {"source": self.source_name, "metrics": self.metric_buffer.copy()}
         self.metric_buffer.clear()
 
-        # Send in background thread to avoid blocking
+      # Send in background thread to avoid blocking
         threading.Thread(target=self._send_metric_batch, args=(batch,), daemon=True).start()
 
     def _send_log_batch(self, batch: Dict[str, Any]):
@@ -211,7 +211,7 @@ class KillKrillService:
             response.raise_for_status()
         except Exception as e:
             logging.warning(f"Failed to send log batch to KillKrill: {e}")
-            # TODO: Consider implementing retry logic or dead letter queue
+          # TODO: Consider implementing retry logic or dead letter queue
 
     def _send_metric_batch(self, batch: Dict[str, Any]):
         """Send metric batch to KillKrill"""
@@ -220,7 +220,7 @@ class KillKrillService:
             response.raise_for_status()
         except Exception as e:
             logging.warning(f"Failed to send metric batch to KillKrill: {e}")
-            # TODO: Consider implementing retry logic or dead letter queue
+          # TODO: Consider implementing retry logic or dead letter queue
 
     def health_check(self) -> Dict[str, Any]:
         """Perform health check on KillKrill endpoints"""
@@ -229,7 +229,7 @@ class KillKrillService:
 
         results = {"status": "healthy", "endpoints": {}}
 
-        # Check log endpoint
+      # Check log endpoint
         try:
             response = self.session.get(
                 f"{self.log_endpoint.replace('/api/v1/logs', '/healthz')}", timeout=5
@@ -242,7 +242,7 @@ class KillKrillService:
         except Exception as e:
             results["endpoints"]["logs"] = {"status": "unhealthy", "error": str(e)}
 
-        # Check metrics endpoint
+      # Check metrics endpoint
         try:
             response = self.session.get(
                 f"{self.metrics_endpoint.replace('/api/v1/metrics', '/healthz')}",
@@ -256,7 +256,7 @@ class KillKrillService:
         except Exception as e:
             results["endpoints"]["metrics"] = {"status": "unhealthy", "error": str(e)}
 
-        # Overall status
+      # Overall status
         if any(ep.get("status") == "unhealthy" for ep in results["endpoints"].values()):
             results["status"] = "unhealthy"
 
@@ -287,10 +287,10 @@ class KillKrillLogHandler(logging.Handler):
     def emit(self, record):
         """Emit a log record to KillKrill"""
         try:
-            # Format the message
+          # Format the message
             msg = self.format(record)
 
-            # Extract additional fields
+          # Extract additional fields
             labels = {}
             if hasattr(record, "__dict__"):
                 for key, value in record.__dict__.items():
@@ -320,7 +320,7 @@ class KillKrillLogHandler(logging.Handler):
                     ]:
                         labels[key] = value
 
-            # Send to KillKrill
+          # Send to KillKrill
             self.killkrill_service.send_log(
                 level=record.levelname,
                 message=msg,

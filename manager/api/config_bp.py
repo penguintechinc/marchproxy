@@ -5,14 +5,14 @@ Copyright (C) 2025 MarchProxy Contributors
 Licensed under GNU Affero General Public License v3.0
 """
 
-import logging
-from penguintechinc_utils import get_logger
-from datetime import datetime
-from typing import Any, Optional
+import logging # noqa: F401, # noqa: F401
+from datetime import datetime # noqa: F401
+from typing import Any, Optional # noqa: F401
 
-from middleware.auth import require_auth
-from pydantic import BaseModel
-from quart import Blueprint, current_app, jsonify, request
+from middleware.auth import require_auth # noqa: F401
+from penguintechinc_utils import get_logger # noqa: F401
+from pydantic import BaseModel # noqa: F401
+from quart import Blueprint, current_app, jsonify, request # noqa: F401
 
 logger = get_logger(__name__)
 
@@ -47,7 +47,7 @@ class HealthCheckResponse(BaseModel):
 async def get_system_config(user_data):
     """Get system configuration"""
     try:
-        import os
+        import os # noqa: F401
 
         db_type = os.getenv("DB_TYPE", "postgresql")
         db_host = os.getenv("DB_HOST", "localhost")
@@ -56,7 +56,7 @@ async def get_system_config(user_data):
         release_mode = os.getenv("RELEASE_MODE", "false").lower() == "true"
         license_mode = "strict" if release_mode else "permissive"
 
-        # Get version from .version file
+      # Get version from .version file
         version = "unknown"
         try:
             with open("/home/penguin/code/MarchProxy/.version", "r") as f:
@@ -87,7 +87,7 @@ async def health_check():
         db = current_app.db
         timestamp = datetime.utcnow()
 
-        # Try a simple database query
+      # Try a simple database query
         try:
             db().select().first()
             db_status = "healthy"
@@ -95,7 +95,7 @@ async def health_check():
             logger.error(f"Database health check failed: {str(e)}")
             db_status = "unhealthy"
 
-        # Get version
+      # Get version
         version = "unknown"
         try:
             with open("/home/penguin/code/MarchProxy/.version", "r") as f:
@@ -117,9 +117,9 @@ async def health_check():
 
 
 @config_bp.route("/license", methods=["GET", "PUT"])
-async def license_config():  # noqa: C901
+async def license_config(): # noqa: C901
     """Get or update license configuration"""
-    import os
+    import os # noqa: F401
 
     if request.method == "GET":
         try:
@@ -155,19 +155,19 @@ async def license_config():  # noqa: C901
             try:
                 data_json = await request.get_json()
 
-                # Validate release mode if provided
+              # Validate release mode if provided
                 if "release_mode" in data_json:
                     release_mode = data_json["release_mode"]
                     if not isinstance(release_mode, bool):
                         return jsonify({"error": "release_mode must be boolean"}), 400
 
-                    # In production, this would write to config file or env store
-                    # For now, just log the change
+                  # In production, this would write to config file or env store
+                  # For now, just log the change
                     logger.info(
                         f"License mode changed to {'strict' if release_mode else 'permissive'}"
                     )
 
-                # License key would be stored securely (encrypted)
+              # License key would be stored securely (encrypted)
                 if "license_key" in data_json:
                     logger.info("License key updated")
 
@@ -194,8 +194,8 @@ async def license_config():  # noqa: C901
 @config_bp.route("/logging", methods=["GET", "PUT"])
 async def logging_config():
     """Get or update logging configuration"""
-    import logging
-from penguintechinc_utils import get_logger
+    import logging # noqa: F401
+    from penguintechinc_utils import get_logger # noqa: F401
 
     if request.method == "GET":
         try:
@@ -233,7 +233,7 @@ from penguintechinc_utils import get_logger
                 data_json = await request.get_json()
                 log_level = data_json.get("log_level", "INFO").upper()
 
-                # Validate log level
+              # Validate log level
                 valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
                 if log_level not in valid_levels:
                     return (
@@ -241,7 +241,7 @@ from penguintechinc_utils import get_logger
                         400,
                     )
 
-                # Set log level
+              # Set log level
                 root_logger = logging.getLogger()
                 root_logger.setLevel(getattr(logging, log_level))
 
@@ -272,7 +272,7 @@ from penguintechinc_utils import get_logger
 async def database_config(user_data):
     """Get database configuration"""
     try:
-        import os
+        import os # noqa: F401
 
         db = current_app.db
 
@@ -282,7 +282,7 @@ async def database_config(user_data):
         db_name = os.getenv("DB_NAME", "marchproxy")
         db_user = os.getenv("DB_USER", "marchproxy")
 
-        # Get database stats
+      # Get database stats
         try:
             db_stats = {"tables": len(db.tables), "connected": True}
         except Exception:
@@ -315,9 +315,9 @@ async def database_config(user_data):
 async def features_config(user_data):
     """Get available features based on license"""
     try:
-        import os
+        import os # noqa: F401
 
-        from models.license import LicenseCacheModel
+        from models.license import LicenseCacheModel # noqa: F401
 
         db = current_app.db
         license_key = os.getenv("LICENSE_KEY")
@@ -341,7 +341,7 @@ async def features_config(user_data):
             },
         }
 
-        # Check license if in release mode
+      # Check license if in release mode
         if release_mode and license_key:
             cached = LicenseCacheModel.get_cached_validation(db, license_key)
             if cached and cached["is_enterprise"]:

@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"go.uber.org/zap"
+	"github.com/PenguinTech/MarchProxy/proxy-alb/internal/logging"
 )
 
 // XDSClient handles communication with the xDS control plane
@@ -20,7 +20,11 @@ type XDSClient struct {
 // NewXDSClient creates a new xDS client
 func NewXDSClient(serverAddr string, logger *logging.LogrusAdapter) *XDSClient {
 	if logger == nil {
-		logger = NewLogrusAdapter("marchproxy")
+		var err error
+		logger, err = logging.NewLogrusAdapter("marchproxy")
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	return &XDSClient{
@@ -117,7 +121,7 @@ func (x *XDSClient) GetClusters() ([]ClusterConfig, error) {
 
 // UpdateRouteRateLimit updates rate limiting for a specific route
 func (x *XDSClient) UpdateRouteRateLimit(routeName string, rateLimit *RateLimitConfig) error {
-	x.logger.WithFields(logrus.Fields{
+	x.logger.WithFields(logging.Fields{
 		"route":      routeName,
 		"rate_limit": rateLimit,
 	}).Info("Updating route rate limit")
@@ -129,7 +133,7 @@ func (x *XDSClient) UpdateRouteRateLimit(routeName string, rateLimit *RateLimitC
 
 // UpdateTrafficWeights updates traffic weights for blue/green deployments
 func (x *XDSClient) UpdateTrafficWeights(routeName string, weights map[string]int) error {
-	x.logger.WithFields(logrus.Fields{
+	x.logger.WithFields(logging.Fields{
 		"route":   routeName,
 		"weights": weights,
 	}).Info("Updating traffic weights")

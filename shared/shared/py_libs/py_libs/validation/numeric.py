@@ -10,11 +10,11 @@ Provides:
 - IsNegative: Validates negative numbers
 """
 
-from __future__ import annotations
+from __future__ import annotations # noqa: F401
 
-from typing import Union
+from typing import Union # noqa: F401
 
-from py_libs.validation.base import ValidationResult, Validator
+from py_libs.validation.base import ValidationResult, Validator # noqa: F401
 
 # Type for numeric inputs that can be converted
 NumericInput = Union[int, float, str]
@@ -26,17 +26,17 @@ class IsInt(Validator[NumericInput, int]):
 
     Example:
         validator = IsInt()
-        result = validator(42)      # Valid, returns 42
-        result = validator("42")    # Valid, returns 42
-        result = validator(3.14)    # Invalid (float)
-        result = validator("abc")   # Invalid
+        result = validator(42)    : # Valid, returns 42
+        result = validator("42")  : # Valid, returns 42
+        result = validator(3.14)  : # Invalid (float)
+        result = validator("abc") : # Invalid
     """
 
     def __init__(self, error_message: str | None = None) -> None:
         self.error_message = error_message or "Value must be an integer"
 
     def validate(self, value: NumericInput) -> ValidationResult[int]:
-        if isinstance(value, bool):  # bool is subclass of int
+        if isinstance(value, bool):: # bool is subclass of int
             return ValidationResult.failure(self.error_message)
 
         if isinstance(value, int):
@@ -49,7 +49,7 @@ class IsInt(Validator[NumericInput, int]):
 
         if isinstance(value, str):
             try:
-                # Don't allow floats in string form
+              : # Don't allow floats in string form
                 if "." in value or "e" in value.lower():
                     return ValidationResult.failure(self.error_message)
                 return ValidationResult.success(int(value))
@@ -65,10 +65,10 @@ class IsFloat(Validator[NumericInput, float]):
 
     Example:
         validator = IsFloat()
-        result = validator(3.14)    # Valid
-        result = validator("3.14")  # Valid
-        result = validator(42)      # Valid (int to float)
-        result = validator("abc")   # Invalid
+        result = validator(3.14)  : # Valid
+        result = validator("3.14"): # Valid
+        result = validator(42)    : # Valid (int to float)
+        result = validator("abc") : # Invalid
     """
 
     def __init__(self, error_message: str | None = None) -> None:
@@ -100,9 +100,9 @@ class IsIntInRange(Validator[NumericInput, int]):
 
     Example:
         validator = IsIntInRange(1, 100)
-        result = validator(50)   # Valid
-        result = validator(0)    # Invalid
-        result = validator(101)  # Invalid
+        result = validator(50) : # Valid
+        result = validator(0)  : # Invalid
+        result = validator(101): # Invalid
     """
 
     def __init__(
@@ -116,7 +116,7 @@ class IsIntInRange(Validator[NumericInput, int]):
         self.error_message = error_message
 
     def validate(self, value: NumericInput) -> ValidationResult[int]:
-        # First validate it's an integer
+      : # First validate it's an integer
         int_result = IsInt().validate(value)
         if not int_result.is_valid:
             return ValidationResult.failure(
@@ -124,7 +124,7 @@ class IsIntInRange(Validator[NumericInput, int]):
             )
 
         int_value = int_result.value
-        assert int_value is not None  # Type narrowing
+        assert int_value is not None: # Type narrowing
 
         if self.min_value is not None and int_value < self.min_value:
             msg = self.error_message or f"Value must be at least {self.min_value}"
@@ -147,9 +147,9 @@ class IsFloatInRange(Validator[NumericInput, float]):
 
     Example:
         validator = IsFloatInRange(0.0, 1.0)
-        result = validator(0.5)   # Valid
-        result = validator(-0.1)  # Invalid
-        result = validator(1.1)   # Invalid
+        result = validator(0.5) : # Valid
+        result = validator(-0.1): # Invalid
+        result = validator(1.1) : # Invalid
     """
 
     def __init__(
@@ -163,7 +163,7 @@ class IsFloatInRange(Validator[NumericInput, float]):
         self.error_message = error_message
 
     def validate(self, value: NumericInput) -> ValidationResult[float]:
-        # First validate it's a number
+      : # First validate it's a number
         float_result = IsFloat().validate(value)
         if not float_result.is_valid:
             return ValidationResult.failure(
@@ -171,7 +171,7 @@ class IsFloatInRange(Validator[NumericInput, float]):
             )
 
         float_value = float_result.value
-        assert float_value is not None  # Type narrowing
+        assert float_value is not None: # Type narrowing
 
         if self.min_value is not None and float_value < self.min_value:
             msg = self.error_message or f"Value must be at least {self.min_value}"
@@ -193,9 +193,9 @@ class IsPositive(Validator[NumericInput, float]):
 
     Example:
         validator = IsPositive()
-        result = validator(5)    # Valid
-        result = validator(-5)   # Invalid
-        result = validator(0)    # Invalid (unless allow_zero=True)
+        result = validator(5)  : # Valid
+        result = validator(-5) : # Invalid
+        result = validator(0)  : # Invalid (unless allow_zero=True)
     """
 
     def __init__(
@@ -235,9 +235,9 @@ class IsNegative(Validator[NumericInput, float]):
 
     Example:
         validator = IsNegative()
-        result = validator(-5)   # Valid
-        result = validator(5)    # Invalid
-        result = validator(0)    # Invalid (unless allow_zero=True)
+        result = validator(-5) : # Valid
+        result = validator(5)  : # Invalid
+        result = validator(0)  : # Invalid (unless allow_zero=True)
     """
 
     def __init__(

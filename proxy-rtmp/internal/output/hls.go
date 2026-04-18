@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"go.uber.org/zap"
+	"github.com/penguintech/marchproxy/proxy-rtmp/internal/logging"
 )
 
 // HLSConfig holds HLS output configuration
@@ -23,6 +23,7 @@ type HLSSegmenter struct {
 	config    *HLSConfig
 	streamKey string
 	outputDir string
+	logger    *logging.LogrusAdapter
 }
 
 // NewHLSSegmenter creates a new HLS segmenter
@@ -32,10 +33,13 @@ func NewHLSSegmenter(streamKey string, config *HLSConfig) (*HLSSegmenter, error)
 		return nil, fmt.Errorf("failed to create HLS output directory: %w", err)
 	}
 
+	logger, _ := logging.NewLogrusAdapter("hls")
+
 	return &HLSSegmenter{
 		config:    config,
 		streamKey: streamKey,
 		outputDir: outputDir,
+		logger:    logger,
 	}, nil
 }
 
@@ -81,7 +85,7 @@ func (h *HLSSegmenter) GenerateMasterPlaylist(variants []VariantStream) error {
 		return fmt.Errorf("failed to write master playlist: %w", err)
 	}
 
-	logrus.WithFields(logrus.Fields{
+	h.logger.WithFields(map[string]interface{}{
 		"stream_key": h.streamKey,
 		"path":       masterPath,
 		"variants":   len(variants),
@@ -113,7 +117,7 @@ func (h *HLSSegmenter) Cleanup() error {
 
 		if now.Sub(info.ModTime()) > maxAge {
 			if err := os.Remove(file); err != nil {
-				logrus.WithError(err).WithField("file", file).Warn("Failed to delete old segment")
+				h.logger.WithError(err).WithFields(map[string]interface{}{"file": file}).Warn("Failed to delete old segment")
 			}
 		}
 	}

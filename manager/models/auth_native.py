@@ -13,7 +13,7 @@ from typing import Any, Dict, Optional, Protocol
 
 import pyotp
 import qrcode
-from pydal import DAL
+from pydal import DAL, Field
 
 
 # Auth protocol for type checking — compatible with penguin-aaa or any auth backend
