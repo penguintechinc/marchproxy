@@ -18,15 +18,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6
         with:
           go-version: '1.22'
 
       - name: Cache Go modules
-        uses: actions/cache@v4
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5
         with:
           path: |
             ~/.cache/go-build
@@ -52,10 +52,10 @@ jobs:
           go test -v ./...
 
       - name: Run security scan
-        uses: securecodewarrior/github-action-add-sarif@v1
+        uses: github/codeql-action/upload-sarif@95e58e9a2cdfd71adc6e0353d5c52f41a045d225  # v4
         if: false  # Disabled for now, enable when ready
         with:
-          sarif-file: 'security-scan-results.sarif'
+          sarif_file: 'security-scan-results.sarif'
 
   # Test Python manager application  
   test-manager:
@@ -76,15 +76,15 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6
         with:
           python-version: '3.12'
 
       - name: Cache Python packages
-        uses: actions/cache@v4
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
@@ -114,82 +114,194 @@ jobs:
           python -m pytest tests/ -v --cov=apps/marchproxy/ || true
           # Note: Tests may not exist yet, so we allow failure
 
-  # Multi-architecture Docker builds
-  build-multi-arch:
+  # Build single arch per platform (truly parallel)
+  build-platform:
     needs: [test-proxy, test-manager]
     runs-on: ubuntu-latest
     strategy:
       matrix:
         component: [manager, proxy]
-    
+        platform: [linux/amd64, linux/arm64]
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a  # v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        with:
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4
 
       - name: Log in to Container Registry
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ matrix.component == 'manager' && env.IMAGE_NAME_MANAGER || env.IMAGE_NAME_PROXY }}
-          tags: |
-            # Alpha tag for feature branches and develop
-            type=raw,value=alpha,enable=${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/heads/release/') && !startsWith(github.ref, 'refs/tags/') }}
-            # Beta tag for main branch
-            type=raw,value=beta,enable=${{ github.ref == 'refs/heads/main' }}
-            # Release tags for release branches and version tags
-            type=semver,pattern={{version}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
-            type=match,pattern=v(\d+\.\d+\.\d+),group=1,enable=${{ startsWith(github.ref, 'refs/heads/release/') }}
-            # Latest tag for release tags only
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
-            # Additional metadata tags
-            type=ref,event=pr,prefix=pr-
-            type=sha,prefix={{branch}}-,format=short
+      - name: Generate platform tag
+        id: platform-tag
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          ARCH=$(echo "${PLATFORM}" | cut -d'/' -f2)
+          echo "arch=${ARCH}" >> $GITHUB_OUTPUT
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+      - name: Extract image name
+        id: image-name
+        run: |
+          if [ "${{ matrix.component }}" = "manager" ]; then
+            echo "name=${{ env.IMAGE_NAME_MANAGER }}" >> $GITHUB_OUTPUT
+          else
+            echo "name=${{ env.IMAGE_NAME_PROXY }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Extract version and build tag
+        id: version
+        env:
+          REF: ${{ github.ref }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          VERSION="${REF_NAME}"
+          EPOCH=$(date +%s)
+
+          if [[ "${REF}" == "refs/tags/v"* ]]; then
+            # Release tag: v1.2.3
+            echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          elif [[ "${REF}" == "refs/heads/release/"* ]]; then
+            # Release branch: release/v1.x.x -> v1.x.x-beta
+            echo "version=${VERSION}-beta" >> $GITHUB_OUTPUT
+            echo "epoch-tag=beta-${EPOCH}" >> $GITHUB_OUTPUT
+          elif [[ "${REF}" == "refs/heads/main" ]]; then
+            # Main branch: gamma
+            echo "version=gamma-${EPOCH}" >> $GITHUB_OUTPUT
+          else
+            # Feature/develop branches: alpha
+            echo "version=alpha-${EPOCH}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build and push Docker image (platform-specific)
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f  # v7
         with:
           context: .
           file: ./docker/${{ matrix.component }}/Dockerfile
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          platforms: ${{ matrix.platform }}
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ env.REGISTRY }}/${{ steps.image-name.outputs.name }}:${{ steps.version.outputs.version }}-${{ steps.platform-tag.outputs.arch }}
+          labels: |
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
           target: production
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.component }}-${{ matrix.platform }}
+          cache-to: type=gha,scope=${{ matrix.component }}-${{ matrix.platform }},mode=max
           build-args: |
             VERSION=${{ github.ref_name }}
-            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
             VCS_REF=${{ github.sha }}
+
+  # Merge multi-arch manifests
+  merge-manifests:
+    needs: build-platform
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component: [manager, proxy]
+    if: github.event_name != 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4
+
+      - name: Extract image name
+        id: image-name
+        run: |
+          if [ "${{ matrix.component }}" = "manager" ]; then
+            echo "name=${{ env.IMAGE_NAME_MANAGER }}" >> $GITHUB_OUTPUT
+          else
+            echo "name=${{ env.IMAGE_NAME_PROXY }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Determine manifest tags and source version
+        id: manifest
+        env:
+          REF: ${{ github.ref }}
+          REF_NAME: ${{ github.ref_name }}
+          REGISTRY: ${{ env.REGISTRY }}
+          IMAGE_NAME: ${{ steps.image-name.outputs.name }}
+        run: |
+          VERSION="${REF_NAME}"
+          EPOCH=$(date +%s)
+          TAGS=""
+          SOURCE_VERSION=""
+
+          if [[ "${REF}" == "refs/tags/v"* ]]; then
+            # Release tag: v1.2.3 -> tag as v1.2.3 and latest
+            SOURCE_VERSION="${VERSION}"
+            TAGS="${REGISTRY}/${IMAGE_NAME}:${VERSION} ${REGISTRY}/${IMAGE_NAME}:latest"
+          elif [[ "${REF}" == "refs/heads/release/"* ]]; then
+            # Release branch: release/v1.x.x -> tag as v1.x.x-beta and beta-<epoch>
+            SOURCE_VERSION="${VERSION}-beta"
+            TAGS="${REGISTRY}/${IMAGE_NAME}:${VERSION}-beta ${REGISTRY}/${IMAGE_NAME}:beta-${EPOCH}"
+          elif [[ "${REF}" == "refs/heads/main" ]]; then
+            # Main branch: gamma-<epoch>
+            SOURCE_VERSION="gamma-${EPOCH}"
+            TAGS="${REGISTRY}/${IMAGE_NAME}:gamma-${EPOCH}"
+          else
+            # Feature/develop branches: alpha-<epoch>
+            SOURCE_VERSION="alpha-${EPOCH}"
+            TAGS="${REGISTRY}/${IMAGE_NAME}:alpha-${EPOCH}"
+          fi
+
+          echo "source-version=${SOURCE_VERSION}" >> $GITHUB_OUTPUT
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+
+      - name: Create and push manifest
+        env:
+          REGISTRY: ${{ env.REGISTRY }}
+          IMAGE_NAME: ${{ steps.image-name.outputs.name }}
+          SOURCE_VERSION: ${{ steps.manifest.outputs.source-version }}
+          TAGS: ${{ steps.manifest.outputs.tags }}
+        run: |
+          # Create manifest list from amd64 and arm64 images
+          docker buildx imagetools create -t "${REGISTRY}/${IMAGE_NAME}:${SOURCE_VERSION}" \
+            "${REGISTRY}/${IMAGE_NAME}:${SOURCE_VERSION}-amd64" \
+            "${REGISTRY}/${IMAGE_NAME}:${SOURCE_VERSION}-arm64"
+
+          # Add additional tags
+          for TAG in ${TAGS}; do
+            if [ "${TAG}" != "${REGISTRY}/${IMAGE_NAME}:${SOURCE_VERSION}" ]; then
+              docker buildx imagetools create -t "${TAG}" \
+                "${REGISTRY}/${IMAGE_NAME}:${SOURCE_VERSION}-amd64" \
+                "${REGISTRY}/${IMAGE_NAME}:${SOURCE_VERSION}-arm64"
+            fi
+          done
 
   # Integration testing with multi-arch images
   integration-test:
-    needs: [build-multi-arch]
+    needs: [merge-manifests]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4
 
       - name: Log in to Container Registry  
-        uses: docker/login-action@v3
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -221,10 +333,10 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
           scan-type: 'fs'
           scan-ref: '.'
@@ -232,7 +344,7 @@ jobs:
           output: 'trivy-results.sarif'
 
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@95e58e9a2cdfd71adc6e0353d5c52f41a045d225  # v4
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
@@ -245,7 +357,7 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
       - name: Generate release notes
         id: release_notes
@@ -295,7 +407,7 @@ jobs:
           EOF
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda  # v3
         with:
           body_path: release_notes.md
           draft: false
@@ -311,7 +423,7 @@ jobs:
     
     steps:
       - name: Cleanup old container images
-        uses: actions/github-script@v7
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9
         with:
           script: |
             const packages = await github.rest.packages.listPackagesForOrganization({

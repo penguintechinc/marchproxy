@@ -24,18 +24,18 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
     - name: Set up Python (for manager)
       if: matrix.component == 'manager'
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6
       with:
         python-version: ${{ env.PYTHON_VERSION }}
         cache: 'pip'
 
     - name: Set up Go (for proxy components)
       if: matrix.component == 'proxy-egress' || matrix.component == 'proxy-ingress'
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6
       with:
         go-version: ${{ env.GO_VERSION }}
         cache: true
@@ -79,7 +79,7 @@ jobs:
         go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2  # v6
       with:
         file: ${{ matrix.component == 'manager' && 'manager/coverage.xml' || format('{0}/coverage.out', matrix.component) }}
         flags: ${{ matrix.component }}
@@ -90,10 +90,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
     - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@v0.35.0
+      uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
       with:
         scan-type: 'fs'
         scan-ref: '.'
@@ -101,7 +101,7 @@ jobs:
         output: 'trivy-results.sarif'
 
     - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@95e58e9a2cdfd71adc6e0353d5c52f41a045d225  # v4
       with:
         sarif_file: 'trivy-results.sarif'
 
@@ -113,13 +113,13 @@ jobs:
 
     - name: Upload gosec results for egress
       if: always()
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@95e58e9a2cdfd71adc6e0353d5c52f41a045d225  # v4
       with:
         sarif_file: proxy-egress/gosec-results-egress.sarif
 
     - name: Upload gosec results for ingress
       if: always()
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@95e58e9a2cdfd71adc6e0353d5c52f41a045d225  # v4
       with:
         sarif_file: proxy-ingress/gosec-results-ingress.sarif
 
@@ -130,13 +130,13 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4
 
     - name: Build manager image
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f  # v7
       with:
         context: .
         target: manager
@@ -146,7 +146,7 @@ jobs:
         cache-to: type=gha,mode=max
 
     - name: Build proxy image
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f  # v7
       with:
         context: .
         target: proxy
@@ -200,7 +200,7 @@ jobs:
 
     - name: Upload logs
       if: failure()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
       with:
         name: integration-test-logs
         path: test-logs/
@@ -210,11 +210,14 @@ jobs:
       run: |
         docker-compose -f docker-compose.yml -f docker-compose.ci.yml down -v
 
-  build-production:
-    name: Build Production Images
+  build-platform:
+    name: Build Production Images - ${{ matrix.platform }}
     runs-on: ubuntu-latest
     needs: [lint-and-test, security-scan, build-and-test-integration]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    strategy:
+      matrix:
+        platform: [linux/amd64, linux/arm64]
 
     permissions:
       contents: read
@@ -222,13 +225,16 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a  # v4
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4
 
     - name: Log in to Container Registry
-      uses: docker/login-action@v3
+      uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
@@ -236,7 +242,7 @@ jobs:
 
     - name: Extract metadata
       id: meta
-      uses: docker/metadata-action@v5
+      uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf  # v6
       with:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         tags: |
@@ -247,43 +253,89 @@ jobs:
           type=semver,pattern={{major}}
           type=sha
 
+    - name: Determine platform tag
+      id: platform-tag
+      run: |
+        PLATFORM_TAG=$(echo "${{ matrix.platform }}" | sed 's|/|-|g')
+        echo "tag=${PLATFORM_TAG}" >> $GITHUB_OUTPUT
+
     - name: Build and push manager image
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f  # v7
       with:
         context: .
         target: manager
-        platforms: linux/amd64,linux/arm64
+        platforms: ${{ matrix.platform }}
         push: true
-        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/manager:${{ github.sha }},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/manager:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/manager:${{ github.sha }}-${{ steps.platform-tag.outputs.tag }}
+        cache-from: type=gha,scope=${{ github.job }}-manager-${{ matrix.platform }}
+        cache-to: type=gha,scope=${{ github.job }}-manager-${{ matrix.platform }},mode=max
 
     - name: Build and push proxy image
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f  # v7
       with:
         context: .
         target: proxy
-        platforms: linux/amd64,linux/arm64
+        platforms: ${{ matrix.platform }}
         push: true
-        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/proxy:${{ github.sha }},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/proxy:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/proxy:${{ github.sha }}-${{ steps.platform-tag.outputs.tag }}
+        cache-from: type=gha,scope=${{ github.job }}-proxy-${{ matrix.platform }}
+        cache-to: type=gha,scope=${{ github.job }}-proxy-${{ matrix.platform }},mode=max
+
+  merge-manifests:
+    name: Merge Multi-Arch Manifests
+    runs-on: ubuntu-latest
+    needs: [build-platform]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4
+
+    - name: Create manager manifest
+      run: |
+        docker buildx imagetools create \
+          -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/manager:${{ github.sha }} \
+          -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/manager:latest \
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/manager:${{ github.sha }}-linux-amd64 \
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/manager:${{ github.sha }}-linux-arm64
+
+    - name: Create proxy manifest
+      run: |
+        docker buildx imagetools create \
+          -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/proxy:${{ github.sha }} \
+          -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/proxy:latest \
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/proxy:${{ github.sha }}-linux-amd64 \
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/proxy:${{ github.sha }}-linux-arm64
 
   performance-test:
     name: Performance Testing
     runs-on: ubuntu-latest
-    needs: [build-production]
+    needs: [merge-manifests]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4
 
     - name: Log in to Container Registry
-      uses: docker/login-action@v3
+      uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
@@ -295,7 +347,6 @@ jobs:
         export PROXY_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/proxy:${{ github.sha }}
         docker-compose -f docker-compose.yml -f docker-compose.ci.yml up -d
 
-        # Wait for services
         timeout 300 bash -c '
           until docker-compose ps | grep -q "Up"; do
             echo "Waiting for services..."
@@ -313,10 +364,7 @@ jobs:
 
     - name: Run performance benchmarks
       run: |
-        # Apache Bench tests
         ab -n 10000 -c 100 http://localhost:8000/health || echo "Manager AB test failed"
-
-        # wrk tests
         wrk -t12 -c400 -d30s http://localhost:8000/health || echo "Manager wrk test failed"
 
     - name: Cleanup performance test
@@ -335,10 +383,10 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
     - name: Create release
-      uses: actions/create-release@v1
+      uses: actions/create-release@0cb9c9b65d5d1901c1f53e5e66eaf4afd303e70e  # v1.1.4
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -351,11 +399,9 @@ jobs:
           - Automated release from CI/CD pipeline
 
           ## Docker Images
-          - Manager: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/manager:${{ github.ref_name }}`
-          - Proxy: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/proxy:${{ github.ref_name }}`
+          - Manager: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/manager:${{ github.ref_name }}
+          - Proxy: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/proxy:${{ github.ref_name }}
 
           ## Installation
-          ```bash
           docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/manager:${{ github.ref_name }}
           docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/proxy:${{ github.ref_name }}
-          ```

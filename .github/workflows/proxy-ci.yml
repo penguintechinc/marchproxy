@@ -22,14 +22,14 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./proxy-egress-egress-egress
+        working-directory: ./proxy-egress
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6
       with:
         go-version: '1.21'
         cache-dependency-path: 'proxy-egress/go.sum'
@@ -40,10 +40,10 @@ jobs:
         go mod verify
 
     - name: Install golangci-lint
-      uses: golangci/golangci-lint-action@v4
+      uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20  # v9
       with:
         version: latest
-        working-directory: ./proxy-egress-egress
+        working-directory: ./proxy-egress
 
     - name: Run go vet
       run: go vet ./...
@@ -65,7 +65,7 @@ jobs:
         go test -bench=. -benchmem ./... || true
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2  # v6
       with:
         file: ./proxy-egress/coverage.out
         flags: proxy
@@ -76,14 +76,14 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./proxy-egress-egress
+        working-directory: ./proxy-egress
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6
       with:
         go-version: '1.21'
 
@@ -114,13 +114,13 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4
 
     - name: Build proxy image
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f  # v7
       with:
         context: ./proxy-egress
         file: ./proxy-egress/Dockerfile
@@ -132,19 +132,15 @@ jobs:
 
     - name: Test proxy container
       run: |
-        # Start test services
         docker network create test-network
 
-        # Start Redis for caching tests
         docker run -d --name test-redis \
           --network test-network \
           -e REDIS_PASSWORD=test123 \
           redis:7-alpine redis-server --requirepass test123
 
-        # Wait for Redis
         sleep 5
 
-        # Run proxy with test configuration
         docker run -d --name test-proxy \
           --network test-network \
           -e MANAGER_URL=http://mock-manager:8000 \
@@ -154,16 +150,11 @@ jobs:
           -p 8081:8081 \
           ${{ env.IMAGE_NAME }}:test
 
-        # Wait for proxy to start
         sleep 10
 
-        # Test health endpoint
         curl -f http://localhost:8080/health || exit 1
-
-        # Test metrics endpoint
         curl -f http://localhost:8081/metrics || exit 1
 
-        # Cleanup
         docker stop test-proxy test-redis
         docker rm test-proxy test-redis
         docker network rm test-network
@@ -175,10 +166,10 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4
 
     - name: Install eBPF tools
       run: |
@@ -186,7 +177,7 @@ jobs:
         sudo apt-get install -y libbpf-dev clang llvm
 
     - name: Build with eBPF support
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f  # v7
       with:
         context: ./proxy-egress
         file: ./proxy-egress/Dockerfile
@@ -196,27 +187,36 @@ jobs:
 
     - name: Test eBPF program loading
       run: |
-        # Test eBPF program compilation and loading in privileged container
         docker run --rm --privileged \
           -v /sys/kernel/debug:/sys/kernel/debug:ro \
           ${{ env.IMAGE_NAME }}:ebpf-test \
           go test -v ./ebpf/... || echo "eBPF tests may require kernel features not available in CI"
 
-  build-production:
-    name: Build Production Proxy Egress Image
+  build-platform:
+    name: Build Production Proxy Egress Image - ${{ matrix.platform }}
     runs-on: ubuntu-latest
     needs: [build-and-test, ebpf-test]
     if: github.ref == 'refs/heads/main'
+    strategy:
+      matrix:
+        platform: [linux/amd64, linux/arm64]
+
+    permissions:
+      contents: read
+      packages: write
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a  # v4
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4
 
     - name: Log in to Container Registry
-      uses: docker/login-action@v3
+      uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
@@ -224,7 +224,7 @@ jobs:
 
     - name: Extract metadata
       id: meta
-      uses: docker/metadata-action@v5
+      uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf  # v6
       with:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         tags: |
@@ -233,44 +233,87 @@ jobs:
           type=sha,prefix={{branch}}-
           type=raw,value=latest,enable={{is_default_branch}}
 
+    - name: Determine platform tag
+      id: platform-tag
+      run: |
+        PLATFORM_TAG=$(echo "${{ matrix.platform }}" | sed 's|/|-|g')
+        echo "tag=${PLATFORM_TAG}" >> $GITHUB_OUTPUT
+
     - name: Build and push proxy image
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f  # v7
       with:
         context: ./proxy-egress
         file: ./proxy-egress/Dockerfile
         target: production
-        platforms: linux/amd64,linux/arm64
+        platforms: ${{ matrix.platform }}
         push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}-${{ steps.platform-tag.outputs.tag }}
+        cache-from: type=gha,scope=${{ github.job }}-production-${{ matrix.platform }}
+        cache-to: type=gha,scope=${{ github.job }}-production-${{ matrix.platform }},mode=max
 
     - name: Build and push debug image
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f  # v7
       with:
         context: ./proxy-egress
         file: ./proxy-egress/Dockerfile
         target: debug
-        platforms: linux/amd64,linux/arm64
+        platforms: ${{ matrix.platform }}
         push: true
-        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:debug
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:debug-${{ steps.platform-tag.outputs.tag }}
+        cache-from: type=gha,scope=${{ github.job }}-debug-${{ matrix.platform }}
+        cache-to: type=gha,scope=${{ github.job }}-debug-${{ matrix.platform }},mode=max
+
+  merge-manifests:
+    name: Merge Proxy Egress Manifests
+    runs-on: ubuntu-latest
+    needs: [build-platform]
+    if: github.ref == 'refs/heads/main'
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd  # v4
+
+    - name: Create production manifest
+      run: |
+        docker buildx imagetools create \
+          -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+          -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}-linux-amd64 \
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}-linux-arm64
+
+    - name: Create debug manifest
+      run: |
+        docker buildx imagetools create \
+          -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:debug \
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:debug-linux-amd64 \
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:debug-linux-arm64
 
   performance-test:
     name: Performance Benchmarks
     runs-on: ubuntu-latest
-    needs: [build-production]
+    needs: [merge-manifests]
     if: github.ref == 'refs/heads/main'
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6
       with:
         go-version: '1.21'
 
@@ -281,50 +324,44 @@ jobs:
     - name: Run performance benchmarks
       working-directory: ./proxy-egress
       run: |
-        # Run Go benchmarks
         go test -bench=. -benchmem -benchtime=10s ./... > benchmark-results.txt
         cat benchmark-results.txt
 
-        # Start proxy for load testing
         go build -o proxy-test ./cmd/proxy &
         PROXY_PID=$!
         sleep 5
 
-        # Run load tests
         hey -n 10000 -c 100 http://localhost:8080/health > load-test-results.txt || true
         cat load-test-results.txt
 
-        # Cleanup
         kill $PROXY_PID || true
 
   deploy-staging:
     name: Deploy Proxy Egress to Staging
     runs-on: ubuntu-latest
-    needs: [build-production]
+    needs: [merge-manifests]
     if: github.ref == 'refs/heads/develop'
     environment: staging
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
     - name: Deploy to staging
       run: |
         echo "Deploying proxy to staging environment"
-        # Add staging deployment commands here
 
   deploy-production:
     name: Deploy Proxy Egress to Production
     runs-on: ubuntu-latest
-    needs: [build-production, performance-test]
+    needs: [merge-manifests, performance-test]
     if: github.ref == 'refs/heads/main'
     environment: production
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
 
     - name: Deploy to production
       run: |
         echo "Deploying proxy to production environment"
-        # Add production deployment commands here
