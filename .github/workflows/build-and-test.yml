@@ -20,6 +20,11 @@ on:
   schedule:
     - cron: '0 2 * * 0'  # Weekly cleanup on Sunday at 2 AM UTC
 
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME_MANAGER: ${{ github.repository }}/manager
