@@ -57,6 +57,7 @@
 config.yaml
 config.json
 password.txt
+helm/marchproxy/values-secrets*.yaml
 
 # Docker volumes and data
 postgres_data/
