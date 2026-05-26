@@ -16,7 +16,7 @@ aiohttp==3.9.1
 # Vector stores and embeddings
 chromadb==0.4.18
 sentence-transformers==2.2.2
-tiktoken==0.5.1
+tiktoken==0.7.0
 
 # gRPC support — 1.68.x first version with Python 3.13 arm64 wheels
 grpcio==1.68.1
