@@ -113,4 +113,18 @@ spec:
             periodSeconds: 5
           resources:
             {{- toYaml .Values.ailb.resources | nindent 12 }}
+          volumeMounts:
+            - name: memory-data
+              mountPath: /app/ailb_memory
+            - name: rag-data
+              mountPath: /app/ailb_rag
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: memory-data
+          emptyDir: {}
+        - name: rag-data
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
 {{- end }}
