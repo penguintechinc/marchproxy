@@ -153,16 +153,14 @@ postgresql:
         memory: "512Mi"
         cpu: "500m"
 
-# Redis configuration (using Bitnami chart)
+# Valkey configuration (replacement for Bitnami Redis)
 redis:
   enabled: true
-  auth:
-    enabled: true
-    password: "redis123"
   master:
     persistence:
       enabled: true
       size: 8Gi
+      storageClass: ""
     resources:
       requests:
         memory: "128Mi"
@@ -236,3 +234,35 @@ podDisruptionBudget:
     minAvailable: 1
   proxy:
     minAvailable: 2
+
+# Secrets management
+# Set secrets.manage: true and provide values via gitignored values-secrets-*.yaml
+secrets:
+  manage: false
+  postgresPassword: ""
+  redisPassword: ""
+  jwtSecret: ""
+  clusterApiKey: ""
+  openaiApiKey: ""
+  anthropicApiKey: ""
+
+# AILB (AI Load Balancer) configuration
+ailb:
+  enabled: false
+  image:
+    registry: ghcr.io
+    repository: penguintechinc/marchproxy/ailb
+    tag: "beta-latest"
+    pullPolicy: IfNotPresent
+  replicaCount: 2
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+  config:
+    logLevel: "info"
+    maxConcurrentRequests: "100"
+    requestTimeoutSeconds: "30"

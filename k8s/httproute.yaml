@@ -1,0 +1,29 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: marchproxy
+  namespace: marchproxy
+  labels:
+    app: marchproxy
+spec:
+  parentRefs:
+    - name: shared
+      namespace: gateway
+      sectionName: https
+  hostnames:
+    - "marchproxy.penguintech.cloud"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api
+      backendRefs:
+        - name: marchproxy-manager
+          port: 8000
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: marchproxy-manager
+          port: 8000

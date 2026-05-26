@@ -1,0 +1,114 @@
+# Beta environment overrides for marchproxy Helm chart.
+# Deploy with:
+#   helm upgrade --install marchproxy ./helm/marchproxy \
+#     -f helm/marchproxy/values.yaml \
+#     -f helm/marchproxy/values-beta.yaml \
+#     -f helm/marchproxy/values-secrets-beta.yaml \
+#     --namespace marchproxy --create-namespace \
+#     --kube-context dal2-beta
+#
+# NOTE: Real secrets (cluster-api-key, redis-password) must be provided via
+# values-secrets-beta.yaml (gitignored). Never commit secrets to this file.
+
+# Manager image — update tag after CI build completes
+manager:
+  image:
+    registry: ghcr.io
+    repository: penguintechinc/marchproxy/manager
+    tag: "beta-latest"
+    pullPolicy: Always
+  replicaCount: 1
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "250m"
+  ingress:
+    enabled: true
+    className: "nginx"
+    hosts:
+      - host: marchproxy.penguintech.cloud
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: marchproxy-manager-tls
+        hosts:
+          - marchproxy.penguintech.cloud
+
+# Proxy image — update tag after CI build completes
+proxy:
+  image:
+    registry: ghcr.io
+    repository: penguintechinc/marchproxy/proxy
+    tag: "beta-latest"
+    pullPolicy: Always
+  replicaCount: 1
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "250m"
+
+# AILB — enabled for beta; update tag after CI build completes
+ailb:
+  enabled: true
+  image:
+    registry: ghcr.io
+    repository: penguintechinc/marchproxy/ailb
+    tag: "beta-latest"
+    pullPolicy: Always
+  replicaCount: 1
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "250m"
+
+# PostgreSQL — enabled; use cluster storage class for beta
+postgresql:
+  enabled: true
+  primary:
+    persistence:
+      storageClass: "nest-block"
+      size: 10Gi
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "256Mi"
+        cpu: "250m"
+
+# Valkey — enabled; use cluster storage class for beta
+redis:
+  enabled: true
+  master:
+    persistence:
+      enabled: true
+      storageClass: "nest-block"
+      size: 4Gi
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "50m"
+      limits:
+        memory: "128Mi"
+        cpu: "100m"
+
+# Disable heavy monitoring stack for beta
+monitoring:
+  prometheus:
+    enabled: false
+  grafana:
+    enabled: false
+
+# Autoscaling off for beta
+autoscaling:
+  enabled: false

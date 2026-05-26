@@ -165,3 +165,40 @@ Proxy image
 {{- define "marchproxy.proxy.image" -}}
 {{- printf "%s%s/%s:%s" (include "marchproxy.imageRegistry" .) .Values.proxy.image.registry .Values.proxy.image.repository .Values.proxy.image.tag }}
 {{- end }}
+
+{{/*
+AILB labels
+*/}}
+{{- define "marchproxy.ailb.labels" -}}
+{{ include "marchproxy.labels" . }}
+app.kubernetes.io/component: proxy-ailb
+{{- end }}
+
+{{/*
+AILB selector labels
+*/}}
+{{- define "marchproxy.ailb.selectorLabels" -}}
+{{ include "marchproxy.selectorLabels" . }}
+app.kubernetes.io/component: proxy-ailb
+{{- end }}
+
+{{/*
+AILB fullname
+*/}}
+{{- define "marchproxy.ailb.fullname" -}}
+proxy-ailb
+{{- end }}
+
+{{/*
+AILB image
+*/}}
+{{- define "marchproxy.ailb.image" -}}
+{{- printf "%s/%s:%s" .Values.ailb.image.registry .Values.ailb.image.repository .Values.ailb.image.tag }}
+{{- end }}
+
+{{/*
+AILB service account name
+*/}}
+{{- define "marchproxy.ailb.serviceAccountName" -}}
+{{- printf "%s-ailb" (include "marchproxy.fullname" .) }}
+{{- end }}

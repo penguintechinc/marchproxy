@@ -1,0 +1,116 @@
+{{- if .Values.ailb.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "marchproxy.ailb.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "marchproxy.ailb.labels" . | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "marchproxy.ailb.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "marchproxy.ailb.labels" . | nindent 4 }}
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "7004"
+    prometheus.io/path: "/metrics"
+spec:
+  replicas: {{ .Values.ailb.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "marchproxy.ailb.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "marchproxy.ailb.selectorLabels" . | nindent 8 }}
+        {{- with .Values.global.commonLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.global.commonAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "marchproxy.ailb.serviceAccountName" . }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: ailb
+          image: {{ include "marchproxy.ailb.image" . }}
+          imagePullPolicy: {{ .Values.ailb.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 7003
+              protocol: TCP
+            - name: admin
+              containerPort: 7004
+              protocol: TCP
+            - name: grpc
+              containerPort: 50053
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: marchproxy-config
+            - configMapRef:
+                name: marchproxy-ailb-config
+          env:
+            - name: MODULE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: CLUSTER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: marchproxy-secrets
+                  key: cluster-api-key
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: marchproxy-secrets
+                  key: redis-password
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: marchproxy-secrets
+                  key: openai-api-key
+                  optional: true
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: marchproxy-secrets
+                  key: anthropic-api-key
+                  optional: true
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 7004
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 7004
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.ailb.resources | nindent 12 }}
+{{- end }}

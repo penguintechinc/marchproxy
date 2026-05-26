@@ -1,0 +1,33 @@
+{{- if .Values.ailb.enabled }}
+# Shared config consumed by all marchproxy components via envFrom
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: marchproxy-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "marchproxy.labels" . | nindent 4 }}
+data:
+  DATABASE_HOST: {{ .Values.postgresql.host | default (include "marchproxy.postgresql.fullname" .) | quote }}
+  DATABASE_PORT: {{ .Values.postgresql.port | default "5432" | quote }}
+  DATABASE_NAME: {{ .Values.postgresql.auth.database | quote }}
+  REDIS_HOST: {{ .Values.redis.host | default (include "marchproxy.redis.fullname" .) | quote }}
+  REDIS_PORT: {{ .Values.redis.port | default "6379" | quote }}
+  API_SERVER_URL: "http://{{ include "marchproxy.manager.fullname" . }}:8000"
+  AILB_GRPC: "proxy-ailb:50053"
+  LICENSE_SERVER_URL: "https://license.penguintech.io"
+  LOG_LEVEL: {{ .Values.manager.config.logLevel | quote }}
+---
+# ailb-specific config consumed only by the ailb component
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: marchproxy-ailb-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "marchproxy.ailb.labels" . | nindent 4 }}
+data:
+  LOG_LEVEL: {{ .Values.ailb.config.logLevel | quote }}
+  MAX_CONCURRENT_REQUESTS: {{ .Values.ailb.config.maxConcurrentRequests | quote }}
+  REQUEST_TIMEOUT_SECONDS: {{ .Values.ailb.config.requestTimeoutSeconds | quote }}
+{{- end }}

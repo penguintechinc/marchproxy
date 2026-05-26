@@ -1,0 +1,28 @@
+{{- if .Values.ailb.enabled }}
+# Service name is hardcoded as "proxy-ailb" — waddleai management expects
+# proxy-ailb.marchproxy.svc.cluster.local for gRPC routing.
+apiVersion: v1
+kind: Service
+metadata:
+  name: proxy-ailb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "marchproxy.ailb.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "marchproxy.ailb.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: 7003
+      targetPort: 7003
+      protocol: TCP
+    - name: admin
+      port: 7004
+      targetPort: 7004
+      protocol: TCP
+    - name: grpc
+      port: 50053
+      targetPort: 50053
+      protocol: TCP
+{{- end }}
