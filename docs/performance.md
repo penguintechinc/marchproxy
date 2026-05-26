@@ -1,637 +1,502 @@
-# MarchProxy Performance Tuning Guide
+# Performance Guide
 
-**Version:** 1.0.0
-**Last Updated:** 2025-12-12
-**Target Audience:** DevOps, SREs, Performance Engineers
+This guide covers performance optimization, hardware acceleration, and benchmarking for MarchProxy.
 
-## Table of Contents
+## Performance Architecture Overview
 
-1. [Performance Architecture](#performance-architecture)
-2. [Benchmarking](#benchmarking)
-3. [Tuning Guidelines](#tuning-guidelines)
-4. [Hardware Acceleration](#hardware-acceleration)
-5. [Monitoring Performance](#monitoring-performance)
-6. [Capacity Planning](#capacity-planning)
-7. [Optimization Checklist](#optimization-checklist)
+MarchProxy implements a multi-tier performance architecture designed to maximize throughput while maintaining feature compatibility.
 
----
+### Performance Tiers
 
-## Performance Architecture
-
-### Multi-Tier Processing Model
-
-MarchProxy uses a multi-tier performance architecture where different packet types are routed to optimal processing paths:
-
-```
-Packet Arrival (100%)
-    ↓
-Tier 1: Hardware Acceleration (100+ Gbps)
-├─ DPDK: kernel bypass (5% of packets)
-├─ SR-IOV: virtualization (5% of packets)
-    ↓
-Tier 2: XDP (40+ Gbps)
-├─ Driver-level processing
-├─ Early packet classification (40% of packets)
-    ↓
-Tier 3: AF_XDP (20+ Gbps)
-├─ Zero-copy socket I/O
-├─ User-space processing (35% of packets)
-    ↓
-Tier 4: eBPF (10+ Gbps)
-├─ Kernel-level filtering
-├─ Complex rules (14% of packets)
-    ↓
-Tier 5: Go Application (1+ Gbps)
-├─ Business logic
-├─ Policy evaluation (1% of packets)
-```
-
-### Component Performance Targets
-
-| Component | Metric | Target | Notes |
-|-----------|--------|--------|-------|
-| **Proxy L7 (Envoy)** | Throughput | 40+ Gbps | HTTP/HTTPS/gRPC |
-| | Requests/sec | 1M+ | Per instance |
-| | Latency (p99) | <10ms | End-to-end |
-| **Proxy L3/L4 (Go)** | Throughput | 100+ Gbps | TCP/UDP/ICMP |
-| | Packets/sec | 10M+ | Per instance |
-| | Latency (p99) | <1ms | Kernel-bypass |
-| **API Server** | Requests/sec | 10K+ | Per instance |
-| | Query latency (p99) | <10ms | Database queries |
-| **WebUI** | Initial load | <2s | First contentful paint |
-| | Lighthouse score | 90+ | Performance score |
-
----
-
-## Benchmarking
-
-### Load Testing Tools
-
-#### 1. HTTP Load Testing (L7)
-
-**Apache Bench:**
-```bash
-# 10,000 requests, 100 concurrent connections
-ab -n 10000 -c 100 http://localhost:80/
-
-# HTTPS with keep-alive disabled
-ab -k -n 10000 -c 100 https://localhost:443/
-```
-
-**wrk (Modern alternative):**
-```bash
-# Download: https://github.com/wg/wrk
-wrk -t12 -c400 -d30s http://localhost:80/
-
-# With custom Lua script
-wrk -t12 -c400 -d30s -s script.lua http://localhost:80/
-```
-
-#### 2. Network Load Testing (L3/L4)
-
-**iperf3 (TCP/UDP):**
-```bash
-# Server
-docker-compose exec proxy-l3l4 iperf3 -s
-
-# Client
-iperf3 -c localhost -p 5201 -P 8 -t 60
-
-# UDP test
-iperf3 -c localhost -p 5201 -u -b 10G
-```
-
-**netcat (Packet loss):**
-```bash
-# Generate packet stream
-dd if=/dev/zero bs=1M count=1000 | nc localhost 8081
-
-# Measure throughput
-time nc localhost 8081 < /dev/zero
-```
-
-#### 3. gRPC Load Testing
-
-**ghz:**
-```bash
-# Install: go install github.com/bojand/ghz@latest
-
-# Simple RPC
-ghz --insecure \
-  --proto api/service.proto \
-  --call mypackage.MyService/Method \
-  localhost:8080
-
-# Streaming RPC
-ghz --insecure \
-  --proto api/service.proto \
-  --call mypackage.MyService/Stream \
-  -n 100000 \
-  localhost:8080
-```
-
-### Benchmark Commands
-
-```bash
-#!/bin/bash
-# save as benchmark.sh
-
-echo "=== MarchProxy Performance Benchmark ==="
-echo
-
-# HTTP throughput
-echo "1. HTTP Throughput (L7 Proxy - Envoy)"
-wrk -t8 -c100 -d30s http://localhost:80/ | grep "Requests/sec"
-echo
-
-# HTTPS throughput
-echo "2. HTTPS Throughput (L7 Proxy - Envoy)"
-wrk -t8 -c100 -d30s https://localhost:443/ | grep "Requests/sec"
-echo
-
-# TCP throughput
-echo "3. TCP Throughput (L3/L4 Proxy - Go)"
-iperf3 -c localhost -t 30 | grep "Sender"
-echo
-
-# Latency measurement
-echo "4. HTTP Latency (p99)"
-ab -n 1000 -c 1 http://localhost:80/ | grep "99%"
-echo
-
-# Concurrent connections
-echo "5. Concurrent Connections"
-wrk -t8 -c1000 -d30s http://localhost:80/ | grep "Requests/sec"
-echo
-
-# API response time
-echo "6. API Response Time"
-curl -w "@curl-format.txt" -o /dev/null -s http://localhost:8000/api/healthz
-echo
-```
-
-### Baseline Benchmark Results (v1.0.0)
-
-```
-Test Environment:
-- AWS c5.2xlarge (8 vCPU, 16GB RAM)
-- Linux kernel 5.15
-- Docker Compose deployment
-
-Results:
-─────────────────────────────────────────────────────
-HTTP Throughput (1 connection):        ~25,000 req/s
-HTTP Throughput (100 connections):     ~50,000 req/s
-HTTP Latency (p50):                    2ms
-HTTP Latency (p99):                    8ms
-─────────────────────────────────────────────────────
-TCP Throughput (single client):        ~5 Gbps
-TCP Throughput (10 parallel clients):  ~15 Gbps
-TCP Latency (p99):                     <1ms (eBPF)
-─────────────────────────────────────────────────────
-API Latency (p99):                     5ms
-Prometheus Query Latency (p99):        3ms
-─────────────────────────────────────────────────────
-WebUI Load Time (Lighthouse):          90
-Bundle Size (gzipped):                 350KB
-─────────────────────────────────────────────────────
-```
-
----
-
-## Tuning Guidelines
-
-### Operating System
-
-```bash
-# Increase file descriptor limits
-sysctl -w fs.file-max=2097152
-sysctl -w fs.nr_open=2097152
-
-# Increase network buffer sizes
-sysctl -w net.core.rmem_max=134217728
-sysctl -w net.core.wmem_max=134217728
-sysctl -w net.ipv4.tcp_rmem='4096 87380 67108864'
-sysctl -w net.ipv4.tcp_wmem='4096 65536 67108864'
-
-# Increase TCP backlog
-sysctl -w net.ipv4.tcp_max_syn_backlog=10000
-sysctl -w net.core.somaxconn=10000
-
-# Enable TCP fast open
-sysctl -w net.ipv4.tcp_fastopen=3
-
-# Persist changes
-echo 'net.core.rmem_max=134217728' >> /etc/sysctl.conf
-sysctl -p
-```
-
-### Docker Compose
-
-```yaml
-services:
-  proxy-l7:
-    # Increase memory and CPU
-    mem_limit: 4g
-    cpus: "2"
-    # Performance options
-    cap_add:
-      - NET_ADMIN
-      - SYS_ADMIN
-      - SYS_RESOURCE
-    # Increase file descriptors
-    ulimits:
-      nofile: 1048576
-      nproc: 1048576
-
-  proxy-l3l4:
-    mem_limit: 4g
-    cpus: "2"
-    cap_add:
-      - NET_ADMIN
-      - SYS_ADMIN
-      - SYS_RESOURCE
-    ulimits:
-      nofile: 1048576
-      nproc: 1048576
-
-  api-server:
-    # Database connection pooling
-    environment:
-      - DATABASE_POOL_SIZE=20
-      - DATABASE_MAX_OVERFLOW=40
-    mem_limit: 2g
-    cpus: "1"
-```
-
-### Proxy Configuration
-
-**Envoy (L7) - Tuning:**
-```yaml
-# bootstrap.yaml
-admin:
-  address:
-    socket_address:
-      address: 127.0.0.1
-      port_value: 9901
-
-# Connection pooling
-http_connection_manager:
-  codec_type: AUTO
-  max_connection_duration: 3600s
-  idle_timeout: 60s
-  http_filters:
-    - name: envoy.filters.network.http_connection_manager
-      typed_config:
-        '@type': type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
-        common_http_protocol_options:
-          idle_timeout: 60s
-          max_requests: 10000
-        upstream_http_protocol_options:
-          auto_sni: true
-```
-
-**Go (L3/L4) - Environment Variables:**
-```bash
-# Connection pooling
-GO_MAX_PROCS=8            # CPU affinity
-GOMAXPROCS=8              # Go goroutine scheduler
-
-# Network tuning
-TCP_SOCKET_BUFFER=2097152 # 2MB
-UDP_SOCKET_BUFFER=2097152
-
-# Memory
-GOMEMLIMIT=3500MiB       # Go 1.19+ memory limit
-```
-
-### Database
-
-```bash
-# PostgreSQL performance tuning
-sudo -u postgres psql <<EOF
-ALTER SYSTEM SET shared_buffers = '4GB';
-ALTER SYSTEM SET effective_cache_size = '12GB';
-ALTER SYSTEM SET maintenance_work_mem = '1GB';
-ALTER SYSTEM SET checkpoint_completion_target = 0.9;
-ALTER SYSTEM SET wal_buffers = '16MB';
-ALTER SYSTEM SET default_statistics_target = 100;
-ALTER SYSTEM SET random_page_cost = 1.1;
-SELECT pg_reload_conf();
-EOF
-
-# Rebuild indexes
-docker-compose exec postgres psql -U marchproxy -c "REINDEX DATABASE marchproxy;"
-```
-
-### Redis
-
-```bash
-# redis.conf
-maxmemory 2gb
-maxmemory-policy allkeys-lru
-save ""                    # Disable RDB
-appendonly yes             # Enable AOF
-appendfsync everysec       # AOF sync policy
-```
-
----
+| Tier | Technology | Throughput | Use Case |
+|------|------------|------------|----------|
+| 1 | DPDK | 40+ Gbps | Ultra-high throughput |
+| 2 | XDP | 25 Gbps | DDoS protection, simple filtering |
+| 3 | AF_XDP | 15 Gbps | Zero-copy userspace |
+| 4 | SR-IOV | 10 Gbps | Virtualized environments |
+| 5 | eBPF | 5 Gbps | Kernel-level filtering |
+| 6 | Go Application | 1 Gbps | Full feature support |
+| 7 | Standard Sockets | 100 Mbps | Compatibility mode |
 
 ## Hardware Acceleration
 
+### DPDK (Data Plane Development Kit)
+
+**Enterprise Feature** - Highest performance option
+
+#### Requirements
+- Intel or AMD x86_64 processor
+- DPDK-compatible NIC (Intel 82599, X710, Mellanox ConnectX, etc.)
+- Hugepages support
+- Linux kernel 4.4+
+- Root privileges or capabilities
+
+#### Configuration
+```bash
+# Enable DPDK
+ENABLE_DPDK=true
+DPDK_DRIVER=vfio-pci
+DPDK_HUGEPAGES=2048
+DPDK_CORES=4-7
+DPDK_MEMORY_CHANNELS=4
+
+# NIC configuration
+DPDK_PCI_DEVICES=0000:02:00.0,0000:02:00.1
+DPDK_PORT_MASK=0x3
+```
+
+#### Setup Steps
+1. **Install DPDK dependencies**:
+   ```bash
+   apt-get install dpdk dpdk-dev
+   ```
+
+2. **Configure hugepages**:
+   ```bash
+   echo 2048 > /proc/sys/vm/nr_hugepages
+   ```
+
+3. **Bind NICs to DPDK driver**:
+   ```bash
+   dpdk-devbind --bind=vfio-pci 0000:02:00.0
+   ```
+
+4. **Verify setup**:
+   ```bash
+   curl http://localhost:8080/admin/acceleration
+   ```
+
 ### XDP (eXpress Data Path)
 
-**Requirements:**
-- Linux kernel 5.10+ (5.15+ recommended)
-- Network interface with XDP support (Intel, Mellanox, etc.)
+**Community + Enterprise** - Driver-level packet processing
 
-**Enable XDP:**
+#### Requirements
+- Linux kernel 4.18+ (5.4+ recommended)
+- XDP-compatible NIC driver
+- eBPF support in kernel
+- libbpf development libraries
+
+#### Configuration
 ```bash
-# Check XDP support
-ethtool -i eth0 | grep driver
+# Enable XDP
+ENABLE_XDP=true
+XDP_MODE=native        # native, skb, hw
+XDP_INTERFACE=eth0
+XDP_QUEUE_SIZE=1024
 
-# Load XDP program
-docker-compose exec proxy-l3l4 ./scripts/enable-xdp.sh
-
-# Verify
-docker-compose exec proxy-l3l4 bpftool prog list
+# eBPF settings
+EBPF_LOG_LEVEL=1
+EBPF_MAPS_SIZE=65536
 ```
 
-### AF_XDP (Zero-Copy)
+#### Modes
+- **Native Mode**: Fastest, direct driver integration
+- **SKB Mode**: Compatibility mode, slower but works with all drivers
+- **Hardware Mode**: Offload to NIC hardware (limited NICs)
 
-**Requirements:**
-- Linux kernel 5.10+
-- NUMA-capable CPU recommended
-
-**Enable AF_XDP:**
+#### Verification
 ```bash
-# Update .env
+# Check XDP status
+ip link show eth0
+
+# Monitor XDP statistics
+bpftool prog show
+bpftool map show
+```
+
+### AF_XDP (Address Family XDP)
+
+**Enterprise Feature** - Zero-copy userspace processing
+
+#### Requirements
+- Linux kernel 4.18+
+- XDP-compatible driver with AF_XDP support
+- libbpf with AF_XDP support
+
+#### Configuration
+```bash
+# Enable AF_XDP
 ENABLE_AF_XDP=true
-ENABLE_NUMA=true
-
-# Restart containers
-docker-compose restart proxy-l3l4
-
-# Check status
-curl http://localhost:8082/metrics | grep af_xdp
+AF_XDP_MODE=zero_copy
+AF_XDP_QUEUE_SIZE=2048
+AF_XDP_BATCH_SIZE=64
 ```
 
-### DPDK (Kernel Bypass)
+#### Benefits
+- Zero-copy packet processing
+- Lower CPU overhead than standard sockets
+- Userspace flexibility with kernel performance
 
-**Requirements:**
-- Linux kernel 5.15+
-- IOMMU support (VT-d for Intel)
-- 2MB or 1GB hugepages
+### SR-IOV (Single Root I/O Virtualization)
 
-**Configuration:**
+**Enterprise Feature** - Hardware virtualization acceleration
+
+#### Requirements
+- SR-IOV capable NIC
+- IOMMU support (Intel VT-d or AMD-Vi)
+- Virtualization environment (KVM, VMware, etc.)
+
+#### Configuration
 ```bash
-# Configure hugepages
-sudo sh -c 'echo 1024 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages'
-
-# Verify
-grep HugePages /proc/meminfo
-
-# Enable DPDK in proxy
-ENABLE_DPDK=true docker-compose restart proxy-l3l4
+# Enable SR-IOV
+ENABLE_SR_IOV=true
+SR_IOV_VF_COUNT=8
+SR_IOV_PF_DEVICE=eth0
 ```
 
-### Performance Comparison
+#### Setup
+1. **Enable SR-IOV in BIOS/UEFI**
+2. **Configure kernel parameters**:
+   ```bash
+   # Add to GRUB_CMDLINE_LINUX
+   intel_iommu=on iommu=pt
+   ```
+3. **Create virtual functions**:
+   ```bash
+   echo 8 > /sys/class/net/eth0/device/sriov_numvfs
+   ```
 
-| Method | Gbps | Latency | Complexity | License |
-|--------|------|---------|-----------|---------|
-| Standard | 1 | <10ms | Low | Community |
-| eBPF | 10 | <5ms | Medium | Community |
-| XDP | 40 | <1ms | High | Enterprise |
-| AF_XDP | 20 | <0.5ms | High | Enterprise |
-| DPDK | 100+ | <0.2ms | Very High | Enterprise |
+## Performance Tuning
 
----
+### System-level Optimization
 
-## Monitoring Performance
+#### CPU Affinity
+```bash
+# Isolate CPUs for proxy
+PROXY_CPU_AFFINITY=4-7
+ADMIN_CPU_AFFINITY=0-3
 
-### Key Metrics
-
-**L7 Proxy (Envoy):**
-```prometheus
-# Requests per second
-rate(envoy_http_ingress_http_requests_total[1m])
-
-# Latency distribution
-histogram_quantile(0.99, envoy_http_request_duration_ms)
-
-# Active connections
-envoy_http_connections_active
-
-# Request errors
-envoy_http_ingress_http_requests_total{response_code=~"5.."}
+# Set in systemd service
+CPUAffinity=4-7
 ```
 
-**L3/L4 Proxy (Go):**
-```prometheus
-# Bytes transferred
-rate(marchproxy_tcp_bytes_total[1m])
-rate(marchproxy_udp_bytes_total[1m])
+#### Memory Configuration
+```bash
+# Hugepages for DPDK
+echo 2048 > /proc/sys/vm/nr_hugepages
 
-# Packets per second
-rate(marchproxy_tcp_packets_total[1m])
-rate(marchproxy_udp_packets_total[1m])
+# Memory limits
+MAX_MEMORY_MB=8192
+GOGC=50
 
-# Connection count
-marchproxy_tcp_connections_active
-
-# Latency
-histogram_quantile(0.99, marchproxy_latency_ms)
+# Buffer sizes
+RECV_BUFFER_SIZE=262144
+SEND_BUFFER_SIZE=262144
 ```
 
-**API Server:**
-```prometheus
-# Request latency
-histogram_quantile(0.99, http_request_duration_seconds)
+#### Network Tuning
+```bash
+# Increase buffer sizes
+net.core.rmem_max = 134217728
+net.core.rmem_default = 65536
+net.core.wmem_max = 134217728
+net.core.wmem_default = 65536
 
-# Database query time
-histogram_quantile(0.99, db_query_duration_seconds)
+# Connection tracking
+net.netfilter.nf_conntrack_max = 1048576
+net.core.netdev_max_backlog = 30000
 
-# Cache hit rate
-rate(cache_hits_total[5m]) / rate(cache_requests_total[5m])
+# TCP optimization
+net.ipv4.tcp_congestion_control = bbr
+net.ipv4.tcp_rmem = 4096 131072 134217728
+net.ipv4.tcp_wmem = 4096 131072 134217728
 ```
 
-### Grafana Dashboard
+#### IRQ Balancing
+```bash
+# Disable irqbalance for dedicated CPUs
+systemctl stop irqbalance
 
-Pre-configured dashboards available at:
+# Manual IRQ affinity
+echo 4 > /proc/irq/24/smp_affinity_list
+echo 5 > /proc/irq/25/smp_affinity_list
 ```
-http://localhost:3000/d/marchproxy-performance
+
+### Application-level Optimization
+
+#### Worker Configuration
+```bash
+# Worker threads (0 = auto-detect)
+WORKER_THREADS=0
+
+# I/O threads
+IO_THREADS=4
+
+# Go runtime
+GOMAXPROCS=8
+GOGC=100
 ```
 
-**Key panels:**
-- Throughput (requests/sec, bytes/sec)
-- Latency (p50, p95, p99)
-- Error rate
-- CPU/Memory usage
-- Active connections
-- Cache hit rate
+#### Connection Settings
+```bash
+# Connection limits
+MAX_CONNECTIONS=10000
+KEEP_ALIVE_TIMEOUT=75
+READ_TIMEOUT=30
+WRITE_TIMEOUT=30
+IDLE_TIMEOUT=180
 
-### Real-Time Monitoring
+# Request handling
+MAX_REQUESTS_PER_WORKER=10000
+REQUEST_TIMEOUT=30
+```
+
+## Benchmarking
+
+### Built-in Benchmarks
+
+MarchProxy includes comprehensive benchmarking tools:
 
 ```bash
-#!/bin/bash
-# Monitor real-time metrics
-watch -n 1 'docker stats --no-stream'
+# Run full benchmark suite
+curl -X POST http://localhost:8080/admin/benchmark
 
-# Or with top-like view
-ctop
-
-# Monitor network I/O
-nethogs -d 1
-
-# Monitor disk I/O
-iostat -x 1
+# Specific benchmark types
+curl -X POST http://localhost:8080/admin/benchmark/throughput
+curl -X POST http://localhost:8080/admin/benchmark/latency
+curl -X POST http://localhost:8080/admin/benchmark/connections
+curl -X POST http://localhost:8080/admin/benchmark/mixed
 ```
 
----
+### Benchmark Configuration
 
-## Capacity Planning
-
-### Sizing Formula
-
-```
-Required Proxies = (Peak Traffic in Gbps) / (Throughput per Proxy)
-
-Example for 100 Gbps peak traffic:
-- L7 Proxy (40 Gbps per instance): 100 / 40 = 2.5 → 3 instances
-- L3/L4 Proxy (100 Gbps per instance): 100 / 100 = 1 instance
-
-For high availability (N+1 redundancy):
-- L7 Proxy: 3 + 1 = 4 instances
-- L3/L4 Proxy: 1 + 1 = 2 instances
+```json
+{
+  "duration": "30s",
+  "packet_size": 1400,
+  "connections": 1000,
+  "workers": 8,
+  "target_host": "127.0.0.1",
+  "target_port": 8080,
+  "protocol": "tcp"
+}
 ```
 
-### Resource Requirements
+### External Benchmarks
 
-**Per L7 Proxy Instance:**
-- vCPU: 2-4
-- RAM: 2-4 GB
-- Network: 10 Gbps NIC minimum
-- Storage: 100 MB (configuration)
+#### iperf3 Testing
+```bash
+# Server mode
+iperf3 -s -p 8080
 
-**Per L3/L4 Proxy Instance:**
-- vCPU: 4-8
-- RAM: 4-8 GB
-- Network: 25 Gbps NIC (for 100+ Gbps)
-- Storage: 50 MB (configuration)
+# Client testing
+iperf3 -c proxy-host -p 8080 -t 60 -P 10
+```
 
-**Central Management:**
-- vCPU: 2-4
-- RAM: 8-16 GB
-- Storage: 100-500 GB (databases)
-- Network: 1 Gbps minimum
+#### wrk HTTP Benchmarking
+```bash
+# HTTP throughput test
+wrk -t12 -c400 -d30s http://proxy-host:80/
 
----
+# HTTPS throughput test
+wrk -t12 -c400 -d30s https://proxy-host:443/
+```
 
-## Optimization Checklist
+#### netperf Testing
+```bash
+# TCP throughput
+netperf -H proxy-host -t TCP_STREAM -l 60
 
-### Pre-Deployment
+# UDP throughput
+netperf -H proxy-host -t UDP_STREAM -l 60
 
-- [ ] Upgrade Linux kernel to 5.15+
-- [ ] Enable hugepages for DPDK (if using)
-- [ ] Tune OS network parameters (see Tuning section)
-- [ ] Set up monitoring (Prometheus, Grafana)
-- [ ] Benchmark hardware baseline
+# Latency testing
+netperf -H proxy-host -t TCP_RR -l 60
+```
 
-### Deployment
+### Performance Monitoring
 
-- [ ] Enable XDP acceleration
-- [ ] Configure NUMA affinity (if multi-socket)
-- [ ] Set appropriate resource limits
-- [ ] Enable connection pooling
-- [ ] Configure database connection pool
+#### Real-time Metrics
 
-### Operational
+Monitor performance through Grafana dashboards:
 
-- [ ] Monitor key metrics continuously
-- [ ] Weekly performance reviews
-- [ ] Monthly capacity planning
-- [ ] Document custom tunings
-- [ ] Test failover procedures quarterly
+- **Request Rate**: Requests per second
+- **Latency Distribution**: P50, P95, P99 latency
+- **Throughput**: Bytes per second, Gbps
+- **Connection Statistics**: Active connections, new connections/sec
+- **Acceleration Metrics**: XDP packets, eBPF hits, hardware stats
+- **Resource Usage**: CPU, memory, network utilization
 
-### Ongoing Optimization
+#### Key Performance Indicators
 
-- [ ] Analyze slow query logs (API)
-- [ ] Review Prometheus metrics for anomalies
-- [ ] Implement caching strategies
-- [ ] Optimize database indexes
-- [ ] Profile CPU usage (go pprof)
+```promql
+# Request rate
+rate(marchproxy_requests_total[5m])
 
----
+# Latency percentiles
+histogram_quantile(0.95, rate(marchproxy_request_duration_seconds_bucket[5m]))
+
+# Throughput
+rate(marchproxy_bytes_transferred_total[5m]) * 8 / 1e9
+
+# XDP performance
+rate(marchproxy_xdp_total_packets_total[5m])
+
+# Connection rate
+rate(marchproxy_connections_opened_total[5m])
+```
+
+## Performance Optimization Strategies
+
+### Rule Optimization
+
+#### Fast-path Classification
+Ensure simple rules use fast-path processing:
+
+```yaml
+# Fast-path rule (XDP/eBPF)
+- service: "simple-tcp"
+  ip: "10.0.1.100"
+  port: 8080
+  protocol: "tcp"
+  auth_type: "none"          # No authentication
+  tls_enabled: false         # No TLS termination
+
+# Slow-path rule (Go application)
+- service: "complex-web"
+  ip: "10.0.1.200"
+  port: 443
+  protocol: "tcp"
+  auth_type: "jwt"           # Requires authentication
+  tls_enabled: true          # TLS termination
+  websocket: true            # WebSocket support
+```
+
+#### Rule Ordering
+Place high-traffic rules first in configuration for better performance.
+
+### Connection Optimization
+
+#### Connection Pooling
+```bash
+# Backend connection pooling
+BACKEND_POOL_SIZE=100
+BACKEND_POOL_TIMEOUT=30
+BACKEND_KEEP_ALIVE=true
+```
+
+#### Connection Limits
+```bash
+# Per-service limits
+SERVICE_MAX_CONNECTIONS=1000
+SERVICE_CONNECTION_RATE=100
+
+# Global limits
+GLOBAL_MAX_CONNECTIONS=10000
+GLOBAL_CONNECTION_RATE=1000
+```
+
+### Cache Optimization
+
+#### Response Caching
+```yaml
+services:
+  - name: "cached-api"
+    cache_enabled: true
+    cache_ttl: 300
+    cache_vary: ["Authorization", "Content-Type"]
+```
+
+#### Connection State Caching
+```bash
+# eBPF map sizes
+EBPF_CONN_MAP_SIZE=65536
+EBPF_SERVICE_MAP_SIZE=1024
+EBPF_STATS_MAP_SIZE=1024
+```
+
+## Hardware Recommendations
+
+### Development Environment
+- **CPU**: 4+ cores, 2.4+ GHz
+- **Memory**: 8GB+ RAM
+- **Network**: 1 Gbps NIC
+- **Storage**: SSD recommended
+
+### Production Environment
+- **CPU**: 16+ cores, 3.0+ GHz, dedicated cores for DPDK
+- **Memory**: 32GB+ RAM, hugepage support
+- **Network**: 10/25/40 Gbps NICs with hardware acceleration
+- **Storage**: NVMe SSD for logs and temporary data
+
+### High-Performance Environment
+- **CPU**: 32+ cores, 3.5+ GHz, NUMA awareness
+- **Memory**: 64GB+ RAM, 1GB hugepages
+- **Network**: 100 Gbps NICs with SR-IOV, DPDK support
+- **Storage**: NVMe SSD array with high IOPS
 
 ## Troubleshooting Performance Issues
 
-### High CPU Usage
+### Common Performance Problems
 
+1. **Low Throughput**
+   ```bash
+   # Check acceleration status
+   curl http://localhost:8080/admin/acceleration
+
+   # Monitor CPU usage
+   top -p $(pgrep marchproxy-proxy)
+
+   # Check network utilization
+   iftop -i eth0
+   ```
+
+2. **High Latency**
+   ```bash
+   # Check rule classification
+   curl http://localhost:8080/admin/rules/classification
+
+   # Monitor queue depths
+   ss -i
+
+   # Check backend connectivity
+   curl http://localhost:8080/admin/backends/health
+   ```
+
+3. **Connection Issues**
+   ```bash
+   # Check connection limits
+   ulimit -n
+
+   # Monitor connection states
+   ss -s
+
+   # Check file descriptor usage
+   lsof -p $(pgrep marchproxy-proxy) | wc -l
+   ```
+
+### Performance Debugging
+
+#### Enable Debug Logging
 ```bash
-# Profile Go application
-curl http://localhost:6060/debug/pprof/profile?seconds=30 > cpu.prof
-go tool pprof cpu.prof
-
-# Check for hot functions
-(pprof) top
-
-# Check goroutine count
-curl http://localhost:6060/debug/pprof/goroutine?debug=1
+LOG_LEVEL=debug
+PROXY_DEBUG=true
 ```
 
-### High Memory Usage
-
+#### Profile Application
 ```bash
-# Heap profile
-curl http://localhost:6060/debug/pprof/heap > heap.prof
-go tool pprof heap.prof
+# CPU profiling
+curl http://localhost:8080/debug/pprof/profile?seconds=30
 
-# Monitor memory growth
-(pprof) top -cum
+# Memory profiling
+curl http://localhost:8080/debug/pprof/heap
 
-# Check for memory leaks
-curl http://localhost:6060/debug/pprof/allocs > allocs.prof
+# Goroutine profiling
+curl http://localhost:8080/debug/pprof/goroutine
 ```
 
-### Slow Requests
-
+#### Monitor System Resources
 ```bash
-# Check database query performance
-docker-compose exec postgres psql -U marchproxy -c "
-SELECT query, mean_time, max_time, calls
-FROM pg_stat_statements
-ORDER BY mean_time DESC LIMIT 10;
-"
+# System statistics
+iostat -x 1
+vmstat 1
+sar -u 1
 
-# Enable query logging
-ALTER SYSTEM SET log_min_duration_statement = 100;  -- 100ms
-```
-
-### Packet Loss
-
-```bash
-# Monitor network errors
-ethtool -S eth0 | grep -i error
-
-# Check NIC RX/TX queues
-ethtool -l eth0
-ethtool -L eth0 rx 16 tx 16  # Increase queues
-
-# Verify XDP drop counters
-docker-compose exec proxy-l3l4 bpftool stat
+# Network statistics
+netstat -i
+ip -s link show
 ```
 
 ---
 
-## References
-
-- [Linux kernel performance](https://www.kernel.org/doc/html/latest/admin-guide/sysctl/net.html)
-- [Envoy performance tuning](https://www.envoyproxy.io/docs/envoy/latest/faq/performance/how_to_benchmarking)
-- [Go performance optimization](https://pkg.go.dev/runtime/pprof)
-- [PostgreSQL tuning](https://wiki.postgresql.org/wiki/Performance_Optimization)
-- [XDP resources](https://github.com/xdp-project/xdp-tutorial)
-
----
-
-**For deployment guidance, see:** [DEPLOYMENT.md](DEPLOYMENT.md)
-**For troubleshooting, see:** [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+Next: [Security Guide](security.md)
