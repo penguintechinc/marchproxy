@@ -1,6 +1,6 @@
 # AILB Container Dockerfile — Multi-stage build for AI Load Balancer
 
-FROM python:3.13-slim-bookworm@sha256:e4fa1f978c539608a10cdf74700ac32a3f719dfc6e8b6b6001da82deb36302a2 AS builder
+FROM python:3.12-slim-bookworm@sha256:93ab4b7fa528b25124c97bcc755415e60eb671a86b4dbe0328df2fe2d1c1193d AS builder
 
 WORKDIR /build
 
@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY proxy-ailb/requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
-FROM python:3.13-slim-bookworm@sha256:e4fa1f978c539608a10cdf74700ac32a3f719dfc6e8b6b6001da82deb36302a2 AS production
+FROM python:3.12-slim-bookworm@sha256:93ab4b7fa528b25124c97bcc755415e60eb671a86b4dbe0328df2fe2d1c1193d AS production
 
 RUN groupadd -r ailb && useradd -r -g ailb -u 1000 ailb
 
