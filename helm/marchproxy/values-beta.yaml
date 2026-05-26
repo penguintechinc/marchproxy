@@ -48,7 +48,7 @@ ailb:
   image:
     registry: ghcr.io
     repository: penguintechinc/marchproxy/ailb
-    tag: "beta-latest"
+    tag: "alpha-1779808187"
     pullPolicy: Always
   replicaCount: 1
   resources:
