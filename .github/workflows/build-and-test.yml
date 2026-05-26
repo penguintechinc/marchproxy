@@ -182,6 +182,7 @@ jobs:
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         include:
           - component: manager
