@@ -25,18 +25,6 @@ manager:
     limits:
       memory: "256Mi"
       cpu: "250m"
-  ingress:
-    enabled: true
-    className: "nginx"
-    hosts:
-      - host: marchproxy.penguintech.cloud
-        paths:
-          - path: /
-            pathType: Prefix
-    tls:
-      - secretName: marchproxy-manager-tls
-        hosts:
-          - marchproxy.penguintech.cloud
 
 # Proxy image — update tag after CI build completes
 proxy:
@@ -112,3 +100,6 @@ monitoring:
 # Autoscaling off for beta
 autoscaling:
   enabled: false
+
+httproute:
+  enabled: true

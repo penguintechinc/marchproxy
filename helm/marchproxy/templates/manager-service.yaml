@@ -1,0 +1,26 @@
+{{- if .Values.manager.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "marchproxy.manager.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "marchproxy.manager.labels" . | nindent 4 }}
+  {{- with .Values.manager.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.manager.service.type }}
+  ports:
+    - port: {{ .Values.manager.service.port }}
+      targetPort: 8000
+      protocol: TCP
+      name: http
+    - port: {{ .Values.manager.service.metricsPort }}
+      targetPort: 9090
+      protocol: TCP
+      name: metrics
+  selector:
+    {{- include "marchproxy.manager.selectorLabels" . | nindent 4 }}
+{{- end }}

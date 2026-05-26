@@ -266,3 +266,9 @@ ailb:
     logLevel: "info"
     maxConcurrentRequests: "100"
     requestTimeoutSeconds: "30"
+
+httproute:
+  enabled: false
+  gatewayName: dal2-gateway
+  gatewayNamespace: cilium-gateway
+  host: marchproxy.penguintech.cloud
