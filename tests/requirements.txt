@@ -22,7 +22,7 @@ locust==2.20.0
 # Security Testing
 bandit==1.7.6
 safety==3.0.1
-pyjwt==2.8.0
+pyjwt==2.13.0
 
 # Performance
 pytest-benchmark==4.0.0
